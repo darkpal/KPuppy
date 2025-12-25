@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'preact/hooks'
 import { getDeviceInfo, updateDeviceSettings, DeviceSettings, SelectOption } from '../api/kinopub'
-import { getLocalSettings, saveLocalSettings, VideoQuality } from '../storage'
+import { getLocalSettings, saveLocalSettings, VideoQuality, PlayerType } from '../storage'
 import { useKeyboardNavigation } from '../hooks'
 import { useI18n, Language } from '../i18n'
 import '../styles/settings.css'
@@ -11,6 +11,11 @@ const QUALITY_OPTIONS: { id: VideoQuality; labelKey: keyof typeof import('../i18
   { id: '1080p', labelKey: 'quality1080p' },
   { id: '720p', labelKey: 'quality720p' },
   { id: '480p', labelKey: 'quality480p' },
+]
+
+const PLAYER_OPTIONS: { id: PlayerType; labelKey: keyof typeof import('../i18n/translations').translations.en }[] = [
+  { id: 'native', labelKey: 'playerNative' },
+  { id: 'builtin', labelKey: 'playerBuiltin' },
 ]
 
 interface SettingsScreenProps {
@@ -37,6 +42,7 @@ const ALL_SETTINGS: SettingItem[] = [
   { id: 'serverLocation', labelKey: 'server', type: 'select', key: 'serverLocation', section: 'client' },
   { id: 'streamingType', labelKey: 'streaming', type: 'select', key: 'streamingType', section: 'client' },
   { id: 'quality', labelKey: 'quality', type: 'select', section: 'local' },
+  { id: 'player', labelKey: 'player', type: 'select', section: 'local' },
   { id: 'language', labelKey: 'language', type: 'language', section: 'local' },
 ]
 
@@ -47,6 +53,7 @@ export function SettingsScreen({ onNavigateToMenu, isActive }: SettingsScreenPro
   const [deviceId, setDeviceId] = useState<number | null>(null)
   const [settings, setSettings] = useState<DeviceSettings | null>(null)
   const [quality, setQuality] = useState<VideoQuality>(() => getLocalSettings().defaultQuality)
+  const [playerType, setPlayerType] = useState<PlayerType>(() => getLocalSettings().playerType)
   const [focusedIndex, setFocusedIndex] = useState(0)
   const [expandedSelect, setExpandedSelect] = useState<string | null>(null)
   const [selectFocusIndex, setSelectFocusIndex] = useState(0)
@@ -101,6 +108,13 @@ export function SettingsScreen({ onNavigateToMenu, isActive }: SettingsScreenPro
         selected: opt.id === quality ? 1 : 0
       }))
     }
+    if (key === 'player') {
+      return PLAYER_OPTIONS.map((opt, idx) => ({
+        id: idx,
+        label: t[opt.labelKey],
+        selected: opt.id === playerType ? 1 : 0
+      }))
+    }
     if (key === 'language') {
       return languages.map(lang => ({
         id: lang.id === 'en' ? 1 : lang.id === 'ru' ? 2 : 3,
@@ -124,6 +138,12 @@ export function SettingsScreen({ onNavigateToMenu, isActive }: SettingsScreenPro
         if (newQuality) {
           setQuality(newQuality)
           saveLocalSettings({ defaultQuality: newQuality })
+        }
+      } else if (expandedSelect === 'player') {
+        const newPlayer = PLAYER_OPTIONS[selectFocusIndex]?.id
+        if (newPlayer) {
+          setPlayerType(newPlayer)
+          saveLocalSettings({ playerType: newPlayer })
         }
       } else if (settings) {
         const newOptions = options.map(o => ({

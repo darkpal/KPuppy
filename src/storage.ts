@@ -9,13 +9,16 @@ export interface Tokens {
 }
 
 export type VideoQuality = '2160p' | '1080p' | '720p' | '480p' | 'auto'
+export type PlayerType = 'native' | 'builtin'
 
 export interface LocalSettings {
   defaultQuality: VideoQuality
+  playerType: PlayerType
 }
 
 const DEFAULT_SETTINGS: LocalSettings = {
-  defaultQuality: 'auto'
+  defaultQuality: 'auto',
+  playerType: 'native'
 }
 
 export function getLocalSettings(): LocalSettings {

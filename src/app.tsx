@@ -7,9 +7,10 @@ import { CategoryScreen } from './screens/CategoryScreen'
 import { SettingsScreen } from './screens/SettingsScreen'
 import { UserScreen } from './screens/UserScreen'
 import { SeasonsScreen } from './screens/SeasonsScreen'
+import { PlayerScreen } from './screens/PlayerScreen'
 import { SideMenu, ALL_MENU_ITEMS_COUNT, getMenuIdByIndex } from './components/SideMenu'
 import { isAuthenticated, clearTokens, getTokens, getLocalSettings, saveReturnTo, getReturnTo, clearReturnTo } from './storage'
-import { refreshAccessToken, getItem, setOnAuthError, getDeviceInfo } from './api/kinopub'
+import { refreshAccessToken, getItem, setOnAuthError, getDeviceInfo, Audio, Subtitle } from './api/kinopub'
 import { saveTokens } from './storage'
 import { launchNativePlayer, getStreamUrl } from './webos/player'
 import { useI18n } from './i18n'
@@ -24,6 +25,16 @@ interface ScreenFocusState {
   col: number
 }
 
+interface PlayerState {
+  url: string
+  title: string
+  audios: Audio[]
+  subtitles: Subtitle[]
+  itemId: number
+  season?: number
+  episode?: number
+}
+
 interface AppState {
   authenticated: boolean
   selectedMenuId: string
@@ -34,6 +45,7 @@ interface AppState {
   screenFocus: Record<string, ScreenFocusState>
   returnToItemId: number | null
   returnToSeriesId: number | null
+  player: PlayerState | null
 }
 
 const CATEGORY_TITLE_KEYS: Record<string, keyof Translations> = {
@@ -63,7 +75,8 @@ export function App() {
         menuFocusIndex: 0,
         screenFocus: {},
         returnToItemId: null,
-        returnToSeriesId: null
+        returnToSeriesId: null,
+        player: null
       }
     }
     return {
@@ -75,7 +88,8 @@ export function App() {
       menuFocusIndex: 0,
       screenFocus: {},
       returnToItemId: null,
-      returnToSeriesId: null
+      returnToSeriesId: null,
+      player: null
     }
   })
   const [initializing, setInitializing] = useState(true)
@@ -165,20 +179,30 @@ export function App() {
     setState(prev => ({ ...prev, focusArea: 'menu' }))
   }, [])
 
+  const handleClosePlayer = useCallback(() => {
+    setState(prev => ({ ...prev, player: null }))
+  }, [])
+
   const handlePlay = useCallback(async (itemId: number, season?: number, episode?: number, options?: { quality?: string }) => {
-    setState(prev => {
-      saveReturnTo({ itemId: prev.itemId, seriesId: prev.seriesId })
-      return {
-        ...prev,
-        returnToItemId: prev.itemId,
-        returnToSeriesId: prev.seriesId
-      }
-    })
+    const localSettings = getLocalSettings()
+
+    if (localSettings.playerType === 'native') {
+      setState(prev => {
+        saveReturnTo({ itemId: prev.itemId, seriesId: prev.seriesId })
+        return {
+          ...prev,
+          returnToItemId: prev.itemId,
+          returnToSeriesId: prev.seriesId
+        }
+      })
+    }
 
     try {
       const item = await getItem(itemId)
 
       let files = item.videos?.[0]?.files
+      let audios = item.videos?.[0]?.audios || []
+      let subtitles = item.videos?.[0]?.subtitles || []
       let title = item.title
 
       if (season !== undefined && episode !== undefined && item.seasons) {
@@ -186,12 +210,13 @@ export function App() {
         const episodeData = seasonData?.episodes.find(e => e.number === episode)
         if (episodeData) {
           files = episodeData.files
+          audios = episodeData.audios || []
+          subtitles = episodeData.subtitles || []
           title = `${item.title} - S${season}E${episode}`
           if (episodeData.title) title += ` - ${episodeData.title}`
         }
       }
 
-      const localSettings = getLocalSettings()
       const preferredQuality = options?.quality || (localSettings.defaultQuality === 'auto' ? undefined : localSettings.defaultQuality)
 
       let streamingType: string | undefined
@@ -205,13 +230,27 @@ export function App() {
       const streamUrl = getStreamUrl(files || [], preferredQuality, streamingType)
       if (!streamUrl) return
 
-      await launchNativePlayer({
-        fullPath: streamUrl,
-        fileName: title,
-        thumbnail: item.posters?.medium
-      })
+      if (localSettings.playerType === 'builtin') {
+        setState(prev => ({
+          ...prev,
+          player: {
+            url: streamUrl,
+            title,
+            audios,
+            subtitles,
+            itemId,
+            season,
+            episode
+          }
+        }))
+      } else {
+        await launchNativePlayer({
+          fullPath: streamUrl,
+          fileName: title,
+          thumbnail: item.posters?.medium
+        })
+      }
     } catch {
-      // Silently fail - user can retry
     }
   }, [])
 
@@ -329,6 +368,18 @@ export function App() {
 
   if (!state.authenticated) {
     return <AuthScreen onAuthenticated={handleAuthenticated} />
+  }
+
+  if (state.player) {
+    return (
+      <PlayerScreen
+        url={state.player.url}
+        title={state.player.title}
+        audios={state.player.audios}
+        subtitles={state.player.subtitles}
+        onBack={handleClosePlayer}
+      />
+    )
   }
 
   if (state.seriesId) {

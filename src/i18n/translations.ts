@@ -113,6 +113,11 @@ export interface Translations {
   subtitles: string
   subtitlesOff: string
   original: string
+
+  // Player
+  player: string
+  playerNative: string
+  playerBuiltin: string
 }
 
 const en: Translations = {
@@ -209,6 +214,10 @@ const en: Translations = {
   subtitles: 'Subtitles',
   subtitlesOff: 'Off',
   original: 'Original',
+
+  player: 'Player',
+  playerNative: 'Native (webOS)',
+  playerBuiltin: 'Built-in',
 }
 
 const ru: Translations = {
@@ -305,6 +314,10 @@ const ru: Translations = {
   subtitles: 'Субтитры',
   subtitlesOff: 'Выкл',
   original: 'Оригинал',
+
+  player: 'Плеер',
+  playerNative: 'Нативный (webOS)',
+  playerBuiltin: 'Встроенный',
 }
 
 const de: Translations = {
@@ -401,6 +414,10 @@ const de: Translations = {
   subtitles: 'Untertitel',
   subtitlesOff: 'Aus',
   original: 'Original',
+
+  player: 'Player',
+  playerNative: 'Nativ (webOS)',
+  playerBuiltin: 'Eingebaut',
 }
 
 export const translations: Record<Language, Translations> = { en, ru, de }
