@@ -49,7 +49,8 @@ export async function launchNativePlayer(payload: VideoPayload): Promise<void> {
 
 export function getStreamUrl(
   files: Array<{ quality: string; url: { http?: string; hls?: string; hls2?: string; hls4?: string } }>,
-  preferredQuality?: string
+  preferredQuality?: string,
+  streamingType?: string
 ): string | null {
   if (!files || files.length === 0) return null
 
@@ -70,9 +71,15 @@ export function getStreamUrl(
     }
   }
 
-  return selectedFile.url.hls4
-    || selectedFile.url.hls2
-    || selectedFile.url.hls
-    || selectedFile.url.http
-    || null
+  const url = selectedFile.url
+  const type = streamingType?.toLowerCase() as keyof typeof url
+  const fallbackOrder: (keyof typeof url)[] = ['hls4', 'hls2', 'hls', 'http']
+
+  if (type && url[type]) return url[type]
+
+  for (const key of fallbackOrder) {
+    if (url[key]) return url[key]
+  }
+
+  return null
 }

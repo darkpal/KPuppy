@@ -9,7 +9,7 @@ import { UserScreen } from './screens/UserScreen'
 import { SeasonsScreen } from './screens/SeasonsScreen'
 import { SideMenu, ALL_MENU_ITEMS_COUNT, getMenuIdByIndex } from './components/SideMenu'
 import { isAuthenticated, clearTokens, getTokens, getLocalSettings, saveReturnTo, getReturnTo, clearReturnTo } from './storage'
-import { refreshAccessToken, getItem, setOnAuthError } from './api/kinopub'
+import { refreshAccessToken, getItem, setOnAuthError, getDeviceInfo } from './api/kinopub'
 import { saveTokens } from './storage'
 import { launchNativePlayer, getStreamUrl } from './webos/player'
 import { useI18n } from './i18n'
@@ -191,8 +191,18 @@ export function App() {
         }
       }
 
-      const preferredQuality = options?.quality || (getLocalSettings().defaultQuality === 'auto' ? undefined : getLocalSettings().defaultQuality)
-      const streamUrl = getStreamUrl(files || [], preferredQuality)
+      const localSettings = getLocalSettings()
+      const preferredQuality = options?.quality || (localSettings.defaultQuality === 'auto' ? undefined : localSettings.defaultQuality)
+
+      let streamingType: string | undefined
+      try {
+        const deviceInfo = await getDeviceInfo()
+        const selectedType = deviceInfo.settings.streamingType?.find(t => t.selected === 1)
+        streamingType = selectedType?.label?.toLowerCase()
+      } catch {
+      }
+
+      const streamUrl = getStreamUrl(files || [], preferredQuality, streamingType)
       if (!streamUrl) return
 
       await launchNativePlayer({
