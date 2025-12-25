@@ -1,0 +1,13 @@
+{
+  "id": "com.kpuppy.app",
+  "version": "0.0.1",
+  "vendor": "KPuppy",
+  "type": "web",
+  "main": "index.html",
+  "title": "KPuppy",
+  "icon": "icon.png",
+  "largeIcon": "largeIcon.png",
+  "bgColor": "#141414",
+  "resolution": "1920x1080",
+  "disableBackHistoryAPI": true
+}

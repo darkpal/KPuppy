@@ -1,0 +1,27 @@
+{
+  "name": "kpuppy",
+  "version": "0.0.1",
+  "description": "KinoPub client for LG webOS TV",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "package": "ares-package dist -o .",
+    "deploy": "ares-install *.ipk"
+  },
+  "dependencies": {
+    "preact": "^10.25.4"
+  },
+  "devDependencies": {
+    "@preact/preset-vite": "^2.9.4",
+    "@testing-library/preact": "^3.2.4",
+    "jsdom": "^25.0.1",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.6",
+    "vitest": "^2.1.8",
+    "ws": "^8.18.3"
+  }
+}

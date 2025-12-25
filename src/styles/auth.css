@@ -1,0 +1,104 @@
+.auth-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  background: #141414;
+  padding: 40px;
+}
+
+.auth-card {
+  background: #1f1f1f;
+  border-radius: 8px;
+  padding: 60px 80px;
+  text-align: center;
+  max-width: 600px;
+}
+
+.auth-title {
+  font-size: 32px;
+  font-weight: 600;
+  color: #ffffff;
+  margin-bottom: 40px;
+}
+
+.auth-code {
+  font-size: 64px;
+  font-weight: 700;
+  letter-spacing: 12px;
+  color: #ffffff;
+  margin-bottom: 16px;
+  font-family: 'Courier New', monospace;
+}
+
+.auth-code-underline {
+  width: 280px;
+  height: 4px;
+  background: #e50914;
+  margin: 0 auto 40px;
+  border-radius: 2px;
+}
+
+.auth-instruction {
+  font-size: 24px;
+  color: #b3b3b3;
+  margin-bottom: 8px;
+}
+
+.auth-url {
+  font-size: 28px;
+  color: #ffffff;
+  font-weight: 500;
+}
+
+.auth-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.auth-loading > * {
+  margin-bottom: 24px;
+}
+
+.auth-loading > *:last-child {
+  margin-bottom: 0;
+}
+
+.auth-spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid #333;
+  border-top-color: #e50914;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.auth-polling {
+  display: flex;
+  align-items: center;
+  margin-top: 40px;
+  color: #b3b3b3;
+  font-size: 18px;
+}
+
+.auth-polling-dot {
+  width: 8px;
+  height: 8px;
+  background: #e50914;
+  border-radius: 50%;
+  margin-right: 12px;
+}
+
+.auth-error {
+  color: #e50914;
+  font-size: 20px;
+  margin-top: 24px;
+}

@@ -1,0 +1,123 @@
+.main-screen {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: #141414;
+  overflow: hidden;
+}
+
+.rows-container {
+  flex: 1;
+  overflow-y: auto;
+  padding-top: 30px;
+  padding-bottom: 40px;
+  scrollbar-width: none;
+}
+
+.rows-container::-webkit-scrollbar {
+  display: none;
+}
+
+.movie-row {
+  padding: 0 60px;
+  margin-bottom: 40px;
+}
+
+.row-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #ffffff;
+  margin-bottom: 16px;
+}
+
+.movie-grid {
+  display: flex;
+  overflow-x: auto;
+  padding: 16px;
+  margin: -16px;
+  margin-right: -60px;
+  padding-right: 60px;
+  scrollbar-width: none;
+}
+
+.movie-grid > div {
+  margin-right: 32px;
+  flex-shrink: 0;
+}
+
+.movie-grid > div:last-child {
+  margin-right: 0;
+}
+
+.movie-grid::-webkit-scrollbar {
+  display: none;
+}
+
+.row-loading {
+  display: flex;
+  align-items: center;
+  height: 270px;
+  padding-left: 20px;
+}
+
+.row-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #333;
+  border-top-color: #e50914;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.main-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+
+.main-loading > * {
+  margin-bottom: 24px;
+}
+
+.main-loading > *:last-child {
+  margin-bottom: 0;
+}
+
+.main-spinner {
+  width: 64px;
+  height: 64px;
+  border: 4px solid #333;
+  border-top-color: #e50914;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.main-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #b3b3b3;
+}
+
+.main-error > * {
+  margin-bottom: 16px;
+}
+
+.main-error > *:last-child {
+  margin-bottom: 0;
+}
+
+.main-error-text {
+  font-size: 20px;
+  color: #e50914;
+}

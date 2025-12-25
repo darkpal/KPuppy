@@ -1,0 +1,158 @@
+.seasons-screen {
+  height: 100%;
+  background: #141414;
+  padding: 30px 24px;
+  overflow-y: auto;
+}
+
+.seasons-header {
+  margin-bottom: 24px;
+}
+
+.seasons-title {
+  font-size: 32px;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 8px 0;
+}
+
+.seasons-subtitle {
+  font-size: 16px;
+  color: #808080;
+}
+
+.seasons-container {
+  display: flex;
+  flex-direction: column;
+}
+
+.seasons-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 50%;
+}
+
+.seasons-spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid #333;
+  border-top-color: #e50914;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.seasons-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 50%;
+  color: #808080;
+  font-size: 18px;
+}
+
+.episode-row {
+  margin-bottom: 32px;
+}
+
+.episode-grid {
+  display: flex;
+  overflow-x: auto;
+  padding: 16px 0;
+  margin: -16px 0;
+  scrollbar-width: none;
+}
+
+.episode-card {
+  margin-right: 32px;
+}
+
+.episode-card:last-child {
+  margin-right: 0;
+}
+
+.episode-grid::-webkit-scrollbar {
+  display: none;
+}
+
+.episode-card {
+  flex-shrink: 0;
+  width: 280px;
+  cursor: pointer;
+}
+
+.episode-card.focused {
+  z-index: 10;
+}
+
+.episode-thumbnail {
+  position: relative;
+  width: 100%;
+  height: 158px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: #1f1f1f;
+  border: 2px solid transparent;
+}
+
+.episode-card.focused .episode-thumbnail {
+  border-color: #e50914;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
+}
+
+.episode-thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.episode-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
+}
+
+.episode-placeholder-number {
+  font-size: 48px;
+  font-weight: 700;
+  color: #333;
+}
+
+.episode-duration {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  background: rgba(0, 0, 0, 0.8);
+  color: #ffffff;
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 2px;
+}
+
+.episode-info {
+  padding: 12px 4px;
+}
+
+.episode-number {
+  display: block;
+  font-size: 12px;
+  color: #808080;
+  margin-bottom: 4px;
+}
+
+.episode-title {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

@@ -1,0 +1,285 @@
+import { useState, useEffect, useCallback, useRef, useMemo } from 'preact/hooks'
+import { searchItems, MovieItem } from '../api/kinopub'
+import { MovieCard } from '../components/MovieCard'
+import { useKeyboardNavigation } from '../hooks'
+import { useI18n } from '../i18n'
+import '../styles/search.css'
+
+interface SearchScreenProps {
+  onBack: () => void
+  onSelectItem: (itemId: number) => void
+  onNavigateToMenu: () => void
+  isActive: boolean
+}
+
+type FocusArea = 'keyboard' | 'results'
+
+const KEYBOARD_ROWS = [
+  ['А', 'Б', 'В', 'Г', 'Д', 'Е', 'Ж', 'З', 'И', 'Й', 'К', 'Л', 'М', 'Н', 'О', 'П', 'Р', 'С', 'Т', 'У', 'Ф', 'Х', 'Ц', 'Ч', 'Ш', 'Щ', 'Ъ', 'Ы', 'Ь', 'Э', 'Ю', 'Я'],
+  ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'],
+  ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', ' ', '⌫', '✕', '→'],
+]
+
+const SPECIAL_KEYS = {
+  '⌫': 'backspace',
+  '✕': 'clear',
+  '→': 'search',
+  ' ': 'space',
+}
+
+export function SearchScreen({ onBack, onSelectItem, onNavigateToMenu, isActive }: SearchScreenProps) {
+  const { t } = useI18n()
+  const [query, setQuery] = useState('')
+  const [results, setResults] = useState<MovieItem[]>([])
+  const [loading, setLoading] = useState(false)
+  const [focusArea, setFocusArea] = useState<FocusArea>('keyboard')
+  const [keyboardRow, setKeyboardRow] = useState(0)
+  const [keyboardCol, setKeyboardCol] = useState(0)
+  const [resultIndex, setResultIndex] = useState(0)
+  const [hasSearched, setHasSearched] = useState(false)
+  const [resultsPerRow, setResultsPerRow] = useState(6)
+  const searchTimeoutRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    const updateResultsPerRow = () => {
+      const grid = document.querySelector('.search-results-grid')
+      if (grid && grid.children.length > 0) {
+        const firstChild = grid.children[0] as HTMLElement
+        const gridWidth = grid.clientWidth
+        const itemWidth = firstChild.offsetWidth
+        const gap = 32
+        const count = Math.floor((gridWidth + gap) / (itemWidth + gap))
+        setResultsPerRow(Math.max(1, count))
+      }
+    }
+    const timer = setTimeout(updateResultsPerRow, 100)
+    window.addEventListener('resize', updateResultsPerRow)
+    return () => {
+      clearTimeout(timer)
+      window.removeEventListener('resize', updateResultsPerRow)
+    }
+  }, [results.length])
+
+  const performSearch = useCallback(async (searchQuery: string) => {
+    if (!searchQuery.trim()) {
+      setResults([])
+      setHasSearched(false)
+      return
+    }
+
+    setLoading(true)
+    setHasSearched(true)
+    try {
+      const response = await searchItems({ q: searchQuery, perpage: 48 })
+      setResults(response.items)
+    } catch (err) {
+      console.error('Search failed:', err)
+      setResults([])
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current)
+    }
+
+    if (query.trim().length >= 2) {
+      searchTimeoutRef.current = window.setTimeout(() => {
+        performSearch(query)
+      }, 500)
+    } else {
+      setResults([])
+      setHasSearched(false)
+    }
+
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current)
+      }
+    }
+  }, [query, performSearch])
+
+  const handleKeyPress = useCallback((key: string) => {
+    const specialAction = SPECIAL_KEYS[key as keyof typeof SPECIAL_KEYS]
+
+    if (specialAction === 'backspace') {
+      setQuery(prev => prev.slice(0, -1))
+    } else if (specialAction === 'clear') {
+      setQuery('')
+      setResults([])
+      setHasSearched(false)
+    } else if (specialAction === 'search') {
+      if (results.length > 0) {
+        setFocusArea('results')
+        setResultIndex(0)
+      }
+    } else if (specialAction === 'space') {
+      setQuery(prev => prev + ' ')
+    } else {
+      setQuery(prev => prev + key)
+    }
+  }, [results.length])
+
+  const handlers = useMemo(() => {
+    const cols = KEYBOARD_ROWS[keyboardRow]?.length || 12
+
+    if (focusArea === 'keyboard') {
+      return {
+        onBack: () => {
+          if (query) {
+            setQuery(prev => prev.slice(0, -1))
+          } else {
+            onBack()
+          }
+        },
+        onLeft: () => {
+          if (keyboardCol === 0) {
+            onNavigateToMenu()
+          } else {
+            setKeyboardCol(prev => prev - 1)
+          }
+        },
+        onRight: () => setKeyboardCol(prev => (prev < cols - 1 ? prev + 1 : 0)),
+        onUp: () => {
+          if (keyboardRow > 0) {
+            setKeyboardRow(prev => prev - 1)
+            setKeyboardCol(prev => Math.min(prev, KEYBOARD_ROWS[keyboardRow - 1].length - 1))
+          }
+        },
+        onDown: () => {
+          if (keyboardRow < KEYBOARD_ROWS.length - 1) {
+            setKeyboardRow(prev => prev + 1)
+            setKeyboardCol(prev => Math.min(prev, KEYBOARD_ROWS[keyboardRow + 1].length - 1))
+          } else if (results.length > 0) {
+            setFocusArea('results')
+            setResultIndex(0)
+          }
+        },
+        onEnter: () => {
+          const key = KEYBOARD_ROWS[keyboardRow]?.[keyboardCol]
+          if (key) {
+            handleKeyPress(key)
+          }
+        }
+      }
+    }
+
+    return {
+      onBack: () => setFocusArea('keyboard'),
+      onLeft: () => {
+        if (resultIndex % resultsPerRow === 0) {
+          onNavigateToMenu()
+        } else {
+          setResultIndex(prev => prev - 1)
+        }
+      },
+      onRight: () => setResultIndex(prev => (prev < results.length - 1 ? prev + 1 : prev)),
+      onUp: () => {
+        const newIndex = resultIndex - resultsPerRow
+        if (newIndex >= 0) {
+          setResultIndex(newIndex)
+        } else {
+          setFocusArea('keyboard')
+        }
+      },
+      onDown: () => {
+        const newIndex = resultIndex + resultsPerRow
+        if (newIndex < results.length) {
+          setResultIndex(newIndex)
+        }
+      },
+      onEnter: () => {
+        const item = results[resultIndex]
+        if (item) {
+          onSelectItem(item.id)
+        }
+      }
+    }
+  }, [focusArea, keyboardRow, keyboardCol, results, resultIndex, resultsPerRow, query, onBack, onSelectItem, handleKeyPress, onNavigateToMenu])
+
+  useKeyboardNavigation(handlers, isActive)
+
+  useEffect(() => {
+    if (focusArea === 'results' && results.length > 0) {
+      const resultEl = document.querySelector(`[data-result-index="${resultIndex}"]`) as HTMLElement
+      const container = document.querySelector('.search-results') as HTMLElement
+      if (resultEl && container) {
+        const elTop = resultEl.offsetTop
+        const containerHeight = container.clientHeight
+        const elHeight = resultEl.clientHeight
+        const targetScroll = elTop - (containerHeight / 2) + (elHeight / 2)
+        container.scrollTop = Math.max(0, targetScroll)
+      }
+    }
+  }, [resultIndex, focusArea, results.length])
+
+  return (
+    <div class="search-screen">
+      <div class="search-header">
+        <div class="search-icon">🔍</div>
+        <div class="search-input-container">
+          <span class="search-query">{query}</span>
+          <span class="search-cursor" />
+        </div>
+      </div>
+
+      <div class="search-keyboard">
+        {KEYBOARD_ROWS.map((row, rowIndex) => (
+          <div key={rowIndex} class="keyboard-row">
+            {row.map((key, colIndex) => {
+              const isSpecial = key in SPECIAL_KEYS
+              const isFocused = focusArea === 'keyboard' &&
+                keyboardRow === rowIndex &&
+                keyboardCol === colIndex
+              return (
+                <button
+                  key={`${rowIndex}-${colIndex}`}
+                  class={`keyboard-key ${isSpecial ? 'keyboard-key-special' : ''} ${isFocused ? 'focused' : ''}`}
+                  onClick={() => handleKeyPress(key)}
+                >
+                  {key}
+                </button>
+              )
+            })}
+          </div>
+        ))}
+      </div>
+
+      <div class="search-results">
+        {loading && (
+          <div class="search-loading">
+            <div class="search-spinner" />
+          </div>
+        )}
+
+        {!loading && hasSearched && results.length === 0 && (
+          <div class="search-empty">
+            <span>{t.searchNoResults}</span>
+          </div>
+        )}
+
+        {!loading && results.length > 0 && (
+          <div class="search-results-grid">
+            {results.map((item, index) => (
+              <div key={item.id} data-result-index={index}>
+                <MovieCard
+                  movie={item}
+                  focused={focusArea === 'results' && resultIndex === index}
+                  onSelect={() => onSelectItem(item.id)}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {!loading && !hasSearched && (
+          <div class="search-hint">
+            <span>{t.searchHint}</span>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
