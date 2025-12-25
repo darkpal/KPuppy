@@ -12,6 +12,8 @@ import {
   getWatching,
   markTime,
   toggleWatched,
+  getBookmarkFolders,
+  getBookmarkItems,
   setOnAuthError,
   ApiError
 } from '../../src/api/kinopub'
@@ -1006,6 +1008,230 @@ describe('kinopub API', () => {
       await expect(getItems()).rejects.toThrow(ApiError)
 
       expect(callback).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('getBookmarkFolders', () => {
+    beforeEach(() => {
+      const tokens = {
+        access: 'valid-token',
+        refresh: 'refresh-token',
+        expiresAt: Date.now() + 3600000
+      }
+      localStorage.setItem('kpuppy_tokens', JSON.stringify(tokens))
+    })
+
+    it('fetches bookmark folders', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          items: [
+            { id: 1, title: 'Watch Later', count: 5, created: 1700000000, updated: 1700001000 },
+            { id: 2, title: 'Favorites', count: 10, created: 1700000000, updated: 1700002000 }
+          ]
+        })
+      })
+
+      const result = await getBookmarkFolders()
+
+      const call = mockFetch.mock.calls[0]
+      expect(call[0]).toBe('https://api.service-kp.com/v1/bookmarks')
+      expect(call[1].headers['Authorization']).toBe('Bearer valid-token')
+    })
+
+    it('parses folders correctly', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          items: [
+            { id: 1, title: 'Watch Later', count: 5, created: 1700000000, updated: 1700001000 },
+            { id: 2, title: 'Favorites', count: 10, created: 1700000000, updated: 1700002000 }
+          ]
+        })
+      })
+
+      const result = await getBookmarkFolders()
+
+      expect(result).toHaveLength(2)
+      expect(result[0].id).toBe(1)
+      expect(result[0].title).toBe('Watch Later')
+      expect(result[0].count).toBe(5)
+      expect(result[1].id).toBe(2)
+      expect(result[1].title).toBe('Favorites')
+      expect(result[1].count).toBe(10)
+    })
+
+    it('handles empty folders list', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ items: [] })
+      })
+
+      const result = await getBookmarkFolders()
+
+      expect(result).toHaveLength(0)
+    })
+
+    it('handles missing count gracefully', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          items: [{ id: 1, title: 'Empty Folder' }]
+        })
+      })
+
+      const result = await getBookmarkFolders()
+
+      expect(result[0].count).toBe(0)
+    })
+
+    it('throws ApiError on failure', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 500
+      })
+
+      await expect(getBookmarkFolders()).rejects.toThrow(ApiError)
+    })
+
+    it('throws ApiError when not authenticated', async () => {
+      localStorage.clear()
+
+      await expect(getBookmarkFolders()).rejects.toThrow(ApiError)
+    })
+  })
+
+  describe('getBookmarkItems', () => {
+    beforeEach(() => {
+      const tokens = {
+        access: 'valid-token',
+        refresh: 'refresh-token',
+        expiresAt: Date.now() + 3600000
+      }
+      localStorage.setItem('kpuppy_tokens', JSON.stringify(tokens))
+    })
+
+    it('fetches items by folder id', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          items: [
+            {
+              id: 123,
+              title: 'Test Movie',
+              type: 'movie',
+              year: 2023,
+              plot: 'A test movie',
+              posters: { small: 'http://s.jpg', medium: 'http://m.jpg', big: 'http://b.jpg' },
+              rating: 8.5,
+              imdb_rating: 7.8,
+              kinopoisk_rating: 8.2,
+              views: 1000
+            }
+          ]
+        })
+      })
+
+      await getBookmarkItems(1)
+
+      const call = mockFetch.mock.calls[0]
+      expect(call[0]).toBe('https://api.service-kp.com/v1/bookmarks/1')
+      expect(call[1].headers['Authorization']).toBe('Bearer valid-token')
+    })
+
+    it('parses items correctly', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          items: [
+            {
+              id: 123,
+              title: 'Test Movie',
+              type: 'movie',
+              year: 2023,
+              plot: 'A test movie',
+              posters: { small: 'http://s.jpg', medium: 'http://m.jpg', big: 'http://b.jpg' },
+              rating: 8.5,
+              imdb_rating: 7.8,
+              kinopoisk_rating: 8.2,
+              views: 1000
+            },
+            {
+              id: 456,
+              title: 'Test Series',
+              type: 'serial',
+              year: 2022,
+              plot: 'A test series',
+              posters: { small: 'http://s2.jpg', medium: 'http://m2.jpg', big: 'http://b2.jpg' },
+              rating: 9.0,
+              imdb_rating: 8.5,
+              kinopoisk_rating: 9.2,
+              views: 5000
+            }
+          ]
+        })
+      })
+
+      const result = await getBookmarkItems(1)
+
+      expect(result).toHaveLength(2)
+      expect(result[0].id).toBe(123)
+      expect(result[0].title).toBe('Test Movie')
+      expect(result[0].imdbRating).toBe(7.8)
+      expect(result[0].kinopoiskRating).toBe(8.2)
+      expect(result[1].id).toBe(456)
+      expect(result[1].title).toBe('Test Series')
+    })
+
+    it('handles empty items list', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ items: [] })
+      })
+
+      const result = await getBookmarkItems(1)
+
+      expect(result).toHaveLength(0)
+    })
+
+    it('handles missing optional fields gracefully', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          items: [
+            {
+              id: 123,
+              title: 'Minimal Item',
+              type: 'movie',
+              year: 2023,
+              posters: {}
+            }
+          ]
+        })
+      })
+
+      const result = await getBookmarkItems(1)
+
+      expect(result[0].plot).toBe('')
+      expect(result[0].rating).toBe(0)
+      expect(result[0].imdbRating).toBe(0)
+      expect(result[0].kinopoiskRating).toBe(0)
+      expect(result[0].views).toBe(0)
+    })
+
+    it('throws ApiError on failure', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 404
+      })
+
+      await expect(getBookmarkItems(999)).rejects.toThrow(ApiError)
+    })
+
+    it('throws ApiError when not authenticated', async () => {
+      localStorage.clear()
+
+      await expect(getBookmarkItems(1)).rejects.toThrow(ApiError)
     })
   })
 })

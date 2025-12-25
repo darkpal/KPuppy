@@ -1,0 +1,45 @@
+.bookmarks-folders {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 20px 0;
+}
+
+.bookmarks-folder {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.bookmarks-folder:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.bookmarks-folder.focused {
+  background: #e50914;
+  transform: scale(1.02);
+}
+
+.bookmarks-folder-title {
+  font-size: 22px;
+  font-weight: 500;
+  color: #fff;
+}
+
+.bookmarks-folder-count {
+  font-size: 18px;
+  color: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.1);
+  padding: 4px 12px;
+  border-radius: 12px;
+}
+
+.bookmarks-folder.focused .bookmarks-folder-count {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}

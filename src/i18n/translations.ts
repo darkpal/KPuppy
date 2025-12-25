@@ -16,6 +16,7 @@ export interface Translations {
   menuHome: string
   menuSearch: string
   menuContinue: string
+  menuBookmarks: string
   menuMovies: string
   menuSeries: string
   menuConcerts: string
@@ -128,6 +129,7 @@ const en: Translations = {
   menuHome: 'Home',
   menuSearch: 'Search',
   menuContinue: 'Continue',
+  menuBookmarks: 'Bookmarks',
   menuMovies: 'Movies',
   menuSeries: 'Series',
   menuConcerts: 'Concerts',
@@ -228,6 +230,7 @@ const ru: Translations = {
   menuHome: 'Главная',
   menuSearch: 'Поиск',
   menuContinue: 'Продолжить',
+  menuBookmarks: 'Закладки',
   menuMovies: 'Фильмы',
   menuSeries: 'Сериалы',
   menuConcerts: 'Концерты',
@@ -328,6 +331,7 @@ const de: Translations = {
   menuHome: 'Startseite',
   menuSearch: 'Suche',
   menuContinue: 'Fortsetzen',
+  menuBookmarks: 'Lesezeichen',
   menuMovies: 'Filme',
   menuSeries: 'Serien',
   menuConcerts: 'Konzerte',

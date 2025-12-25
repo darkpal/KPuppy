@@ -4,6 +4,7 @@ import { MainScreen } from './screens/MainScreen'
 import { ItemScreen } from './screens/ItemScreen'
 import { SearchScreen } from './screens/SearchScreen'
 import { CategoryScreen } from './screens/CategoryScreen'
+import { BookmarksScreen } from './screens/BookmarksScreen'
 import { SettingsScreen } from './screens/SettingsScreen'
 import { UserScreen } from './screens/UserScreen'
 import { SeasonsScreen } from './screens/SeasonsScreen'
@@ -463,6 +464,14 @@ export function App() {
           <UserScreen
             onNavigateToMenu={handleNavigateToMenu}
             onLogout={handleLogout}
+            isActive={isContentActive}
+          />
+        )
+      case 'bookmarks':
+        return (
+          <BookmarksScreen
+            onSelectItem={handleSelectItem}
+            onNavigateToMenu={handleNavigateToMenu}
             isActive={isContentActive}
           />
         )

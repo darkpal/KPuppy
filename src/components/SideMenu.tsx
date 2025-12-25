@@ -2,7 +2,7 @@ import { ComponentType } from 'preact'
 import { useI18n } from '../i18n'
 import { Translations } from '../i18n/translations'
 import {
-  HomeIcon, SearchIcon, PlayIcon, FilmIcon, TvIcon,
+  HomeIcon, SearchIcon, PlayIcon, BookmarkIcon, FilmIcon, TvIcon,
   MicIcon, GlassesIcon, VideoIcon, RadioIcon, SettingsIcon, UserIcon
 } from './Icons'
 import '../styles/sidemenu.css'
@@ -17,6 +17,7 @@ const MENU_ITEM_CONFIGS: MenuItem[] = [
   { id: 'home', Icon: HomeIcon, labelKey: 'menuHome' },
   { id: 'search', Icon: SearchIcon, labelKey: 'menuSearch' },
   { id: 'watching', Icon: PlayIcon, labelKey: 'menuContinue' },
+  { id: 'bookmarks', Icon: BookmarkIcon, labelKey: 'menuBookmarks' },
   { id: 'movies', Icon: FilmIcon, labelKey: 'menuMovies' },
   { id: 'series', Icon: TvIcon, labelKey: 'menuSeries' },
   { id: 'concerts', Icon: MicIcon, labelKey: 'menuConcerts' },

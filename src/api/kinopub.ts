@@ -707,3 +707,68 @@ export async function toggleWatched(params: ToggleWatchedParams): Promise<void> 
   await authFetch(`${BASE_URL}/v1/watching/toggle?${searchParams}`)
   invalidateCache('watching')
 }
+
+export interface BookmarkFolder {
+  id: number
+  title: string
+  count: number
+  created: number
+  updated: number
+}
+
+const BOOKMARKS_TTL = 60 * 1000
+
+export async function getBookmarkFolders(): Promise<BookmarkFolder[]> {
+  const cacheKey = 'bookmarks'
+  const cached = getCached<BookmarkFolder[]>(cacheKey, BOOKMARKS_TTL)
+  if (cached) return cached
+
+  const response = await authFetch(`${BASE_URL}/v1/bookmarks`)
+
+  if (!response.ok) {
+    throw new ApiError('Failed to fetch bookmarks', response.status)
+  }
+
+  const data = await response.json()
+
+  const result: BookmarkFolder[] = (data.items || []).map((item: Record<string, unknown>) => ({
+    id: item.id as number,
+    title: item.title as string,
+    count: (item.count || 0) as number,
+    created: (item.created || 0) as number,
+    updated: (item.updated || 0) as number
+  }))
+
+  setCache(cacheKey, result)
+  return result
+}
+
+export async function getBookmarkItems(folderId: number): Promise<MovieItem[]> {
+  const cacheKey = createCacheKey('bookmark', folderId)
+  const cached = getCached<MovieItem[]>(cacheKey, BOOKMARKS_TTL)
+  if (cached) return cached
+
+  const response = await authFetch(`${BASE_URL}/v1/bookmarks/${folderId}`)
+
+  if (!response.ok) {
+    throw new ApiError('Failed to fetch bookmark items', response.status)
+  }
+
+  const data = await response.json()
+
+  const result: MovieItem[] = (data.items || []).map((item: Record<string, unknown>) => ({
+    id: item.id as number,
+    title: item.title as string,
+    type: item.type as string,
+    year: item.year as number,
+    plot: (item.plot || '') as string,
+    posters: item.posters as Poster,
+    rating: (item.rating || 0) as number,
+    imdbRating: (item.imdb_rating || 0) as number,
+    kinopoiskRating: (item.kinopoisk_rating || 0) as number,
+    views: (item.views || 0) as number
+  }))
+
+  setCache(cacheKey, result)
+  return result
+}
