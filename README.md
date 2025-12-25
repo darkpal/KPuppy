@@ -1,5 +1,8 @@
 # KPuppy
 
+![CI](https://github.com/twttr/KPuppy/actions/workflows/ci.yml/badge.svg?branch=develop)
+![License](https://img.shields.io/github/license/twttr/KPuppy)
+
 A lightweight webOS LG TV app for KinoPub online cinema.
 
 ## Features
