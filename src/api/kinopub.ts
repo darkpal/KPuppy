@@ -59,6 +59,7 @@ export interface Person {
 export interface Genre {
   id: number
   title: string
+  type: string
 }
 
 export interface Country {
@@ -124,6 +125,7 @@ export interface Episode {
   files: VideoFile[]
   audios: Audio[]
   subtitles?: Subtitle[]
+  watched: number
 }
 
 export interface Season {
@@ -167,6 +169,7 @@ export interface ItemsParams {
   genre?: number
   country?: number
   year?: string
+  quality?: '4k'
 }
 
 export class ApiError extends Error {
@@ -176,6 +179,21 @@ export class ApiError extends Error {
   ) {
     super(message)
     this.name = 'ApiError'
+  }
+}
+
+function mapToMovieItem(item: Record<string, unknown>): MovieItem {
+  return {
+    id: item.id as number,
+    title: (item.title || '') as string,
+    type: (item.type || '') as string,
+    year: (item.year || 0) as number,
+    plot: (item.plot || '') as string,
+    posters: (item.posters || { small: '', medium: '', big: '' }) as Poster,
+    rating: (item.rating || 0) as number,
+    imdbRating: (item.imdb_rating || 0) as number,
+    kinopoiskRating: (item.kinopoisk_rating || 0) as number,
+    views: (item.views || 0) as number
   }
 }
 
@@ -321,6 +339,8 @@ export interface WatchingItem {
     status: number
     episodes: number
     time: number
+    season?: number
+    episode?: number
   }
 }
 
@@ -345,7 +365,7 @@ export async function getWatching(): Promise<MovieItem[]> {
 
   const allItems = [...(moviesData.items || []), ...(serialsData.items || [])]
 
-  const result = allItems.map((item: Record<string, unknown>) => ({
+  const result: MovieItem[] = allItems.map((item: Record<string, unknown>) => ({
     id: item.id as number,
     title: item.title as string,
     type: item.type as string,
@@ -363,7 +383,7 @@ export async function getWatching(): Promise<MovieItem[]> {
 }
 
 export async function getItems(params: ItemsParams = {}): Promise<ItemsResponse> {
-  const cacheKey = createCacheKey('items', params.type, params.sort, params.page, params.perpage)
+  const cacheKey = createCacheKey('items', params.type, params.sort, params.page, params.perpage, params.genre, params.country)
   const cached = getCached<ItemsResponse>(cacheKey)
   if (cached) return cached
 
@@ -385,18 +405,7 @@ export async function getItems(params: ItemsParams = {}): Promise<ItemsResponse>
   const data = await response.json()
 
   const result: ItemsResponse = {
-    items: data.items.map((item: Record<string, unknown>) => ({
-      id: item.id,
-      title: item.title,
-      type: item.type,
-      year: item.year,
-      plot: item.plot,
-      posters: item.posters,
-      rating: item.rating,
-      imdbRating: item.imdb_rating,
-      kinopoiskRating: item.kinopoisk_rating,
-      views: item.views
-    })),
+    items: data.items.map(mapToMovieItem),
     pagination: {
       current: data.pagination.current,
       total: data.pagination.total,
@@ -412,6 +421,7 @@ export async function getItems(params: ItemsParams = {}): Promise<ItemsResponse>
 export interface SearchParams {
   q: string
   field?: 'title' | 'director' | 'actor'
+  type?: string
   page?: number
   perpage?: number
 }
@@ -420,6 +430,7 @@ export async function searchItems(params: SearchParams): Promise<ItemsResponse> 
   const searchParams = new URLSearchParams()
   searchParams.set('q', params.q)
   if (params.field) searchParams.set('field', params.field)
+  if (params.type) searchParams.set('type', params.type)
   if (params.page) searchParams.set('page', params.page.toString())
   if (params.perpage) searchParams.set('perpage', params.perpage.toString())
 
@@ -432,18 +443,7 @@ export async function searchItems(params: SearchParams): Promise<ItemsResponse> 
   const data = await response.json()
 
   return {
-    items: (data.items || []).map((item: Record<string, unknown>) => ({
-      id: item.id,
-      title: item.title,
-      type: item.type,
-      year: item.year,
-      plot: item.plot,
-      posters: item.posters,
-      rating: item.rating,
-      imdbRating: item.imdb_rating,
-      kinopoiskRating: item.kinopoisk_rating,
-      views: item.views
-    })),
+    items: (data.items || []).map(mapToMovieItem),
     pagination: data.pagination ? {
       current: data.pagination.current,
       total: data.pagination.total,
@@ -630,7 +630,8 @@ export async function getItem(id: number): Promise<ItemDetails> {
     if (!Array.isArray(arr)) return []
     return arr.map((g: Record<string, unknown>) => ({
       id: g.id as number,
-      title: (g.title || g.name || '') as string
+      title: (g.title || g.name || '') as string,
+      type: (g.type || '') as string
     })).filter(g => g.title)
   }
 
@@ -726,14 +727,22 @@ export async function getBookmarkFolders(): Promise<BookmarkFolder[]> {
   const response = await authFetch(`${BASE_URL}/v1/bookmarks`)
 
   if (!response.ok) {
+    console.error('Bookmarks API error:', response.status)
     throw new ApiError('Failed to fetch bookmarks', response.status)
   }
 
   const data = await response.json()
+  console.log('Bookmarks API response:', data)
 
-  const result: BookmarkFolder[] = (data.items || []).map((item: Record<string, unknown>) => ({
+  const items = data.items || []
+  if (!Array.isArray(items)) {
+    console.error('Bookmark items not an array:', items)
+    return []
+  }
+
+  const result: BookmarkFolder[] = items.map((item: Record<string, unknown>) => ({
     id: item.id as number,
-    title: item.title as string,
+    title: (item.title || '') as string,
     count: (item.count || 0) as number,
     created: (item.created || 0) as number,
     updated: (item.updated || 0) as number
@@ -756,18 +765,343 @@ export async function getBookmarkItems(folderId: number): Promise<MovieItem[]> {
 
   const data = await response.json()
 
-  const result: MovieItem[] = (data.items || []).map((item: Record<string, unknown>) => ({
+  const result: MovieItem[] = (data.items || []).map(mapToMovieItem)
+
+  setCache(cacheKey, result)
+  return result
+}
+
+export async function createBookmarkFolder(title: string): Promise<BookmarkFolder> {
+  const response = await authFetch(`${BASE_URL}/v1/bookmarks/create`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title })
+  })
+
+  if (!response.ok) {
+    throw new ApiError('Failed to create bookmark folder', response.status)
+  }
+
+  const data = await response.json()
+  invalidateCache('bookmarks')
+
+  return {
+    id: data.folder?.id ?? data.id,
+    title: data.folder?.title ?? title,
+    count: 0,
+    created: Date.now() / 1000,
+    updated: Date.now() / 1000
+  }
+}
+
+export async function addToBookmark(itemId: number, folderId: number): Promise<void> {
+  const response = await authFetch(`${BASE_URL}/v1/bookmarks/add`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ item: itemId, folder: folderId })
+  })
+
+  if (!response.ok) {
+    throw new ApiError('Failed to add to bookmark', response.status)
+  }
+
+  invalidateCache('bookmarks')
+  invalidateCache(createCacheKey('bookmark', folderId))
+}
+
+export async function removeFromBookmark(itemId: number, folderId: number): Promise<void> {
+  const response = await authFetch(`${BASE_URL}/v1/bookmarks/remove-item`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ item: itemId, folder: folderId })
+  })
+
+  if (!response.ok) {
+    throw new ApiError('Failed to remove from bookmark', response.status)
+  }
+
+  invalidateCache('bookmarks')
+  invalidateCache(createCacheKey('bookmark', folderId))
+}
+
+export async function deleteBookmarkFolder(folderId: number): Promise<void> {
+  const response = await authFetch(`${BASE_URL}/v1/bookmarks/remove-folder`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ folder: folderId })
+  })
+
+  if (!response.ok) {
+    throw new ApiError('Failed to delete bookmark folder', response.status)
+  }
+
+  invalidateCache('bookmarks')
+  invalidateCache(createCacheKey('bookmark', folderId))
+}
+
+export async function getSimilarItems(id: number): Promise<MovieItem[]> {
+  const cacheKey = createCacheKey('similar', id)
+  const cached = getCached<MovieItem[]>(cacheKey)
+  if (cached) return cached
+
+  const response = await authFetch(`${BASE_URL}/v1/items/similar?id=${id}`)
+
+  if (!response.ok) {
+    throw new ApiError('Failed to fetch similar items', response.status)
+  }
+
+  const data = await response.json()
+
+  const result: MovieItem[] = (data.items || []).map(mapToMovieItem)
+
+  setCache(cacheKey, result)
+  return result
+}
+
+export interface Collection {
+  id: number
+  title: string
+  count: number
+  posters: Poster
+}
+
+export async function getCollections(): Promise<Collection[]> {
+  const cacheKey = 'collections'
+  const cached = getCached<Collection[]>(cacheKey)
+  if (cached) return cached
+
+  const response = await authFetch(`${BASE_URL}/v1/collections`)
+
+  if (!response.ok) {
+    throw new ApiError('Failed to fetch collections', response.status)
+  }
+
+  const data = await response.json()
+
+  const result: Collection[] = (data.items || []).map((item: Record<string, unknown>) => ({
     id: item.id as number,
     title: item.title as string,
-    type: item.type as string,
-    year: item.year as number,
-    plot: (item.plot || '') as string,
-    posters: item.posters as Poster,
-    rating: (item.rating || 0) as number,
-    imdbRating: (item.imdb_rating || 0) as number,
-    kinopoiskRating: (item.kinopoisk_rating || 0) as number,
-    views: (item.views || 0) as number
+    count: (item.count || item.total || item.items_count || 0) as number,
+    posters: item.posters as Poster
   }))
+
+  setCache(cacheKey, result)
+  return result
+}
+
+export async function getCollectionItems(id: number): Promise<MovieItem[]> {
+  const cacheKey = createCacheKey('collection', id)
+  const cached = getCached<MovieItem[]>(cacheKey)
+  if (cached) return cached
+
+  const response = await authFetch(`${BASE_URL}/v1/collections/view?id=${id}`)
+
+  if (!response.ok) {
+    throw new ApiError('Failed to fetch collection items', response.status)
+  }
+
+  const data = await response.json()
+
+  const result: MovieItem[] = (data.items || []).map(mapToMovieItem)
+
+  setCache(cacheKey, result)
+  return result
+}
+
+export interface HistoryItem extends MovieItem {
+  watchedAt: number
+  episodeInfo?: {
+    season: number
+    episode: number
+    title: string
+    thumbnail?: string
+  }
+}
+
+export async function getHistory(): Promise<HistoryItem[]> {
+  const cacheKey = 'history'
+  const cached = getCached<HistoryItem[]>(cacheKey, WATCHING_TTL)
+  if (cached) return cached
+
+  const response = await authFetch(`${BASE_URL}/v1/history`)
+
+  if (!response.ok) {
+    console.error('History API error:', response.status)
+    throw new ApiError('Failed to fetch history', response.status)
+  }
+
+  const data = await response.json()
+  console.log('History API response:', data)
+
+  const items = data.items || data.history || []
+  if (!Array.isArray(items)) {
+    console.error('History items not an array:', items)
+    return []
+  }
+
+  const result: HistoryItem[] = items.map((entry: Record<string, unknown>) => {
+    const item = (entry.item || entry) as Record<string, unknown>
+    const media = entry.media as Record<string, unknown> | undefined
+
+    const historyItem: HistoryItem = {
+      id: item.id as number,
+      title: (item.title || '') as string,
+      type: (item.type || '') as string,
+      year: (item.year || 0) as number,
+      plot: (item.plot || '') as string,
+      posters: (item.posters || { small: '', medium: '', big: '' }) as Poster,
+      rating: (item.rating || 0) as number,
+      imdbRating: (item.imdb_rating || 0) as number,
+      kinopoiskRating: (item.kinopoisk_rating || 0) as number,
+      views: (item.views || 0) as number,
+      watchedAt: (entry.last_seen || entry.time || entry.watched_at || item.watched_at || 0) as number
+    }
+
+    if (media && media.snumber !== undefined) {
+      historyItem.episodeInfo = {
+        season: media.snumber as number,
+        episode: media.number as number,
+        title: (media.title || '') as string,
+        thumbnail: media.thumbnail as string | undefined
+      }
+    }
+
+    return historyItem
+  })
+
+  setCache(cacheKey, result)
+  return result
+}
+
+export async function clearHistoryForItem(itemId: number): Promise<void> {
+  const response = await authFetch(`${BASE_URL}/v1/history/clear-for-item`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id: itemId })
+  })
+
+  if (!response.ok) {
+    throw new ApiError('Failed to clear history for item', response.status)
+  }
+
+  invalidateCache('history')
+}
+
+export async function toggleWatchlist(itemId: number): Promise<void> {
+  const response = await authFetch(`${BASE_URL}/v1/watching/togglewatchlist`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id: itemId })
+  })
+
+  if (!response.ok) {
+    throw new ApiError('Failed to toggle watchlist', response.status)
+  }
+
+  invalidateCache('watching')
+}
+
+export async function getGenres(): Promise<Genre[]> {
+  const cacheKey = 'genres'
+  const cached = getCached<Genre[]>(cacheKey)
+  if (cached) return cached
+
+  const response = await authFetch(`${BASE_URL}/v1/genres`)
+
+  if (!response.ok) {
+    throw new ApiError('Failed to fetch genres', response.status)
+  }
+
+  const data = await response.json()
+
+  const result: Genre[] = (data.items || []).map((item: Record<string, unknown>) => ({
+    id: item.id as number,
+    title: (item.title || item.name || '') as string,
+    type: (item.type || '') as string
+  }))
+
+  setCache(cacheKey, result)
+  return result
+}
+
+export async function getCountries(): Promise<Country[]> {
+  const cacheKey = 'countries'
+  const cached = getCached<Country[]>(cacheKey)
+  if (cached) return cached
+
+  const response = await authFetch(`${BASE_URL}/v1/countries`)
+
+  if (!response.ok) {
+    throw new ApiError('Failed to fetch countries', response.status)
+  }
+
+  const data = await response.json()
+
+  const result: Country[] = (data.items || []).map((item: Record<string, unknown>) => ({
+    id: item.id as number,
+    title: (item.title || item.name || '') as string
+  }))
+
+  setCache(cacheKey, result)
+  return result
+}
+
+export interface ContentType {
+  id: string
+  title: string
+}
+
+export async function getContentTypes(): Promise<ContentType[]> {
+  const cacheKey = 'types'
+  const cached = getCached<ContentType[]>(cacheKey)
+  if (cached) return cached
+
+  const response = await authFetch(`${BASE_URL}/v1/types`)
+
+  if (!response.ok) {
+    throw new ApiError('Failed to fetch content types', response.status)
+  }
+
+  const data = await response.json()
+
+  const result: ContentType[] = (data.items || []).map((item: Record<string, unknown>) => ({
+    id: (item.id || '') as string,
+    title: (item.title || item.name || '') as string
+  }))
+
+  setCache(cacheKey, result)
+  return result
+}
+
+export interface TVChannel {
+  id: number
+  title: string
+  url?: string
+  logo?: string
+}
+
+export async function getTVChannels(): Promise<TVChannel[]> {
+  const cacheKey = 'tv'
+  const cached = getCached<TVChannel[]>(cacheKey)
+  if (cached) return cached
+
+  const response = await authFetch(`${BASE_URL}/v1/tv`)
+
+  if (!response.ok) {
+    throw new ApiError('Failed to fetch TV channels', response.status)
+  }
+
+  const data = await response.json()
+
+  const result: TVChannel[] = (data.items || data.channels || []).map((item: Record<string, unknown>) => {
+    const logos = item.logos as Record<string, string> | undefined
+    return {
+      id: item.id as number,
+      title: (item.title || item.name || '') as string,
+      url: (item.stream || item.url) as string | undefined,
+      logo: (logos?.s || logos?.m || item.logo) as string | undefined
+    }
+  })
 
   setCache(cacheKey, result)
   return result

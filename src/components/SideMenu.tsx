@@ -2,8 +2,8 @@ import { ComponentType } from 'preact'
 import { useI18n } from '../i18n'
 import { Translations } from '../i18n/translations'
 import {
-  HomeIcon, SearchIcon, PlayIcon, BookmarkIcon, FilmIcon, TvIcon,
-  MicIcon, GlassesIcon, VideoIcon, RadioIcon, SettingsIcon, UserIcon
+  HomeIcon, SearchIcon, PlayIcon, BookmarkIcon, CollectionIcon, HistoryIcon, FilmIcon, TvIcon,
+  MicIcon, GlassesIcon, VideoIcon, RadioIcon, LiveIcon, SettingsIcon, UserIcon
 } from './Icons'
 import '../styles/sidemenu.css'
 
@@ -18,12 +18,15 @@ const MENU_ITEM_CONFIGS: MenuItem[] = [
   { id: 'search', Icon: SearchIcon, labelKey: 'menuSearch' },
   { id: 'watching', Icon: PlayIcon, labelKey: 'menuContinue' },
   { id: 'bookmarks', Icon: BookmarkIcon, labelKey: 'menuBookmarks' },
+  { id: 'collections', Icon: CollectionIcon, labelKey: 'menuCollections' },
+  { id: 'history', Icon: HistoryIcon, labelKey: 'menuHistory' },
   { id: 'movies', Icon: FilmIcon, labelKey: 'menuMovies' },
   { id: 'series', Icon: TvIcon, labelKey: 'menuSeries' },
   { id: 'concerts', Icon: MicIcon, labelKey: 'menuConcerts' },
   { id: '3d', Icon: GlassesIcon, labelKey: 'menu3D' },
   { id: 'docs', Icon: VideoIcon, labelKey: 'menuDocs' },
   { id: 'tvshows', Icon: RadioIcon, labelKey: 'menuTvShows' },
+  { id: 'livetv', Icon: LiveIcon, labelKey: 'menuLiveTV' },
   { id: 'settings', Icon: SettingsIcon, labelKey: 'menuSettings' },
 ]
 

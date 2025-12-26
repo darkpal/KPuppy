@@ -10,6 +10,10 @@ export const KEY_CODES = {
   BACK: 461,
   BACKSPACE: 8,
   SEARCH: 83,
+  RED: 403,
+  GREEN: 404,
+  YELLOW: 405,
+  BLUE: 406,
 } as const
 
 export interface KeyboardHandlers {
@@ -19,6 +23,10 @@ export interface KeyboardHandlers {
   onRight?: () => void
   onEnter?: () => void
   onBack?: () => void
+  onRed?: () => void
+  onGreen?: () => void
+  onYellow?: () => void
+  onBlue?: () => void
 }
 
 export function useKeyboardNavigation(
@@ -26,7 +34,7 @@ export function useKeyboardNavigation(
   enabled: boolean = true
 ): void {
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
-    const { onUp, onDown, onLeft, onRight, onEnter, onBack } = handlers
+    const { onUp, onDown, onLeft, onRight, onEnter, onBack, onRed, onGreen, onYellow, onBlue } = handlers
 
     switch (event.keyCode) {
       case KEY_CODES.UP:
@@ -68,6 +76,34 @@ export function useKeyboardNavigation(
       case KEY_CODES.BACKSPACE:
         if (onBack) {
           onBack()
+          event.preventDefault()
+        }
+        break
+
+      case KEY_CODES.RED:
+        if (onRed) {
+          onRed()
+          event.preventDefault()
+        }
+        break
+
+      case KEY_CODES.GREEN:
+        if (onGreen) {
+          onGreen()
+          event.preventDefault()
+        }
+        break
+
+      case KEY_CODES.YELLOW:
+        if (onYellow) {
+          onYellow()
+          event.preventDefault()
+        }
+        break
+
+      case KEY_CODES.BLUE:
+        if (onBlue) {
+          onBlue()
           event.preventDefault()
         }
         break

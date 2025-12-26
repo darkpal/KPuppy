@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'preact/hooks'
-import { getBookmarkFolders, getBookmarkItems, BookmarkFolder, MovieItem } from '../api/kinopub'
+import { getBookmarkFolders, getBookmarkItems, createBookmarkFolder, deleteBookmarkFolder, removeFromBookmark, BookmarkFolder, MovieItem } from '../api/kinopub'
 import { MovieCard } from '../components/MovieCard'
-import { useKeyboardNavigation } from '../hooks'
+import { VirtualGrid } from '../components/VirtualGrid'
+import { useKeyboardNavigation, useItemsPerRow } from '../hooks'
 import { useI18n } from '../i18n'
 import '../styles/category.css'
 import '../styles/bookmarks.css'
@@ -22,8 +23,14 @@ export function BookmarksScreen({ onSelectItem, onNavigateToMenu, isActive }: Bo
   const [viewMode, setViewMode] = useState<ViewMode>('folders')
   const [selectedFolder, setSelectedFolder] = useState<BookmarkFolder | null>(null)
   const [focusedIndex, setFocusedIndex] = useState(0)
-  const [itemsPerRow, setItemsPerRow] = useState(8)
+  const [savedFolderIndex, setSavedFolderIndex] = useState(0)
+  const [showCreateDialog, setShowCreateDialog] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [newFolderName, setNewFolderName] = useState('')
+  const [actionLoading, setActionLoading] = useState(false)
+  const [dialogFocusIndex, setDialogFocusIndex] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
+  const itemsPerRow = useItemsPerRow('.category-grid', [items.length, viewMode])
 
   useEffect(() => {
     async function loadFolders() {
@@ -40,8 +47,9 @@ export function BookmarksScreen({ onSelectItem, onNavigateToMenu, isActive }: Bo
     loadFolders()
   }, [])
 
-  const loadFolderItems = useCallback(async (folder: BookmarkFolder) => {
+  const loadFolderItems = useCallback(async (folder: BookmarkFolder, folderIndex: number) => {
     setLoading(true)
+    setSavedFolderIndex(folderIndex)
     try {
       const data = await getBookmarkItems(folder.id)
       setItems(data)
@@ -59,40 +67,140 @@ export function BookmarksScreen({ onSelectItem, onNavigateToMenu, isActive }: Bo
     setViewMode('folders')
     setSelectedFolder(null)
     setItems([])
-    setFocusedIndex(0)
-  }, [])
+    setFocusedIndex(savedFolderIndex)
+  }, [savedFolderIndex])
 
-  useEffect(() => {
-    const updateItemsPerRow = () => {
-      const grid = document.querySelector('.category-grid')
-      if (grid && grid.children.length > 0) {
-        const firstChild = grid.children[0] as HTMLElement
-        const gridWidth = grid.clientWidth
-        const itemWidth = firstChild.offsetWidth
-        const gap = 32
-        const count = Math.floor((gridWidth + gap) / (itemWidth + gap))
-        setItemsPerRow(Math.max(1, count))
+  const handleCreateFolder = useCallback(async () => {
+    if (!newFolderName.trim() || actionLoading) return
+    setActionLoading(true)
+    try {
+      const folder = await createBookmarkFolder(newFolderName.trim())
+      setFolders(prev => [...prev, folder])
+      setNewFolderName('')
+      setShowCreateDialog(false)
+    } catch (err) {
+      console.error('Failed to create folder:', err)
+    } finally {
+      setActionLoading(false)
+    }
+  }, [newFolderName, actionLoading])
+
+  const handleDeleteFolder = useCallback(async () => {
+    const folder = folders[focusedIndex]
+    if (!folder || actionLoading) return
+    setActionLoading(true)
+    try {
+      await deleteBookmarkFolder(folder.id)
+      setFolders(prev => prev.filter(f => f.id !== folder.id))
+      setShowDeleteConfirm(false)
+      setFocusedIndex(prev => Math.max(0, prev - 1))
+    } catch (err) {
+      console.error('Failed to delete folder:', err)
+    } finally {
+      setActionLoading(false)
+    }
+  }, [folders, focusedIndex, actionLoading])
+
+  const handleRemoveItem = useCallback(async () => {
+    if (!selectedFolder || actionLoading) return
+    const item = items[focusedIndex]
+    if (!item) return
+    setActionLoading(true)
+    try {
+      await removeFromBookmark(item.id, selectedFolder.id)
+      setItems(prev => prev.filter(i => i.id !== item.id))
+      setFocusedIndex(prev => Math.min(prev, items.length - 2))
+    } catch (err) {
+      console.error('Failed to remove item:', err)
+    } finally {
+      setActionLoading(false)
+    }
+  }, [selectedFolder, items, focusedIndex, actionLoading])
+
+  const foldersHandlers = useMemo(() => {
+    if (showCreateDialog) {
+      return {
+        onBack: () => {
+          setShowCreateDialog(false)
+          setDialogFocusIndex(0)
+          const input = document.querySelector('.bookmarks-dialog-input') as HTMLInputElement
+          if (input) input.blur()
+        },
+        onUp: () => {
+          if (dialogFocusIndex > 0) {
+            setDialogFocusIndex(prev => prev - 1)
+          }
+        },
+        onDown: () => {
+          if (dialogFocusIndex < 2) {
+            setDialogFocusIndex(prev => prev + 1)
+            if (dialogFocusIndex === 0) {
+              const input = document.querySelector('.bookmarks-dialog-input') as HTMLInputElement
+              if (input) input.blur()
+            }
+          }
+        },
+        onLeft: () => {
+          if (dialogFocusIndex === 2) setDialogFocusIndex(1)
+        },
+        onRight: () => {
+          if (dialogFocusIndex === 1) setDialogFocusIndex(2)
+        },
+        onEnter: () => {
+          if (dialogFocusIndex === 0) {
+            const input = document.querySelector('.bookmarks-dialog-input') as HTMLInputElement
+            if (input) input.focus()
+          } else if (dialogFocusIndex === 1) {
+            setShowCreateDialog(false)
+            setDialogFocusIndex(0)
+          } else {
+            handleCreateFolder()
+          }
+        }
       }
     }
-    const timer = setTimeout(updateItemsPerRow, 100)
-    window.addEventListener('resize', updateItemsPerRow)
-    return () => {
-      clearTimeout(timer)
-      window.removeEventListener('resize', updateItemsPerRow)
-    }
-  }, [items.length, viewMode])
-
-  const foldersHandlers = useMemo(() => ({
-    onLeft: onNavigateToMenu,
-    onUp: () => setFocusedIndex(prev => Math.max(0, prev - 1)),
-    onDown: () => setFocusedIndex(prev => Math.min(folders.length - 1, prev + 1)),
-    onEnter: () => {
-      const folder = folders[focusedIndex]
-      if (folder) {
-        loadFolderItems(folder)
+    if (showDeleteConfirm) {
+      return {
+        onBack: () => {
+          setShowDeleteConfirm(false)
+          setDialogFocusIndex(0)
+        },
+        onLeft: () => setDialogFocusIndex(0),
+        onRight: () => setDialogFocusIndex(1),
+        onEnter: () => {
+          if (dialogFocusIndex === 0) {
+            setShowDeleteConfirm(false)
+            setDialogFocusIndex(0)
+          } else {
+            handleDeleteFolder()
+          }
+        }
       }
     }
-  }), [folders, focusedIndex, onNavigateToMenu, loadFolderItems])
+    return {
+      onLeft: onNavigateToMenu,
+      onUp: () => setFocusedIndex(prev => Math.max(0, prev - 1)),
+      onDown: () => setFocusedIndex(prev => Math.min(folders.length, prev + 1)),
+      onEnter: () => {
+        if (focusedIndex === folders.length) {
+          setShowCreateDialog(true)
+          setNewFolderName(t.newFolderName)
+          setDialogFocusIndex(0)
+        } else {
+          const folder = folders[focusedIndex]
+          if (folder) {
+            loadFolderItems(folder, focusedIndex)
+          }
+        }
+      },
+      onRed: () => {
+        if (folders[focusedIndex]) {
+          setShowDeleteConfirm(true)
+          setDialogFocusIndex(1)
+        }
+      }
+    }
+  }, [folders, focusedIndex, onNavigateToMenu, loadFolderItems, showCreateDialog, showDeleteConfirm, handleCreateFolder, handleDeleteFolder, t, dialogFocusIndex])
 
   const itemsHandlers = useMemo(() => {
     const itemCount = items.length
@@ -118,28 +226,23 @@ export function BookmarksScreen({ onSelectItem, onNavigateToMenu, isActive }: Bo
           onSelectItem(item.id)
         }
       },
-      onBack: goBackToFolders
+      onBack: goBackToFolders,
+      onRed: handleRemoveItem
     }
-  }, [items, focusedIndex, onNavigateToMenu, onSelectItem, itemsPerRow, goBackToFolders])
+  }, [items, focusedIndex, onNavigateToMenu, onSelectItem, itemsPerRow, goBackToFolders, handleRemoveItem])
 
   useKeyboardNavigation(
     viewMode === 'folders' ? foldersHandlers : itemsHandlers,
     isActive && !loading
   )
 
-  useEffect(() => {
-    if (viewMode === 'items') {
-      const focusedEl = document.querySelector(`[data-category-index="${focusedIndex}"]`) as HTMLElement
-      const container = document.querySelector('.category-screen') as HTMLElement
-      if (focusedEl && container) {
-        const elTop = focusedEl.offsetTop
-        const containerHeight = container.clientHeight
-        const elHeight = focusedEl.clientHeight
-        const targetScroll = elTop - (containerHeight / 2) + (elHeight / 2)
-        container.scrollTop = Math.max(0, targetScroll)
-      }
-    }
-  }, [focusedIndex, viewMode])
+  const renderItem = useCallback((item: MovieItem, _index: number, focused: boolean) => (
+    <MovieCard
+      movie={item}
+      focused={focused}
+      onSelect={() => onSelectItem(item.id)}
+    />
+  ), [onSelectItem])
 
   if (loading) {
     return (
@@ -156,20 +259,14 @@ export function BookmarksScreen({ onSelectItem, onNavigateToMenu, isActive }: Bo
     return (
       <div class="category-screen" ref={containerRef}>
         <h1 class="category-title">{selectedFolder.title}</h1>
-        <div class="category-grid">
-          {items.map((item, index) => (
-            <div key={item.id} data-category-index={index}>
-              <MovieCard
-                movie={item}
-                focused={focusedIndex === index}
-                onSelect={() => onSelectItem(item.id)}
-              />
-            </div>
-          ))}
-        </div>
-        {items.length === 0 && (
-          <div class="category-empty">{t.errorNoItems}</div>
-        )}
+        <VirtualGrid
+          items={items}
+          focusedIndex={focusedIndex}
+          itemsPerRow={itemsPerRow}
+          renderItem={renderItem}
+          getItemKey={(item) => item.id}
+          emptyMessage={t.errorNoItems}
+        />
       </div>
     )
   }
@@ -182,15 +279,80 @@ export function BookmarksScreen({ onSelectItem, onNavigateToMenu, isActive }: Bo
           <div
             key={folder.id}
             class={`bookmarks-folder ${focusedIndex === index ? 'focused' : ''}`}
-            onClick={() => loadFolderItems(folder)}
+            onClick={() => loadFolderItems(folder, index)}
           >
             <div class="bookmarks-folder-title">{folder.title}</div>
             <div class="bookmarks-folder-count">{folder.count}</div>
           </div>
         ))}
+        <div
+          class={`bookmarks-folder bookmarks-folder-create ${focusedIndex === folders.length ? 'focused' : ''}`}
+          onClick={() => {
+            setShowCreateDialog(true)
+            setNewFolderName(t.newFolderName)
+          }}
+        >
+          <div class="bookmarks-folder-title">+ {t.createFolder}</div>
+        </div>
       </div>
-      {folders.length === 0 && (
-        <div class="category-empty">{t.errorNoItems}</div>
+      {folders.length > 0 && (
+        <div class="bookmarks-hint">{t.deleteFolder}: Red</div>
+      )}
+
+      {showCreateDialog && (
+        <div class="bookmarks-dialog-overlay">
+          <div class="bookmarks-dialog">
+            <h2>{t.createFolder}</h2>
+            <input
+              type="text"
+              class={`bookmarks-dialog-input ${dialogFocusIndex === 0 ? 'focused' : ''}`}
+              value={newFolderName}
+              onInput={(e) => setNewFolderName((e.target as HTMLInputElement).value)}
+            />
+            <div class="bookmarks-dialog-buttons">
+              <button
+                class={`bookmarks-dialog-button ${dialogFocusIndex === 1 ? 'focused' : ''}`}
+                onClick={() => setShowCreateDialog(false)}
+                disabled={actionLoading}
+              >
+                Cancel
+              </button>
+              <button
+                class={`bookmarks-dialog-button bookmarks-dialog-button-primary ${dialogFocusIndex === 2 ? 'focused' : ''}`}
+                onClick={handleCreateFolder}
+                disabled={actionLoading || !newFolderName.trim()}
+              >
+                {actionLoading ? '...' : 'OK'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDeleteConfirm && (
+        <div class="bookmarks-dialog-overlay">
+          <div class="bookmarks-dialog">
+            <h2>{t.deleteFolder}</h2>
+            <p>{t.confirmDelete}</p>
+            <p class="bookmarks-dialog-folder-name">{folders[focusedIndex]?.title}</p>
+            <div class="bookmarks-dialog-buttons">
+              <button
+                class={`bookmarks-dialog-button ${dialogFocusIndex === 0 ? 'focused' : ''}`}
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={actionLoading}
+              >
+                Cancel
+              </button>
+              <button
+                class={`bookmarks-dialog-button bookmarks-dialog-button-danger ${dialogFocusIndex === 1 ? 'focused' : ''}`}
+                onClick={handleDeleteFolder}
+                disabled={actionLoading}
+              >
+                {actionLoading ? '...' : t.deleteFolder}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

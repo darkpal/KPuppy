@@ -2,9 +2,20 @@ import { useRef, useEffect } from 'preact/hooks'
 import { MovieItem } from '../api/kinopub'
 import { MovieCard } from './MovieCard'
 
+interface EpisodeInfo {
+  season: number
+  episode: number
+  title: string
+  thumbnail?: string
+}
+
+interface MovieWithEpisode extends MovieItem {
+  episodeInfo?: EpisodeInfo
+}
+
 interface MovieRowProps {
   title: string
-  movies: MovieItem[]
+  movies: MovieWithEpisode[]
   loading?: boolean
   focusedIndex: number | null
   onSelect?: (index: number) => void
@@ -57,6 +68,7 @@ export function MovieRow({ title, movies, loading, focusedIndex, onSelect }: Mov
             movie={movie}
             focused={index === focusedIndex}
             onSelect={() => onSelect?.(index)}
+            episodeInfo={movie.episodeInfo}
           />
         ))}
       </div>

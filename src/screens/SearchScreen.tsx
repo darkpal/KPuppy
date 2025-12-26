@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'preact/hooks'
-import { searchItems, MovieItem } from '../api/kinopub'
+import { searchItems, getContentTypes, MovieItem, ContentType } from '../api/kinopub'
+import { getContentTypesCache, saveContentTypesCache } from '../storage'
 import { MovieCard } from '../components/MovieCard'
 import { useKeyboardNavigation } from '../hooks'
 import { useI18n } from '../i18n'
@@ -12,7 +13,7 @@ interface SearchScreenProps {
   isActive: boolean
 }
 
-type FocusArea = 'keyboard' | 'results'
+type FocusArea = 'keyboard' | 'filter' | 'results'
 
 const KEYBOARD_ROWS = [
   ['А', 'Б', 'В', 'Г', 'Д', 'Е', 'Ж', 'З', 'И', 'Й', 'К', 'Л', 'М', 'Н', 'О', 'П', 'Р', 'С', 'Т', 'У', 'Ф', 'Х', 'Ц', 'Ч', 'Ш', 'Щ', 'Ъ', 'Ы', 'Ь', 'Э', 'Ю', 'Я'],
@@ -39,6 +40,10 @@ export function SearchScreen({ onBack, onSelectItem, onNavigateToMenu, isActive 
   const [hasSearched, setHasSearched] = useState(false)
   const [resultsPerRow, setResultsPerRow] = useState(6)
   const searchTimeoutRef = useRef<number | null>(null)
+  const [contentTypes, setContentTypes] = useState<ContentType[]>([])
+  const [selectedType, setSelectedType] = useState<string | null>(null)
+  const [filterDropdownOpen, setFilterDropdownOpen] = useState(false)
+  const [filterDropdownIndex, setFilterDropdownIndex] = useState(0)
 
   useEffect(() => {
     const updateResultsPerRow = () => {
@@ -60,7 +65,22 @@ export function SearchScreen({ onBack, onSelectItem, onNavigateToMenu, isActive 
     }
   }, [results.length])
 
-  const performSearch = useCallback(async (searchQuery: string) => {
+  useEffect(() => {
+    const cached = getContentTypesCache()
+    if (cached) {
+      setContentTypes(cached)
+      return
+    }
+
+    getContentTypes()
+      .then(types => {
+        setContentTypes(types)
+        saveContentTypesCache(types)
+      })
+      .catch(() => {})
+  }, [])
+
+  const performSearch = useCallback(async (searchQuery: string, type: string | null) => {
     if (!searchQuery.trim()) {
       setResults([])
       setHasSearched(false)
@@ -70,7 +90,11 @@ export function SearchScreen({ onBack, onSelectItem, onNavigateToMenu, isActive 
     setLoading(true)
     setHasSearched(true)
     try {
-      const response = await searchItems({ q: searchQuery, perpage: 48 })
+      const response = await searchItems({
+        q: searchQuery,
+        perpage: 48,
+        type: type || undefined
+      })
       setResults(response.items)
     } catch (err) {
       console.error('Search failed:', err)
@@ -87,7 +111,7 @@ export function SearchScreen({ onBack, onSelectItem, onNavigateToMenu, isActive 
 
     if (query.trim().length >= 2) {
       searchTimeoutRef.current = window.setTimeout(() => {
-        performSearch(query)
+        performSearch(query, selectedType)
       }, 500)
     } else {
       setResults([])
@@ -99,7 +123,7 @@ export function SearchScreen({ onBack, onSelectItem, onNavigateToMenu, isActive 
         clearTimeout(searchTimeoutRef.current)
       }
     }
-  }, [query, performSearch])
+  }, [query, selectedType, performSearch])
 
   const handleKeyPress = useCallback((key: string) => {
     const specialAction = SPECIAL_KEYS[key as keyof typeof SPECIAL_KEYS]
@@ -122,8 +146,40 @@ export function SearchScreen({ onBack, onSelectItem, onNavigateToMenu, isActive 
     }
   }, [results.length])
 
+  const filterOptions = useMemo(() => {
+    return [{ id: '', title: '' }, ...contentTypes]
+  }, [contentTypes])
+
   const handlers = useMemo(() => {
     const cols = KEYBOARD_ROWS[keyboardRow]?.length || 12
+
+    if (focusArea === 'filter') {
+      if (filterDropdownOpen) {
+        return {
+          onBack: () => setFilterDropdownOpen(false),
+          onLeft: () => {},
+          onRight: () => {},
+          onUp: () => setFilterDropdownIndex(prev => (prev > 0 ? prev - 1 : prev)),
+          onDown: () => setFilterDropdownIndex(prev => (prev < filterOptions.length - 1 ? prev + 1 : prev)),
+          onEnter: () => {
+            const option = filterOptions[filterDropdownIndex]
+            setSelectedType(option?.id || null)
+            setFilterDropdownOpen(false)
+          }
+        }
+      }
+      return {
+        onBack: onBack,
+        onLeft: onNavigateToMenu,
+        onRight: () => {},
+        onUp: () => {},
+        onDown: () => {
+          setFocusArea('keyboard')
+          setKeyboardRow(0)
+        },
+        onEnter: () => setFilterDropdownOpen(true)
+      }
+    }
 
     if (focusArea === 'keyboard') {
       return {
@@ -146,6 +202,8 @@ export function SearchScreen({ onBack, onSelectItem, onNavigateToMenu, isActive 
           if (keyboardRow > 0) {
             setKeyboardRow(prev => prev - 1)
             setKeyboardCol(prev => Math.min(prev, KEYBOARD_ROWS[keyboardRow - 1].length - 1))
+          } else if (contentTypes.length > 0) {
+            setFocusArea('filter')
           }
         },
         onDown: () => {
@@ -197,7 +255,7 @@ export function SearchScreen({ onBack, onSelectItem, onNavigateToMenu, isActive 
         }
       }
     }
-  }, [focusArea, keyboardRow, keyboardCol, results, resultIndex, resultsPerRow, query, onBack, onSelectItem, handleKeyPress, onNavigateToMenu])
+  }, [focusArea, keyboardRow, keyboardCol, results, resultIndex, resultsPerRow, query, onBack, onSelectItem, handleKeyPress, onNavigateToMenu, filterDropdownOpen, filterDropdownIndex, filterOptions, contentTypes.length])
 
   useKeyboardNavigation(handlers, isActive)
 
@@ -215,6 +273,12 @@ export function SearchScreen({ onBack, onSelectItem, onNavigateToMenu, isActive 
     }
   }, [resultIndex, focusArea, results.length])
 
+  const selectedTypeName = useMemo(() => {
+    if (!selectedType) return t.allTypes
+    const type = contentTypes.find(ct => ct.id === selectedType)
+    return type?.title || t.allTypes
+  }, [selectedType, contentTypes, t.allTypes])
+
   return (
     <div class="search-screen">
       <div class="search-header">
@@ -223,6 +287,34 @@ export function SearchScreen({ onBack, onSelectItem, onNavigateToMenu, isActive 
           <span class="search-query">{query}</span>
           <span class="search-cursor" />
         </div>
+        {contentTypes.length > 0 && (
+          <div class="search-filter">
+            <button
+              class={`search-filter-button ${focusArea === 'filter' ? 'focused' : ''}`}
+              onClick={() => setFilterDropdownOpen(!filterDropdownOpen)}
+            >
+              <span class="search-filter-label">{t.type}:</span>
+              <span class="search-filter-value">{selectedTypeName}</span>
+              <span class="search-filter-arrow">{filterDropdownOpen ? '▲' : '▼'}</span>
+            </button>
+            {filterDropdownOpen && (
+              <div class="search-filter-dropdown">
+                {filterOptions.map((option, index) => (
+                  <button
+                    key={option.id || 'all'}
+                    class={`search-filter-option ${filterDropdownIndex === index ? 'focused' : ''} ${selectedType === (option.id || null) ? 'selected' : ''}`}
+                    onClick={() => {
+                      setSelectedType(option.id || null)
+                      setFilterDropdownOpen(false)
+                    }}
+                  >
+                    {option.title || t.allTypes}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div class="search-keyboard">

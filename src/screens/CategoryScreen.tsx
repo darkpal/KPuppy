@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'preact/hooks'
-import { getItems, getWatching, MovieItem, ItemsParams } from '../api/kinopub'
+import { getItems, getWatching, getGenres, getCountries, MovieItem, ItemsParams, Genre, Country } from '../api/kinopub'
 import { MovieCard } from '../components/MovieCard'
-import { useKeyboardNavigation } from '../hooks'
+import { useKeyboardNavigation, useItemsPerRow } from '../hooks'
 import { useI18n } from '../i18n'
 import '../styles/category.css'
 
@@ -27,19 +27,32 @@ const CATEGORY_PARAMS: Record<string, ItemsParams> = {
 const ITEMS_PER_PAGE = 48
 const RENDER_BUFFER = 24
 
+type FocusArea = 'filter' | 'grid'
+
 export function CategoryScreen({ categoryId, title, onSelectItem, onNavigateToMenu, isActive, initialFocusIndex = 0, onFocusChange }: CategoryScreenProps) {
   const { t } = useI18n()
   const [items, setItems] = useState<MovieItem[]>([])
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const [focusedIndex, setFocusedIndex] = useState(initialFocusIndex)
-  const [itemsPerRow, setItemsPerRow] = useState(8)
   const [currentPage, setCurrentPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
   const containerRef = useRef<HTMLDivElement>(null)
   const prevCategoryIdRef = useRef<string>(categoryId)
   const onFocusChangeRef = useRef(onFocusChange)
   onFocusChangeRef.current = onFocusChange
+  const itemsPerRow = useItemsPerRow('.category-grid', [items.length])
+
+  const [genres, setGenres] = useState<Genre[]>([])
+  const [countries, setCountries] = useState<Country[]>([])
+  const [selectedGenre, setSelectedGenre] = useState<number | null>(null)
+  const [selectedCountry, setSelectedCountry] = useState<number | null>(null)
+  const [focusArea, setFocusArea] = useState<FocusArea>('grid')
+  const [filterFocusIndex, setFilterFocusIndex] = useState(0)
+  const [filterDropdownOpen, setFilterDropdownOpen] = useState(false)
+  const [dropdownFocusIndex, setDropdownFocusIndex] = useState(0)
+
+  const showFilters = categoryId !== 'watching' && CATEGORY_PARAMS[categoryId]
 
   useEffect(() => {
     onFocusChangeRef.current?.(focusedIndex)
@@ -62,24 +75,26 @@ export function CategoryScreen({ categoryId, title, onSelectItem, onNavigateToMe
   }, [])
 
   useEffect(() => {
-    const updateItemsPerRow = () => {
-      const grid = document.querySelector('.category-grid')
-      if (grid && grid.children.length > 0) {
-        const firstChild = grid.children[0] as HTMLElement
-        const gridWidth = grid.clientWidth
-        const itemWidth = firstChild.offsetWidth
-        const gap = 32
-        const count = Math.floor((gridWidth + gap) / (itemWidth + gap))
-        setItemsPerRow(Math.max(1, count))
+    if (showFilters) {
+      const categoryType = CATEGORY_PARAMS[categoryId]?.type
+      const genreTypeMap: Record<string, string> = {
+        'movie': 'movie',
+        'serial': 'movie',
+        'concert': 'music',
+        '3D': 'movie',
+        'documovie': 'docu',
+        'tvshow': 'tvshow'
       }
+      const genreType = categoryType ? genreTypeMap[categoryType] : null
+      getGenres().then(allGenres => {
+        const filtered = genreType
+          ? allGenres.filter(g => g.type === genreType)
+          : allGenres
+        setGenres(filtered)
+      }).catch(() => {})
+      getCountries().then(setCountries).catch(() => {})
     }
-    const timer = setTimeout(updateItemsPerRow, 100)
-    window.addEventListener('resize', updateItemsPerRow)
-    return () => {
-      clearTimeout(timer)
-      window.removeEventListener('resize', updateItemsPerRow)
-    }
-  }, [items.length])
+  }, [showFilters, categoryId])
 
   const loadItems = useCallback(async (page: number, append: boolean = false) => {
     if (page > 1) {
@@ -96,7 +111,14 @@ export function CategoryScreen({ categoryId, title, onSelectItem, onNavigateToMe
       } else {
         const params = CATEGORY_PARAMS[categoryId]
         if (params) {
-          const response = await getItems({ ...params, page, perpage: ITEMS_PER_PAGE })
+          const filterParams: ItemsParams = {
+            ...params,
+            page,
+            perpage: ITEMS_PER_PAGE,
+            ...(selectedGenre && { genre: selectedGenre }),
+            ...(selectedCountry && { country: selectedCountry })
+          }
+          const response = await getItems(filterParams)
           if (append) {
             setItems(prev => [...prev, ...response.items])
           } else {
@@ -111,7 +133,7 @@ export function CategoryScreen({ categoryId, title, onSelectItem, onNavigateToMe
       setLoading(false)
       setLoadingMore(false)
     }
-  }, [categoryId])
+  }, [categoryId, selectedGenre, selectedCountry])
 
   useEffect(() => {
     const categoryChanged = prevCategoryIdRef.current !== categoryId
@@ -121,10 +143,16 @@ export function CategoryScreen({ categoryId, title, onSelectItem, onNavigateToMe
     setCurrentPage(1)
     if (categoryChanged) {
       setFocusedIndex(0)
+      setSelectedGenre(null)
+      setSelectedCountry(null)
+      setFocusArea('grid')
+    } else {
+      setFocusedIndex(0)
+      setFocusArea('grid')
     }
     setHasMore(true)
     loadItems(1, false)
-  }, [categoryId, loadItems])
+  }, [categoryId, selectedGenre, selectedCountry, loadItems])
 
   const loadMore = useCallback(() => {
     if (!loadingMore && hasMore) {
@@ -139,6 +167,41 @@ export function CategoryScreen({ categoryId, title, onSelectItem, onNavigateToMe
     const currentRow = Math.floor(focusedIndex / itemsPerRow)
     const totalRows = Math.ceil(itemCount / itemsPerRow)
 
+    if (focusArea === 'filter' && filterDropdownOpen) {
+      const currentList = filterFocusIndex === 0 ? genres : countries
+      return {
+        onUp: () => setDropdownFocusIndex(prev => Math.max(0, prev - 1)),
+        onDown: () => setDropdownFocusIndex(prev => Math.min(currentList.length, prev + 1)),
+        onBack: () => setFilterDropdownOpen(false),
+        onEnter: () => {
+          if (filterFocusIndex === 0) {
+            setSelectedGenre(dropdownFocusIndex === 0 ? null : genres[dropdownFocusIndex - 1]?.id || null)
+          } else {
+            setSelectedCountry(dropdownFocusIndex === 0 ? null : countries[dropdownFocusIndex - 1]?.id || null)
+          }
+          setFilterDropdownOpen(false)
+        }
+      }
+    }
+
+    if (focusArea === 'filter') {
+      return {
+        onLeft: () => {
+          if (filterFocusIndex > 0) {
+            setFilterFocusIndex(prev => prev - 1)
+          } else {
+            onNavigateToMenu()
+          }
+        },
+        onRight: () => setFilterFocusIndex(prev => Math.min(1, prev + 1)),
+        onDown: () => setFocusArea('grid'),
+        onEnter: () => {
+          setDropdownFocusIndex(0)
+          setFilterDropdownOpen(true)
+        }
+      }
+    }
+
     return {
       onLeft: () => {
         if (focusedIndex % itemsPerRow === 0) {
@@ -148,7 +211,13 @@ export function CategoryScreen({ categoryId, title, onSelectItem, onNavigateToMe
         }
       },
       onRight: () => setFocusedIndex(prev => Math.min(itemCount - 1, prev + 1)),
-      onUp: () => setFocusedIndex(prev => Math.max(0, prev - itemsPerRow)),
+      onUp: () => {
+        if (currentRow === 0 && showFilters) {
+          setFocusArea('filter')
+        } else {
+          setFocusedIndex(prev => Math.max(0, prev - itemsPerRow))
+        }
+      },
       onDown: () => {
         const newIndex = focusedIndex + itemsPerRow
         if (newIndex < itemCount) {
@@ -167,9 +236,27 @@ export function CategoryScreen({ categoryId, title, onSelectItem, onNavigateToMe
         }
       }
     }
-  }, [items, focusedIndex, onNavigateToMenu, onSelectItem, itemsPerRow, hasMore, loadMore])
+  }, [items, focusedIndex, onNavigateToMenu, onSelectItem, itemsPerRow, hasMore, loadMore, focusArea, filterFocusIndex, filterDropdownOpen, genres, countries, dropdownFocusIndex, showFilters])
 
   useKeyboardNavigation(handlers, isActive)
+
+  useEffect(() => {
+    if (filterDropdownOpen) {
+      const dropdown = document.querySelector('.category-filter-dropdown') as HTMLElement
+      const focusedOption = dropdown?.querySelector('.category-filter-option.focused') as HTMLElement
+      if (dropdown && focusedOption) {
+        const optionTop = focusedOption.offsetTop
+        const optionHeight = focusedOption.offsetHeight
+        const dropdownHeight = dropdown.clientHeight
+        const scrollTop = dropdown.scrollTop
+        if (optionTop < scrollTop) {
+          dropdown.scrollTop = optionTop
+        } else if (optionTop + optionHeight > scrollTop + dropdownHeight) {
+          dropdown.scrollTop = optionTop + optionHeight - dropdownHeight
+        }
+      }
+    }
+  }, [dropdownFocusIndex, filterDropdownOpen])
 
   useEffect(() => {
     const focusedEl = document.querySelector(`[data-category-index="${focusedIndex}"]`) as HTMLElement
@@ -209,9 +296,54 @@ export function CategoryScreen({ categoryId, title, onSelectItem, onNavigateToMe
   const itemHeight = 300
   const totalHeight = Math.ceil(items.length / itemsPerRow) * itemHeight
 
+  const selectedGenreTitle = selectedGenre ? genres.find(g => g.id === selectedGenre)?.title : null
+  const selectedCountryTitle = selectedCountry ? countries.find(c => c.id === selectedCountry)?.title : null
+
   return (
     <div class="category-screen" ref={containerRef}>
       <h1 class="category-title">{title}</h1>
+      {showFilters && (
+        <div class="category-filters">
+          <div class={`category-filter ${focusArea === 'filter' && filterFocusIndex === 0 ? 'focused' : ''}`}>
+            <span class="category-filter-label">{t.genre}:</span>
+            <span class="category-filter-value">{selectedGenreTitle || t.allGenres}</span>
+            {focusArea === 'filter' && filterFocusIndex === 0 && filterDropdownOpen && (
+              <div class="category-filter-dropdown">
+                <div class={`category-filter-option ${dropdownFocusIndex === 0 ? 'focused' : ''}`}>
+                  {t.allGenres}
+                </div>
+                {genres.map((genre, idx) => (
+                  <div
+                    key={genre.id}
+                    class={`category-filter-option ${dropdownFocusIndex === idx + 1 ? 'focused' : ''}`}
+                  >
+                    {genre.title}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div class={`category-filter ${focusArea === 'filter' && filterFocusIndex === 1 ? 'focused' : ''}`}>
+            <span class="category-filter-label">{t.country}:</span>
+            <span class="category-filter-value">{selectedCountryTitle || t.allCountries}</span>
+            {focusArea === 'filter' && filterFocusIndex === 1 && filterDropdownOpen && (
+              <div class="category-filter-dropdown">
+                <div class={`category-filter-option ${dropdownFocusIndex === 0 ? 'focused' : ''}`}>
+                  {t.allCountries}
+                </div>
+                {countries.map((country, idx) => (
+                  <div
+                    key={country.id}
+                    class={`category-filter-option ${dropdownFocusIndex === idx + 1 ? 'focused' : ''}`}
+                  >
+                    {country.title}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       <div
         class="category-grid-container"
         style={{ height: `${totalHeight}px`, position: 'relative' }}

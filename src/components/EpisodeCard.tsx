@@ -18,9 +18,11 @@ export function EpisodeCard({ episode, seriesPoster, focused, onSelect }: Episod
 
   const duration = formatDuration(episode.duration)
 
+  const isWatched = episode.watched === 1
+
   return (
     <div
-      class={`episode-card ${focused ? 'focused' : ''}`}
+      class={`episode-card ${focused ? 'focused' : ''} ${isWatched ? 'watched' : ''}`}
       onClick={onSelect}
     >
       <div class="episode-thumbnail">
@@ -32,6 +34,7 @@ export function EpisodeCard({ episode, seriesPoster, focused, onSelect }: Episod
           </div>
         )}
         {duration && <span class="episode-duration">{duration}</span>}
+        {isWatched && <span class="episode-watched-badge">✓</span>}
       </div>
       <div class="episode-info">
         <span class="episode-number">Episode {episode.number}</span>

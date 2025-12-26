@@ -43,3 +43,129 @@
   background: rgba(255, 255, 255, 0.2);
   color: #fff;
 }
+
+.bookmarks-folder-create {
+  border: 2px dashed rgba(255, 255, 255, 0.3);
+  background: transparent;
+}
+
+.bookmarks-folder-create:hover {
+  border-color: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.bookmarks-folder-create.focused {
+  border-color: #e50914;
+  background: rgba(229, 9, 20, 0.1);
+}
+
+.bookmarks-hint {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.4);
+  padding: 8px 0;
+}
+
+.bookmarks-dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.bookmarks-dialog {
+  background: #1a1a1a;
+  border-radius: 12px;
+  padding: 32px;
+  min-width: 400px;
+  max-width: 90%;
+}
+
+.bookmarks-dialog h2 {
+  margin: 0 0 24px;
+  font-size: 24px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.bookmarks-dialog p {
+  margin: 0 0 16px;
+  font-size: 18px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.bookmarks-dialog-folder-name {
+  font-weight: 600;
+  color: #fff;
+}
+
+.bookmarks-dialog-input {
+  width: 100%;
+  padding: 16px;
+  font-size: 18px;
+  background: #333 !important;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  color: #fff !important;
+  outline: none;
+  margin-bottom: 24px;
+  box-sizing: border-box;
+  -webkit-appearance: none;
+}
+
+.bookmarks-dialog-input:focus,
+.bookmarks-dialog-input.focused {
+  border-color: #e50914;
+}
+
+.bookmarks-dialog-buttons {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.bookmarks-dialog-button {
+  padding: 12px 24px;
+  font-size: 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  transition: background 0.15s ease;
+}
+
+.bookmarks-dialog-button:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.bookmarks-dialog-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.bookmarks-dialog-button.focused {
+  outline: 3px solid #fff;
+  outline-offset: 2px;
+}
+
+.bookmarks-dialog-button-primary {
+  background: #e50914;
+}
+
+.bookmarks-dialog-button-primary:hover {
+  background: #f40612;
+}
+
+.bookmarks-dialog-button-danger {
+  background: #b71c1c;
+}
+
+.bookmarks-dialog-button-danger:hover {
+  background: #c62828;
+}

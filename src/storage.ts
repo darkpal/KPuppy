@@ -1,6 +1,7 @@
 const STORAGE_KEY = 'kpuppy_tokens'
 const SETTINGS_KEY = 'kpuppy_settings'
 const RETURN_TO_KEY = 'kpuppy_return_to'
+const CONTENT_TYPES_KEY = 'kpuppy_content_types'
 
 export interface Tokens {
   access: string
@@ -66,6 +67,8 @@ export function isAuthenticated(): boolean {
 export interface ReturnToState {
   itemId: number | null
   seriesId: number | null
+  selectedMenuId: string
+  screenFocus?: Record<string, { row: number; col: number }>
 }
 
 export function saveReturnTo(state: ReturnToState): void {
@@ -85,4 +88,39 @@ export function getReturnTo(): ReturnToState | null {
 
 export function clearReturnTo(): void {
   localStorage.removeItem(RETURN_TO_KEY)
+}
+
+export interface CachedContentType {
+  id: string
+  title: string
+}
+
+export interface CachedContentTypes {
+  types: CachedContentType[]
+  fetchedAt: number
+}
+
+const CONTENT_TYPES_TTL = 24 * 60 * 60 * 1000
+
+export function getContentTypesCache(): CachedContentType[] | null {
+  const data = localStorage.getItem(CONTENT_TYPES_KEY)
+  if (!data) return null
+
+  try {
+    const cached = JSON.parse(data) as CachedContentTypes
+    if (Date.now() - cached.fetchedAt > CONTENT_TYPES_TTL) {
+      return null
+    }
+    return cached.types
+  } catch {
+    return null
+  }
+}
+
+export function saveContentTypesCache(types: CachedContentType[]): void {
+  const cached: CachedContentTypes = {
+    types,
+    fetchedAt: Date.now()
+  }
+  localStorage.setItem(CONTENT_TYPES_KEY, JSON.stringify(cached))
 }

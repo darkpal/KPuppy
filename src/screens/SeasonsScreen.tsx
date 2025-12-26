@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from 'preact/hooks'
-import { getItem, ItemDetails } from '../api/kinopub'
+import { useState, useEffect, useMemo, useCallback } from 'preact/hooks'
+import { getItem, toggleWatched, ItemDetails } from '../api/kinopub'
 import { EpisodeRow } from '../components/EpisodeRow'
 import { useKeyboardNavigation } from '../hooks'
 import { useI18n } from '../i18n'
@@ -37,6 +37,34 @@ export function SeasonsScreen({ itemId, onBack, onPlay, onNavigateToMenu, isActi
 
   const seasons = item?.seasons || []
   const seriesPoster = item?.posters?.medium || item?.posters?.small
+
+  const handleToggleWatched = useCallback(async () => {
+    const currentSeason = seasons[focusedRow]
+    const episode = currentSeason?.episodes?.[focusedCol]
+    if (!episode || !item) return
+
+    try {
+      await toggleWatched({ id: item.id, season: currentSeason.number, video: episode.number })
+      setItem(prev => {
+        if (!prev || !prev.seasons) return prev
+        return {
+          ...prev,
+          seasons: prev.seasons.map((s, sIdx) => {
+            if (sIdx !== focusedRow) return s
+            return {
+              ...s,
+              episodes: s.episodes.map((ep, eIdx) => {
+                if (eIdx !== focusedCol) return ep
+                return { ...ep, watched: ep.watched === 1 ? 0 : 1 }
+              })
+            }
+          })
+        }
+      })
+    } catch (err) {
+      console.error('Failed to toggle watched:', err)
+    }
+  }, [seasons, focusedRow, focusedCol, item])
 
   const handlers = useMemo(() => {
     const currentSeason = seasons[focusedRow]
@@ -77,9 +105,10 @@ export function SeasonsScreen({ itemId, onBack, onPlay, onNavigateToMenu, isActi
         if (episode) {
           onPlay(itemId, currentSeason.number, episode.number)
         }
-      }
+      },
+      onYellow: handleToggleWatched
     }
-  }, [seasons, focusedRow, focusedCol, itemId, onBack, onPlay, onNavigateToMenu])
+  }, [seasons, focusedRow, focusedCol, itemId, onBack, onPlay, onNavigateToMenu, handleToggleWatched])
 
   useKeyboardNavigation(handlers, isActive && !!item && seasons.length > 0)
 

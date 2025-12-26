@@ -1,9 +1,17 @@
 import { MovieItem } from '../api/kinopub'
 
+interface EpisodeInfo {
+  season: number
+  episode: number
+  title: string
+  thumbnail?: string
+}
+
 interface MovieCardProps {
   movie: MovieItem
   focused: boolean
   onSelect?: () => void
+  episodeInfo?: EpisodeInfo
 }
 
 function splitTitle(title: string): { primary: string; secondary?: string } {
@@ -17,8 +25,10 @@ function splitTitle(title: string): { primary: string; secondary?: string } {
   return { primary: title }
 }
 
-export function MovieCard({ movie, focused, onSelect }: MovieCardProps) {
+export function MovieCard({ movie, focused, onSelect, episodeInfo }: MovieCardProps) {
   const { primary, secondary } = splitTitle(movie.title)
+
+  const episodeBadge = episodeInfo ? `S${episodeInfo.season}E${episodeInfo.episode}` : null
 
   const cardStyle = {
     width: '300px',
@@ -71,6 +81,18 @@ export function MovieCard({ movie, focused, onSelect }: MovieCardProps) {
     color: '#888888'
   }
 
+  const badgeStyle = {
+    position: 'absolute' as const,
+    top: '8px',
+    right: '8px',
+    background: '#e50914',
+    color: '#fff',
+    padding: '4px 8px',
+    borderRadius: '4px',
+    fontSize: '16px',
+    fontWeight: 600
+  }
+
   return (
     <div style={cardStyle} onClick={onSelect}>
       <img
@@ -78,6 +100,7 @@ export function MovieCard({ movie, focused, onSelect }: MovieCardProps) {
         alt={movie.title}
         style={imageStyle}
       />
+      {episodeBadge && <div style={badgeStyle}>{episodeBadge}</div>}
       <div style={overlayStyle}>
         <div style={titleStyle}>{primary}</div>
         {secondary && <div style={secondaryTitleStyle}>{secondary}</div>}

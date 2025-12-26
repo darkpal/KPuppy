@@ -136,6 +136,26 @@
   border-radius: 2px;
 }
 
+.episode-watched-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: #46d369;
+  color: #000;
+  font-size: 14px;
+  font-weight: 700;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.episode-card.watched .episode-thumbnail {
+  opacity: 0.6;
+}
+
 .episode-info {
   padding: 12px 4px;
 }

@@ -76,3 +76,65 @@
   animation: spin 1s linear infinite;
   margin-right: 12px;
 }
+
+.category-filters {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.category-filter {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: #1f1f1f;
+  border: 2px solid transparent;
+  border-radius: 4px;
+  color: #ffffff;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.category-filter.focused {
+  border-color: #e50914;
+  background: #2a2a2a;
+}
+
+.category-filter-label {
+  color: #808080;
+}
+
+.category-filter-value {
+  font-weight: 500;
+}
+
+.category-filter-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  min-width: 200px;
+  max-height: 300px;
+  overflow-y: auto;
+  background: #1f1f1f;
+  border: 1px solid #333;
+  border-radius: 4px;
+  z-index: 100;
+  margin-top: 4px;
+}
+
+.category-filter-option {
+  padding: 10px 16px;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.category-filter-option.focused {
+  background: #e50914;
+}
+
+.category-filter-option:hover {
+  background: #333;
+}

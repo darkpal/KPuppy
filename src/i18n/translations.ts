@@ -17,12 +17,15 @@ export interface Translations {
   menuSearch: string
   menuContinue: string
   menuBookmarks: string
+  menuCollections: string
+  menuHistory: string
   menuMovies: string
   menuSeries: string
   menuConcerts: string
   menu3D: string
   menuDocs: string
   menuTvShows: string
+  menuLiveTV: string
   menuSettings: string
   menuProfile: string
 
@@ -119,6 +122,33 @@ export interface Translations {
   player: string
   playerNative: string
   playerBuiltin: string
+
+  // Bookmarks
+  addToBookmarks: string
+  removeFromBookmarks: string
+  createFolder: string
+  deleteFolder: string
+  newFolderName: string
+  confirmDelete: string
+  bookmarkAdded: string
+  bookmarkRemoved: string
+
+  // Similar
+  similar: string
+
+  // Trailer
+  trailer: string
+
+  // Watchlist
+  addToWatchlist: string
+  removeFromWatchlist: string
+
+  // Filters
+  genre: string
+  allGenres: string
+  allCountries: string
+  allTypes: string
+  type: string
 }
 
 const en: Translations = {
@@ -130,12 +160,15 @@ const en: Translations = {
   menuSearch: 'Search',
   menuContinue: 'Continue',
   menuBookmarks: 'Bookmarks',
+  menuCollections: 'Collections',
+  menuHistory: 'History',
   menuMovies: 'Movies',
   menuSeries: 'Series',
   menuConcerts: 'Concerts',
   menu3D: '3D',
   menuDocs: 'Docs',
   menuTvShows: 'TV Shows',
+  menuLiveTV: 'Live TV',
   menuSettings: 'Settings',
   menuProfile: 'Profile',
 
@@ -220,6 +253,27 @@ const en: Translations = {
   player: 'Player',
   playerNative: 'Native (webOS)',
   playerBuiltin: 'Built-in',
+
+  addToBookmarks: 'Add to Bookmarks',
+  removeFromBookmarks: 'Remove from Bookmarks',
+  createFolder: 'Create Folder',
+  deleteFolder: 'Delete Folder',
+  newFolderName: 'New Folder',
+  confirmDelete: 'Delete this folder?',
+  bookmarkAdded: 'Added to bookmarks',
+  bookmarkRemoved: 'Removed from bookmarks',
+
+  similar: 'Similar',
+  trailer: 'Trailer',
+
+  addToWatchlist: 'Want to Watch',
+  removeFromWatchlist: 'Remove from Watchlist',
+
+  genre: 'Genre',
+  allGenres: 'All Genres',
+  allCountries: 'All Countries',
+  allTypes: 'All Types',
+  type: 'Type',
 }
 
 const ru: Translations = {
@@ -231,12 +285,15 @@ const ru: Translations = {
   menuSearch: 'Поиск',
   menuContinue: 'Продолжить',
   menuBookmarks: 'Закладки',
+  menuCollections: 'Подборки',
+  menuHistory: 'История',
   menuMovies: 'Фильмы',
   menuSeries: 'Сериалы',
   menuConcerts: 'Концерты',
   menu3D: '3D',
   menuDocs: 'Документальные',
   menuTvShows: 'ТВ-шоу',
+  menuLiveTV: 'Прямой эфир',
   menuSettings: 'Настройки',
   menuProfile: 'Профиль',
 
@@ -321,6 +378,27 @@ const ru: Translations = {
   player: 'Плеер',
   playerNative: 'Нативный (webOS)',
   playerBuiltin: 'Встроенный',
+
+  addToBookmarks: 'Добавить в закладки',
+  removeFromBookmarks: 'Удалить из закладок',
+  createFolder: 'Создать папку',
+  deleteFolder: 'Удалить папку',
+  newFolderName: 'Новая папка',
+  confirmDelete: 'Удалить эту папку?',
+  bookmarkAdded: 'Добавлено в закладки',
+  bookmarkRemoved: 'Удалено из закладок',
+
+  similar: 'Похожее',
+  trailer: 'Трейлер',
+
+  addToWatchlist: 'Буду смотреть',
+  removeFromWatchlist: 'Убрать из списка',
+
+  genre: 'Жанр',
+  allGenres: 'Все жанры',
+  allCountries: 'Все страны',
+  allTypes: 'Все типы',
+  type: 'Тип',
 }
 
 const de: Translations = {
@@ -332,12 +410,15 @@ const de: Translations = {
   menuSearch: 'Suche',
   menuContinue: 'Fortsetzen',
   menuBookmarks: 'Lesezeichen',
+  menuCollections: 'Sammlungen',
+  menuHistory: 'Verlauf',
   menuMovies: 'Filme',
   menuSeries: 'Serien',
   menuConcerts: 'Konzerte',
   menu3D: '3D',
   menuDocs: 'Dokus',
   menuTvShows: 'TV-Shows',
+  menuLiveTV: 'Live TV',
   menuSettings: 'Einstellungen',
   menuProfile: 'Profil',
 
@@ -422,6 +503,27 @@ const de: Translations = {
   player: 'Player',
   playerNative: 'Nativ (webOS)',
   playerBuiltin: 'Eingebaut',
+
+  addToBookmarks: 'Zu Lesezeichen hinzufügen',
+  removeFromBookmarks: 'Aus Lesezeichen entfernen',
+  createFolder: 'Ordner erstellen',
+  deleteFolder: 'Ordner löschen',
+  newFolderName: 'Neuer Ordner',
+  confirmDelete: 'Diesen Ordner löschen?',
+  bookmarkAdded: 'Zu Lesezeichen hinzugefügt',
+  bookmarkRemoved: 'Aus Lesezeichen entfernt',
+
+  similar: 'Ähnlich',
+  trailer: 'Trailer',
+
+  addToWatchlist: 'Merkliste',
+  removeFromWatchlist: 'Von Merkliste entfernen',
+
+  genre: 'Genre',
+  allGenres: 'Alle Genres',
+  allCountries: 'Alle Länder',
+  allTypes: 'Alle Typen',
+  type: 'Typ',
 }
 
 export const translations: Record<Language, Translations> = { en, ru, de }
