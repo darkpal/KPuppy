@@ -3,7 +3,7 @@ import { useI18n } from '../i18n'
 import { Translations } from '../i18n/translations'
 import {
   HomeIcon, SearchIcon, PlayIcon, BookmarkIcon, CollectionIcon, HistoryIcon, FilmIcon, TvIcon,
-  MicIcon, GlassesIcon, VideoIcon, RadioIcon, LiveIcon, SettingsIcon, UserIcon
+  MicIcon, GlassesIcon, VideoIcon, RadioIcon, LiveIcon, SettingsIcon, UserIcon, BellIcon
 } from './Icons'
 import '../styles/sidemenu.css'
 
@@ -17,6 +17,7 @@ const MENU_ITEM_CONFIGS: MenuItem[] = [
   { id: 'home', Icon: HomeIcon, labelKey: 'menuHome' },
   { id: 'search', Icon: SearchIcon, labelKey: 'menuSearch' },
   { id: 'watching', Icon: PlayIcon, labelKey: 'menuContinue' },
+  { id: 'newepisodes', Icon: BellIcon, labelKey: 'menuNewEpisodes' },
   { id: 'bookmarks', Icon: BookmarkIcon, labelKey: 'menuBookmarks' },
   { id: 'collections', Icon: CollectionIcon, labelKey: 'menuCollections' },
   { id: 'history', Icon: HistoryIcon, labelKey: 'menuHistory' },

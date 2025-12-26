@@ -16,6 +16,7 @@ export interface Translations {
   menuHome: string
   menuSearch: string
   menuContinue: string
+  menuNewEpisodes: string
   menuBookmarks: string
   menuCollections: string
   menuHistory: string
@@ -100,6 +101,7 @@ export interface Translations {
   errorLoading: string
   errorNoItems: string
   noSeasonsAvailable: string
+  newEpisodesCount: string
 
   // Common
   loadingMore: string
@@ -159,6 +161,7 @@ const en: Translations = {
   menuHome: 'Home',
   menuSearch: 'Search',
   menuContinue: 'Continue',
+  menuNewEpisodes: 'New Episodes',
   menuBookmarks: 'Bookmarks',
   menuCollections: 'Collections',
   menuHistory: 'History',
@@ -235,6 +238,7 @@ const en: Translations = {
   errorLoading: 'Failed to load',
   errorNoItems: 'No items found',
   noSeasonsAvailable: 'No seasons available',
+  newEpisodesCount: 'new',
 
   loadingMore: 'Loading more...',
 
@@ -284,6 +288,7 @@ const ru: Translations = {
   menuHome: 'Главная',
   menuSearch: 'Поиск',
   menuContinue: 'Продолжить',
+  menuNewEpisodes: 'Новые серии',
   menuBookmarks: 'Закладки',
   menuCollections: 'Подборки',
   menuHistory: 'История',
@@ -360,6 +365,7 @@ const ru: Translations = {
   errorLoading: 'Ошибка загрузки',
   errorNoItems: 'Ничего не найдено',
   noSeasonsAvailable: 'Сезоны недоступны',
+  newEpisodesCount: 'новых',
 
   loadingMore: 'Загрузка...',
 
@@ -409,6 +415,7 @@ const de: Translations = {
   menuHome: 'Startseite',
   menuSearch: 'Suche',
   menuContinue: 'Fortsetzen',
+  menuNewEpisodes: 'Neue Folgen',
   menuBookmarks: 'Lesezeichen',
   menuCollections: 'Sammlungen',
   menuHistory: 'Verlauf',
@@ -485,6 +492,7 @@ const de: Translations = {
   errorLoading: 'Laden fehlgeschlagen',
   errorNoItems: 'Keine Einträge gefunden',
   noSeasonsAvailable: 'Keine Staffeln verfügbar',
+  newEpisodesCount: 'neu',
 
   loadingMore: 'Mehr laden...',
 

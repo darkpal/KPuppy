@@ -11,6 +11,7 @@ import { LiveTVScreen } from './screens/LiveTVScreen'
 import { SettingsScreen } from './screens/SettingsScreen'
 import { UserScreen } from './screens/UserScreen'
 import { SeasonsScreen } from './screens/SeasonsScreen'
+import { NewEpisodesScreen } from './screens/NewEpisodesScreen'
 import { PlayerScreen } from './screens/PlayerScreen'
 import { SideMenu, ALL_MENU_ITEMS_COUNT, getMenuIdByIndex } from './components/SideMenu'
 import { isAuthenticated, clearTokens, getTokens, getLocalSettings, saveReturnTo, getReturnTo, clearReturnTo, getContentTypesCache, saveContentTypesCache } from './storage'
@@ -187,7 +188,8 @@ export function App() {
       ...prev,
       selectedMenuId: menuId,
       focusArea: 'content',
-      itemId: null
+      itemId: null,
+      seriesId: null
     }))
   }, [])
 
@@ -545,6 +547,14 @@ export function App() {
       case 'history':
         return (
           <HistoryScreen
+            onSelectItem={handleSelectItem}
+            onNavigateToMenu={handleNavigateToMenu}
+            isActive={isContentActive}
+          />
+        )
+      case 'newepisodes':
+        return (
+          <NewEpisodesScreen
             onSelectItem={handleSelectItem}
             onNavigateToMenu={handleNavigateToMenu}
             isActive={isContentActive}

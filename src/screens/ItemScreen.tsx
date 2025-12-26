@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'preact/hooks'
-import { getItem, getSimilarItems, getBookmarkFolders, addToBookmark, ItemDetails, MovieItem, VideoFile, Audio, Subtitle, BookmarkFolder } from '../api/kinopub'
+import { getItem, getSimilarItems, getBookmarkFolders, addToBookmark, toggleWatchlist, isItemInWatchlist, ItemDetails, MovieItem, VideoFile, Audio, Subtitle, BookmarkFolder } from '../api/kinopub'
 import { getLocalSettings } from '../storage'
 import { useKeyboardNavigation } from '../hooks'
 import { useI18n } from '../i18n'
@@ -20,7 +20,7 @@ interface ItemScreenProps {
   isActive: boolean
 }
 
-type FocusArea = 'play' | 'watchlist' | 'trailer' | 'seasons' | 'qualitySelect' | 'similar'
+type FocusArea = 'play' | 'watching' | 'watchlist' | 'trailer' | 'seasons' | 'qualitySelect' | 'similar'
 
 const QUALITY_ORDER = ['2160p', '1080p', '720p', '480p']
 
@@ -70,14 +70,20 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
   const [showFolderDialog, setShowFolderDialog] = useState(false)
   const [folders, setFolders] = useState<BookmarkFolder[]>([])
   const [folderFocusIndex, setFolderFocusIndex] = useState(0)
+  const [isWatching, setIsWatching] = useState(false)
+  const [watchingToggleLoading, setWatchingToggleLoading] = useState(false)
 
   useEffect(() => {
     async function loadItem() {
       try {
         setLoading(true)
         setError(null)
+        setIsWatching(false)
         const data = await getItem(itemId)
         setItem(data)
+
+        const hasSeries = data.seasons && data.seasons.length > 0
+        setFocusArea(hasSeries ? 'seasons' : 'play')
 
         const files = data.videos?.[0]?.files || data.seasons?.[0]?.episodes?.[0]?.files
         const available = getAvailableQualities(files)
@@ -90,6 +96,10 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
         }
 
         getSimilarItems(itemId).then(setSimilarItems).catch(() => {})
+
+        if (hasSeries) {
+          isItemInWatchlist(itemId).then(setIsWatching).catch(() => {})
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load')
       } finally {
@@ -139,6 +149,19 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
     }
   }, [watchlistLoading])
 
+  const handleToggleWatching = useCallback(async () => {
+    if (watchingToggleLoading) return
+    setWatchingToggleLoading(true)
+    try {
+      await toggleWatchlist(itemId)
+      setIsWatching(prev => !prev)
+    } catch (err) {
+      console.error('Failed to toggle watching:', err)
+    } finally {
+      setWatchingToggleLoading(false)
+    }
+  }, [itemId, watchingToggleLoading])
+
   const handleAddToFolder = useCallback(async () => {
     const folder = folders[folderFocusIndex]
     if (!folder || watchlistLoading) return
@@ -156,6 +179,8 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
   const handlers = useMemo(() => {
     const hasSeries = item?.seasons && item.seasons.length > 0
     const hasSimilar = similarItems.length > 0
+    const hasTrailer = !!item?.trailer?.url
+    const primaryButton = hasSeries ? 'seasons' : 'play'
 
     if (showFolderDialog) {
       return {
@@ -190,7 +215,7 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
           }
         },
         onRight: () => setSimilarFocusIndex(prev => Math.min(similarItems.length - 1, prev + 1)),
-        onUp: () => setFocusArea('play'),
+        onUp: () => setFocusArea(primaryButton),
         onEnter: () => {
           const selectedItem = similarItems[similarFocusIndex]
           if (selectedItem) {
@@ -199,8 +224,6 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
         }
       }
     }
-
-    const hasTrailer = !!item?.trailer?.url
 
     return {
       onBack,
@@ -218,35 +241,29 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
         }
       },
       onLeft: () => {
-        if (focusArea === 'seasons') {
-          if (hasTrailer) {
-            setFocusArea('trailer')
-          } else {
-            setFocusArea('watchlist')
-          }
-        } else if (focusArea === 'trailer') {
+        if (focusArea === 'trailer') {
           setFocusArea('watchlist')
         } else if (focusArea === 'watchlist') {
-          setFocusArea('play')
-        } else {
+          setFocusArea(hasSeries ? 'watching' : primaryButton)
+        } else if (focusArea === 'watching') {
+          setFocusArea(primaryButton)
+        } else if (focusArea === 'play' || focusArea === 'seasons') {
           onNavigateToMenu()
         }
       },
       onRight: () => {
-        if (focusArea === 'play') {
+        if (focusArea === 'play' || focusArea === 'seasons') {
+          setFocusArea(hasSeries ? 'watching' : 'watchlist')
+        } else if (focusArea === 'watching') {
           setFocusArea('watchlist')
-        } else if (focusArea === 'watchlist') {
-          if (hasTrailer) {
-            setFocusArea('trailer')
-          } else if (hasSeries) {
-            setFocusArea('seasons')
-          }
-        } else if (focusArea === 'trailer' && hasSeries) {
-          setFocusArea('seasons')
+        } else if (focusArea === 'watchlist' && hasTrailer) {
+          setFocusArea('trailer')
         }
       },
       onEnter: () => {
-        if (focusArea === 'watchlist') {
+        if (focusArea === 'watching') {
+          handleToggleWatching()
+        } else if (focusArea === 'watchlist') {
           handleOpenFolderDialog()
         } else if (focusArea === 'trailer' && item?.trailer?.url) {
           onPlayTrailer(item.trailer.url, `${item.title} - ${t.trailer}`)
@@ -256,7 +273,7 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
       },
       onYellow: handleOpenFolderDialog
     }
-  }, [item, focusArea, availableQualities, dropdownFocusIndex, selectedQuality, onBack, onNavigateToMenu, handlePlayOrSelect, handleOpenFolderDialog, handleAddToFolder, similarItems, similarFocusIndex, onSelectItem, showFolderDialog, folders, folderFocusIndex, onPlayTrailer, t])
+  }, [item, focusArea, availableQualities, dropdownFocusIndex, selectedQuality, onBack, onNavigateToMenu, handlePlayOrSelect, handleOpenFolderDialog, handleAddToFolder, handleToggleWatching, similarItems, similarFocusIndex, onSelectItem, showFolderDialog, folders, folderFocusIndex, onPlayTrailer, t])
 
   useKeyboardNavigation(handlers, isActive && !!item)
 
@@ -342,38 +359,56 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
               {item.plot && <p class="item-plot">{item.plot}</p>}
 
               <div class="item-actions">
-                <div class="item-play-container">
+                {hasSeasons ? (
                   <button
-                    class={`item-button item-button-primary ${focusArea === 'play' || focusArea === 'qualitySelect' ? 'focused' : ''}`}
+                    class={`item-button item-button-primary ${focusArea === 'seasons' ? 'focused' : ''}`}
                   >
-                    <span class="item-button-icon">▶</span>
-                    {t.play}
-                    {selectedQuality && (
-                      <span class="item-quality-badge">{selectedQuality}</span>
-                    )}
-                    {availableQualities.length > 1 && (
-                      <span class="item-quality-hint">▲</span>
-                    )}
+                    <span class="item-button-icon">≡</span>
+                    {t.seasons} ({item.seasons!.length})
                   </button>
-                  {focusArea === 'qualitySelect' && (
-                    <div class="item-dropdown item-dropdown-quality">
-                      {availableQualities.map((q, idx) => (
-                        <div
-                          key={q}
-                          class={`item-dropdown-option ${dropdownFocusIndex === idx ? 'focused' : ''} ${selectedQuality === q ? 'selected' : ''}`}
-                        >
-                          {q}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                ) : (
+                  <div class="item-play-container">
+                    <button
+                      class={`item-button item-button-primary ${focusArea === 'play' || focusArea === 'qualitySelect' ? 'focused' : ''}`}
+                    >
+                      <span class="item-button-icon">▶</span>
+                      {t.play}
+                      {selectedQuality && (
+                        <span class="item-quality-badge">{selectedQuality}</span>
+                      )}
+                      {availableQualities.length > 1 && (
+                        <span class="item-quality-hint">▲</span>
+                      )}
+                    </button>
+                    {focusArea === 'qualitySelect' && (
+                      <div class="item-dropdown item-dropdown-quality">
+                        {availableQualities.map((q, idx) => (
+                          <div
+                            key={q}
+                            class={`item-dropdown-option ${dropdownFocusIndex === idx ? 'focused' : ''} ${selectedQuality === q ? 'selected' : ''}`}
+                          >
+                            {q}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+                {hasSeasons && (
+                  <button
+                    class={`item-button item-button-secondary ${focusArea === 'watching' ? 'focused' : ''}`}
+                    disabled={watchingToggleLoading}
+                  >
+                    <span class="item-button-icon">{isWatching ? '−' : '+'}</span>
+                    {isWatching ? t.removeFromWatchlist : t.addToWatchlist}
+                  </button>
+                )}
                 <button
                   class={`item-button item-button-secondary ${focusArea === 'watchlist' ? 'focused' : ''}`}
                   disabled={watchlistLoading}
                 >
                   <span class="item-button-icon">★</span>
-                  {t.addToWatchlist}
+                  {t.addToBookmarks}
                 </button>
                 {item?.trailer?.url && (
                   <button
@@ -381,14 +416,6 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
                   >
                     <span class="item-button-icon">▷</span>
                     {t.trailer}
-                  </button>
-                )}
-                {hasSeasons && (
-                  <button
-                    class={`item-button item-button-secondary ${focusArea === 'seasons' ? 'focused' : ''}`}
-                  >
-                    <span class="item-button-icon">≡</span>
-                    {t.seasons} ({item.seasons!.length})
                   </button>
                 )}
               </div>

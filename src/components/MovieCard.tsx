@@ -12,6 +12,7 @@ interface MovieCardProps {
   focused: boolean
   onSelect?: () => void
   episodeInfo?: EpisodeInfo
+  badge?: string
 }
 
 function splitTitle(title: string): { primary: string; secondary?: string } {
@@ -25,10 +26,10 @@ function splitTitle(title: string): { primary: string; secondary?: string } {
   return { primary: title }
 }
 
-export function MovieCard({ movie, focused, onSelect, episodeInfo }: MovieCardProps) {
+export function MovieCard({ movie, focused, onSelect, episodeInfo, badge }: MovieCardProps) {
   const { primary, secondary } = splitTitle(movie.title)
 
-  const episodeBadge = episodeInfo ? `S${episodeInfo.season}E${episodeInfo.episode}` : null
+  const episodeBadge = badge || (episodeInfo ? `S${episodeInfo.season}E${episodeInfo.episode}` : null)
 
   const cardStyle = {
     width: '300px',

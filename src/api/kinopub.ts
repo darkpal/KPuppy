@@ -333,27 +333,19 @@ export interface WatchingItem {
   title: string
   type: string
   subtype: string
-  year: number
   posters: Poster
-  watching: {
-    status: number
-    episodes: number
-    time: number
-    season?: number
-    episode?: number
-  }
+  year: number,
+  total: number
+  watched: number
+  new: number
 }
 
 export interface WatchingResponse {
   items: WatchingItem[]
 }
 
-const WATCHING_TTL = 60 * 1000
-
 export async function getWatching(): Promise<MovieItem[]> {
   const cacheKey = 'watching'
-  const cached = getCached<MovieItem[]>(cacheKey, WATCHING_TTL)
-  if (cached) return cached
 
   const [moviesRes, serialsRes] = await Promise.all([
     authFetch(`${BASE_URL}/v1/watching/movies?subscribed=1`),
@@ -382,10 +374,36 @@ export async function getWatching(): Promise<MovieItem[]> {
   return result
 }
 
+export async function getWatchingSerials(): Promise<WatchingItem[]> {
+  const cacheKey = 'watching_serials'
+
+  const response = await authFetch(`${BASE_URL}/v1/watching/serials?subscribed=1`)
+
+  if (!response.ok) {
+    throw new ApiError('Failed to fetch watching serials', response.status)
+  }
+
+  const data = await response.json()
+  const items = data.items || []
+
+  const result: WatchingItem[] = items.map((item: Record<string, unknown>) => ({
+    id: item.id as number,
+    title: item.title as string,
+    type: item.type as string,
+    subtype: (item.subtype || '') as string,
+    year: (item.year || 0) as number,
+    posters: item.posters as Poster,
+    total: (item.total || 0) as number,
+    watched: (item.watched || 0) as number,
+    new: (item.new || 0) as number
+  }))
+
+  setCache(cacheKey, result)
+  return result
+}
+
 export async function getItems(params: ItemsParams = {}): Promise<ItemsResponse> {
   const cacheKey = createCacheKey('items', params.type, params.sort, params.page, params.perpage, params.genre, params.country)
-  const cached = getCached<ItemsResponse>(cacheKey)
-  if (cached) return cached
 
   const searchParams = new URLSearchParams()
   if (params.type) searchParams.set('type', params.type)
@@ -569,9 +587,6 @@ export interface User {
 }
 
 export async function getUser(): Promise<User> {
-  const cacheKey = 'user'
-  const cached = getCached<User>(cacheKey)
-  if (cached) return cached
 
   const response = await authFetch(`${BASE_URL}/v1/user`)
 
@@ -592,7 +607,6 @@ export async function getUser(): Promise<User> {
     }
   }
 
-  setCache(cacheKey, result)
   return result
 }
 
@@ -717,12 +731,8 @@ export interface BookmarkFolder {
   updated: number
 }
 
-const BOOKMARKS_TTL = 60 * 1000
-
 export async function getBookmarkFolders(): Promise<BookmarkFolder[]> {
   const cacheKey = 'bookmarks'
-  const cached = getCached<BookmarkFolder[]>(cacheKey, BOOKMARKS_TTL)
-  if (cached) return cached
 
   const response = await authFetch(`${BASE_URL}/v1/bookmarks`)
 
@@ -754,8 +764,6 @@ export async function getBookmarkFolders(): Promise<BookmarkFolder[]> {
 
 export async function getBookmarkItems(folderId: number): Promise<MovieItem[]> {
   const cacheKey = createCacheKey('bookmark', folderId)
-  const cached = getCached<MovieItem[]>(cacheKey, BOOKMARKS_TTL)
-  if (cached) return cached
 
   const response = await authFetch(`${BASE_URL}/v1/bookmarks/${folderId}`)
 
@@ -867,8 +875,6 @@ export interface Collection {
 
 export async function getCollections(): Promise<Collection[]> {
   const cacheKey = 'collections'
-  const cached = getCached<Collection[]>(cacheKey)
-  if (cached) return cached
 
   const response = await authFetch(`${BASE_URL}/v1/collections`)
 
@@ -920,8 +926,6 @@ export interface HistoryItem extends MovieItem {
 
 export async function getHistory(): Promise<HistoryItem[]> {
   const cacheKey = 'history'
-  const cached = getCached<HistoryItem[]>(cacheKey, WATCHING_TTL)
-  if (cached) return cached
 
   const response = await authFetch(`${BASE_URL}/v1/history`)
 
@@ -988,10 +992,8 @@ export async function clearHistoryForItem(itemId: number): Promise<void> {
 }
 
 export async function toggleWatchlist(itemId: number): Promise<void> {
-  const response = await authFetch(`${BASE_URL}/v1/watching/togglewatchlist`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ id: itemId })
+  const response = await authFetch(`${BASE_URL}/v1/watching/togglewatchlist?id=${itemId}`, {
+    method: 'POST'
   })
 
   if (!response.ok) {
@@ -999,6 +1001,16 @@ export async function toggleWatchlist(itemId: number): Promise<void> {
   }
 
   invalidateCache('watching')
+  invalidateCache('watching_serials')
+}
+
+export async function isItemInWatchlist(itemId: number): Promise<boolean> {
+  try {
+    const serials = await getWatchingSerials()
+    return serials.some(s => s.id === itemId)
+  } catch {
+    return false
+  }
 }
 
 export async function getGenres(): Promise<Genre[]> {
