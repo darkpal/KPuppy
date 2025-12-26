@@ -65,7 +65,7 @@ export function SettingsScreen({ onNavigateToMenu, isActive }: SettingsScreenPro
         setDeviceId(deviceInfo.id)
         setSettings(deviceInfo.settings)
       } catch (err) {
-        console.error('Failed to load settings:', err)
+        if (import.meta.env.DEV) console.error('Failed to load settings:', err)
       } finally {
         setLoading(false)
       }
@@ -79,7 +79,7 @@ export function SettingsScreen({ onNavigateToMenu, isActive }: SettingsScreenPro
     try {
       await updateDeviceSettings(deviceId, { [key]: value })
     } catch (err) {
-      console.error('Failed to save setting:', err)
+      if (import.meta.env.DEV) console.error('Failed to save setting:', err)
     } finally {
       setSaving(false)
     }

@@ -94,7 +94,7 @@ export function MainScreen({ onLogout, onSelectItem, onNavigateToMenu, isActive,
           i === index ? { ...row, items, loading: false } : row
         ))
       } catch (err) {
-        console.error(`Failed to load ${config.titleKey}:`, err)
+        if (import.meta.env.DEV) console.error(`Failed to load ${config.titleKey}:`, err)
         setRows(prev => prev.map((row, i) =>
           i === index ? { ...row, loading: false } : row
         ))

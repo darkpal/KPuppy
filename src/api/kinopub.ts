@@ -1,9 +1,9 @@
 import { getTokens, saveTokens, Tokens } from '../storage'
-import { getCached, setCache, createCacheKey, invalidateCache } from './cache'
+import { getCached, setCache, createCacheKey, invalidateCache, cachedFetch } from './cache'
 
 const BASE_URL = 'https://api.service-kp.com'
 const CLIENT_ID = 'xbmc'
-const CLIENT_SECRET = 'cgg3gtifu46urtfp2zp1nqtba0k2ezxh'
+const CLIENT_SECRET = import.meta.env.VITE_CLIENT_SECRET || ''
 const APP_VERSION = '0.0.1'
 
 let onAuthErrorCallback: (() => void) | null = null
@@ -200,36 +200,24 @@ function mapToMovieItem(item: Record<string, unknown>): MovieItem {
 export async function requestDeviceCode(): Promise<DeviceCodeResponse> {
   const body = `grant_type=device_code&client_id=${CLIENT_ID}&client_secret=${CLIENT_SECRET}`
 
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest()
-    xhr.open('POST', `${BASE_URL}/oauth2/device`, true)
-    xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded')
-
-    xhr.onload = function() {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        try {
-          const data = JSON.parse(xhr.responseText)
-          resolve({
-            code: data.code,
-            userCode: data.user_code,
-            verificationUri: data.verification_uri,
-            expiresIn: data.expires_in,
-            interval: data.interval
-          })
-        } catch (e) {
-          reject(new ApiError('Failed to parse response', xhr.status))
-        }
-      } else {
-        reject(new ApiError(`Failed to request device code: ${xhr.status}`, xhr.status))
-      }
-    }
-
-    xhr.onerror = function() {
-      reject(new ApiError('Network error requesting device code', 0))
-    }
-
-    xhr.send(body)
+  const response = await fetch(`${BASE_URL}/oauth2/device`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body
   })
+
+  if (!response.ok) {
+    throw new ApiError(`Failed to request device code: ${response.status}`, response.status)
+  }
+
+  const data = await response.json()
+  return {
+    code: data.code,
+    userCode: data.user_code,
+    verificationUri: data.verification_uri,
+    expiresIn: data.expires_in,
+    interval: data.interval
+  }
 }
 
 export async function pollForToken(deviceCode: string): Promise<TokenResponse | null> {
@@ -569,7 +557,7 @@ export async function registerDevice(): Promise<void> {
     })
   })
 
-  if (!response.ok) {
+  if (!response.ok && import.meta.env.DEV) {
     console.warn('Failed to register device:', response.status)
   }
 }
@@ -737,16 +725,16 @@ export async function getBookmarkFolders(): Promise<BookmarkFolder[]> {
   const response = await authFetch(`${BASE_URL}/v1/bookmarks`)
 
   if (!response.ok) {
-    console.error('Bookmarks API error:', response.status)
+    if (import.meta.env.DEV) console.error('Bookmarks API error:', response.status)
     throw new ApiError('Failed to fetch bookmarks', response.status)
   }
 
   const data = await response.json()
-  console.log('Bookmarks API response:', data)
+  if (import.meta.env.DEV) console.log('Bookmarks API response:', data)
 
   const items = data.items || []
   if (!Array.isArray(items)) {
-    console.error('Bookmark items not an array:', items)
+    if (import.meta.env.DEV) console.error('Bookmark items not an array:', items)
     return []
   }
 
@@ -930,16 +918,16 @@ export async function getHistory(): Promise<HistoryItem[]> {
   const response = await authFetch(`${BASE_URL}/v1/history`)
 
   if (!response.ok) {
-    console.error('History API error:', response.status)
+    if (import.meta.env.DEV) console.error('History API error:', response.status)
     throw new ApiError('Failed to fetch history', response.status)
   }
 
   const data = await response.json()
-  console.log('History API response:', data)
+  if (import.meta.env.DEV) console.log('History API response:', data)
 
   const items = data.items || data.history || []
   if (!Array.isArray(items)) {
-    console.error('History items not an array:', items)
+    if (import.meta.env.DEV) console.error('History items not an array:', items)
     return []
   }
 
@@ -1014,48 +1002,38 @@ export async function isItemInWatchlist(itemId: number): Promise<boolean> {
 }
 
 export async function getGenres(): Promise<Genre[]> {
-  const cacheKey = 'genres'
-  const cached = getCached<Genre[]>(cacheKey)
-  if (cached) return cached
+  return cachedFetch('genres', async () => {
+    const response = await authFetch(`${BASE_URL}/v1/genres`)
 
-  const response = await authFetch(`${BASE_URL}/v1/genres`)
+    if (!response.ok) {
+      throw new ApiError('Failed to fetch genres', response.status)
+    }
 
-  if (!response.ok) {
-    throw new ApiError('Failed to fetch genres', response.status)
-  }
+    const data = await response.json()
 
-  const data = await response.json()
-
-  const result: Genre[] = (data.items || []).map((item: Record<string, unknown>) => ({
-    id: item.id as number,
-    title: (item.title || item.name || '') as string,
-    type: (item.type || '') as string
-  }))
-
-  setCache(cacheKey, result)
-  return result
+    return (data.items || []).map((item: Record<string, unknown>) => ({
+      id: item.id as number,
+      title: (item.title || item.name || '') as string,
+      type: (item.type || '') as string
+    }))
+  })
 }
 
 export async function getCountries(): Promise<Country[]> {
-  const cacheKey = 'countries'
-  const cached = getCached<Country[]>(cacheKey)
-  if (cached) return cached
+  return cachedFetch('countries', async () => {
+    const response = await authFetch(`${BASE_URL}/v1/countries`)
 
-  const response = await authFetch(`${BASE_URL}/v1/countries`)
+    if (!response.ok) {
+      throw new ApiError('Failed to fetch countries', response.status)
+    }
 
-  if (!response.ok) {
-    throw new ApiError('Failed to fetch countries', response.status)
-  }
+    const data = await response.json()
 
-  const data = await response.json()
-
-  const result: Country[] = (data.items || []).map((item: Record<string, unknown>) => ({
-    id: item.id as number,
-    title: (item.title || item.name || '') as string
-  }))
-
-  setCache(cacheKey, result)
-  return result
+    return (data.items || []).map((item: Record<string, unknown>) => ({
+      id: item.id as number,
+      title: (item.title || item.name || '') as string
+    }))
+  })
 }
 
 export interface ContentType {
@@ -1064,25 +1042,20 @@ export interface ContentType {
 }
 
 export async function getContentTypes(): Promise<ContentType[]> {
-  const cacheKey = 'types'
-  const cached = getCached<ContentType[]>(cacheKey)
-  if (cached) return cached
+  return cachedFetch('types', async () => {
+    const response = await authFetch(`${BASE_URL}/v1/types`)
 
-  const response = await authFetch(`${BASE_URL}/v1/types`)
+    if (!response.ok) {
+      throw new ApiError('Failed to fetch content types', response.status)
+    }
 
-  if (!response.ok) {
-    throw new ApiError('Failed to fetch content types', response.status)
-  }
+    const data = await response.json()
 
-  const data = await response.json()
-
-  const result: ContentType[] = (data.items || []).map((item: Record<string, unknown>) => ({
-    id: (item.id || '') as string,
-    title: (item.title || item.name || '') as string
-  }))
-
-  setCache(cacheKey, result)
-  return result
+    return (data.items || []).map((item: Record<string, unknown>) => ({
+      id: (item.id || '') as string,
+      title: (item.title || item.name || '') as string
+    }))
+  })
 }
 
 export interface TVChannel {
@@ -1093,28 +1066,23 @@ export interface TVChannel {
 }
 
 export async function getTVChannels(): Promise<TVChannel[]> {
-  const cacheKey = 'tv'
-  const cached = getCached<TVChannel[]>(cacheKey)
-  if (cached) return cached
+  return cachedFetch('tv', async () => {
+    const response = await authFetch(`${BASE_URL}/v1/tv`)
 
-  const response = await authFetch(`${BASE_URL}/v1/tv`)
-
-  if (!response.ok) {
-    throw new ApiError('Failed to fetch TV channels', response.status)
-  }
-
-  const data = await response.json()
-
-  const result: TVChannel[] = (data.items || data.channels || []).map((item: Record<string, unknown>) => {
-    const logos = item.logos as Record<string, string> | undefined
-    return {
-      id: item.id as number,
-      title: (item.title || item.name || '') as string,
-      url: (item.stream || item.url) as string | undefined,
-      logo: (logos?.s || logos?.m || item.logo) as string | undefined
+    if (!response.ok) {
+      throw new ApiError('Failed to fetch TV channels', response.status)
     }
-  })
 
-  setCache(cacheKey, result)
-  return result
+    const data = await response.json()
+
+    return (data.items || data.channels || []).map((item: Record<string, unknown>) => {
+      const logos = item.logos as Record<string, string> | undefined
+      return {
+        id: item.id as number,
+        title: (item.title || item.name || '') as string,
+        url: (item.stream || item.url) as string | undefined,
+        logo: (logos?.s || logos?.m || item.logo) as string | undefined
+      }
+    })
+  })
 }

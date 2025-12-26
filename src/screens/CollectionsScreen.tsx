@@ -34,7 +34,7 @@ export function CollectionsScreen({ onSelectItem, onNavigateToMenu, isActive }: 
         const data = await getCollections()
         setCollections(data)
       } catch (err) {
-        console.error('Failed to load collections:', err)
+        if (import.meta.env.DEV) console.error('Failed to load collections:', err)
       } finally {
         setLoading(false)
       }
@@ -52,7 +52,7 @@ export function CollectionsScreen({ onSelectItem, onNavigateToMenu, isActive }: 
       setViewMode('items')
       setFocusedIndex(0)
     } catch (err) {
-      console.error('Failed to load collection items:', err)
+      if (import.meta.env.DEV) console.error('Failed to load collection items:', err)
     } finally {
       setLoading(false)
     }

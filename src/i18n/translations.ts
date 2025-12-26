@@ -100,6 +100,7 @@ export interface Translations {
   // Errors
   errorLoading: string
   errorNoItems: string
+  retry: string
   noSeasonsAvailable: string
   newEpisodesCount: string
 
@@ -237,6 +238,7 @@ const en: Translations = {
 
   errorLoading: 'Failed to load',
   errorNoItems: 'No items found',
+  retry: 'Retry',
   noSeasonsAvailable: 'No seasons available',
   newEpisodesCount: 'new',
 
@@ -364,6 +366,7 @@ const ru: Translations = {
 
   errorLoading: 'Ошибка загрузки',
   errorNoItems: 'Ничего не найдено',
+  retry: 'Повторить',
   noSeasonsAvailable: 'Сезоны недоступны',
   newEpisodesCount: 'новых',
 
@@ -491,6 +494,7 @@ const de: Translations = {
 
   errorLoading: 'Laden fehlgeschlagen',
   errorNoItems: 'Keine Einträge gefunden',
+  retry: 'Erneut versuchen',
   noSeasonsAvailable: 'Keine Staffeln verfügbar',
   newEpisodesCount: 'neu',
 

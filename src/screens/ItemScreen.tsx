@@ -1,8 +1,11 @@
-import { useState, useEffect, useCallback, useMemo } from 'preact/hooks'
-import { getItem, getSimilarItems, getBookmarkFolders, addToBookmark, toggleWatchlist, isItemInWatchlist, ItemDetails, MovieItem, VideoFile, Audio, Subtitle, BookmarkFolder } from '../api/kinopub'
+import { useEffect, useCallback, useMemo, useReducer } from 'preact/hooks'
+import { getItem, getSimilarItems, getBookmarkFolders, addToBookmark, toggleWatchlist, isItemInWatchlist, ItemDetails as ItemDetailsType, MovieItem, VideoFile, BookmarkFolder } from '../api/kinopub'
 import { getLocalSettings } from '../storage'
 import { useKeyboardNavigation } from '../hooks'
 import { useI18n } from '../i18n'
+import { ItemDetails } from '../components/ItemDetails'
+import { SimilarItems } from '../components/SimilarItems'
+import { FolderDialog } from '../components/FolderDialog'
 import '../styles/item.css'
 
 interface PlayOptions {
@@ -29,81 +32,132 @@ function getAvailableQualities(files?: VideoFile[]): string[] {
   return files.map(f => f.quality).filter(q => QUALITY_ORDER.includes(q))
 }
 
-function formatAudioLabel(audio: Audio): string {
-  const parts: string[] = []
-  if (audio.type) {
-    parts.push(audio.type.short_title || audio.type.title)
-  }
-  if (audio.author?.title) {
-    parts.push(audio.author.title)
-  }
-  if (audio.channels === 6) {
-    parts.push('5.1')
-  }
-  return parts.join(' • ') || 'Audio'
+interface ItemScreenState {
+  item: ItemDetailsType | null
+  loading: boolean
+  error: string | null
+  focusArea: FocusArea
+  selectedQuality: string | null
+  dropdownFocusIndex: number
+  similarItems: MovieItem[]
+  similarFocusIndex: number
+  watchlistLoading: boolean
+  showFolderDialog: boolean
+  folders: BookmarkFolder[]
+  folderFocusIndex: number
+  isWatching: boolean
+  watchingToggleLoading: boolean
 }
 
-function formatSubtitleLabel(sub: Subtitle): string {
-  const langNames: Record<string, string> = {
-    rus: 'Русский',
-    eng: 'English',
-    ukr: 'Українська',
-    spa: 'Español',
-    por: 'Português',
-    deu: 'Deutsch',
-    fra: 'Français',
+type ItemScreenAction =
+  | { type: 'LOAD_START' }
+  | { type: 'LOAD_SUCCESS'; item: ItemDetailsType; focusArea: FocusArea; selectedQuality: string | null }
+  | { type: 'LOAD_ERROR'; error: string }
+  | { type: 'SET_SIMILAR_ITEMS'; items: MovieItem[] }
+  | { type: 'SET_IS_WATCHING'; value: boolean }
+  | { type: 'SET_FOCUS_AREA'; area: FocusArea }
+  | { type: 'SET_SELECTED_QUALITY'; quality: string }
+  | { type: 'SET_DROPDOWN_FOCUS_INDEX'; index: number }
+  | { type: 'SET_SIMILAR_FOCUS_INDEX'; index: number }
+  | { type: 'SET_FOLDER_FOCUS_INDEX'; index: number }
+  | { type: 'OPEN_FOLDER_DIALOG'; folders: BookmarkFolder[] }
+  | { type: 'CLOSE_FOLDER_DIALOG' }
+  | { type: 'SET_WATCHLIST_LOADING'; value: boolean }
+  | { type: 'SET_WATCHING_TOGGLE_LOADING'; value: boolean }
+  | { type: 'TOGGLE_WATCHING' }
+
+const initialState: ItemScreenState = {
+  item: null,
+  loading: true,
+  error: null,
+  focusArea: 'play',
+  selectedQuality: null,
+  dropdownFocusIndex: 0,
+  similarItems: [],
+  similarFocusIndex: 0,
+  watchlistLoading: false,
+  showFolderDialog: false,
+  folders: [],
+  folderFocusIndex: 0,
+  isWatching: false,
+  watchingToggleLoading: false,
+}
+
+function itemScreenReducer(state: ItemScreenState, action: ItemScreenAction): ItemScreenState {
+  switch (action.type) {
+    case 'LOAD_START':
+      return { ...initialState, loading: true }
+    case 'LOAD_SUCCESS':
+      return { ...state, loading: false, item: action.item, focusArea: action.focusArea, selectedQuality: action.selectedQuality }
+    case 'LOAD_ERROR':
+      return { ...state, loading: false, error: action.error }
+    case 'SET_SIMILAR_ITEMS':
+      return { ...state, similarItems: action.items }
+    case 'SET_IS_WATCHING':
+      return { ...state, isWatching: action.value }
+    case 'SET_FOCUS_AREA':
+      return { ...state, focusArea: action.area }
+    case 'SET_SELECTED_QUALITY':
+      return { ...state, selectedQuality: action.quality }
+    case 'SET_DROPDOWN_FOCUS_INDEX':
+      return { ...state, dropdownFocusIndex: action.index }
+    case 'SET_SIMILAR_FOCUS_INDEX':
+      return { ...state, similarFocusIndex: action.index }
+    case 'SET_FOLDER_FOCUS_INDEX':
+      return { ...state, folderFocusIndex: action.index }
+    case 'OPEN_FOLDER_DIALOG':
+      return { ...state, showFolderDialog: true, folders: action.folders, folderFocusIndex: 0, watchlistLoading: false }
+    case 'CLOSE_FOLDER_DIALOG':
+      return { ...state, showFolderDialog: false, watchlistLoading: false }
+    case 'SET_WATCHLIST_LOADING':
+      return { ...state, watchlistLoading: action.value }
+    case 'SET_WATCHING_TOGGLE_LOADING':
+      return { ...state, watchingToggleLoading: action.value }
+    case 'TOGGLE_WATCHING':
+      return { ...state, isWatching: !state.isWatching, watchingToggleLoading: false }
+    default:
+      return state
   }
-  return langNames[sub.lang] || sub.lang.toUpperCase()
 }
 
 export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeries, onSelectItem, onNavigateToMenu, isActive }: ItemScreenProps) {
   const { t } = useI18n()
-  const [item, setItem] = useState<ItemDetails | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [focusArea, setFocusArea] = useState<FocusArea>('play')
-  const [selectedQuality, setSelectedQuality] = useState<string | null>(null)
-  const [dropdownFocusIndex, setDropdownFocusIndex] = useState(0)
-  const [similarItems, setSimilarItems] = useState<MovieItem[]>([])
-  const [similarFocusIndex, setSimilarFocusIndex] = useState(0)
-  const [watchlistLoading, setWatchlistLoading] = useState(false)
-  const [showFolderDialog, setShowFolderDialog] = useState(false)
-  const [folders, setFolders] = useState<BookmarkFolder[]>([])
-  const [folderFocusIndex, setFolderFocusIndex] = useState(0)
-  const [isWatching, setIsWatching] = useState(false)
-  const [watchingToggleLoading, setWatchingToggleLoading] = useState(false)
+  const [state, dispatch] = useReducer(itemScreenReducer, initialState)
+  const { item, loading, error, focusArea, selectedQuality, dropdownFocusIndex, similarItems, similarFocusIndex, watchlistLoading, showFolderDialog, folders, folderFocusIndex, isWatching, watchingToggleLoading } = state
 
   useEffect(() => {
     async function loadItem() {
       try {
-        setLoading(true)
-        setError(null)
-        setIsWatching(false)
+        dispatch({ type: 'LOAD_START' })
         const data = await getItem(itemId)
-        setItem(data)
 
         const hasSeries = data.seasons && data.seasons.length > 0
-        setFocusArea(hasSeries ? 'seasons' : 'play')
+        const newFocusArea: FocusArea = hasSeries ? 'seasons' : 'play'
 
         const files = data.videos?.[0]?.files || data.seasons?.[0]?.episodes?.[0]?.files
         const available = getAvailableQualities(files)
         const { defaultQuality } = getLocalSettings()
 
+        let quality: string | null = null
         if (defaultQuality !== 'auto' && available.includes(defaultQuality)) {
-          setSelectedQuality(defaultQuality)
+          quality = defaultQuality
         } else if (available.length > 0) {
-          setSelectedQuality(available[0])
+          quality = available[0]
         }
 
-        getSimilarItems(itemId).then(setSimilarItems).catch(() => {})
+        dispatch({ type: 'LOAD_SUCCESS', item: data, focusArea: newFocusArea, selectedQuality: quality })
+
+        getSimilarItems(itemId).then(items => dispatch({ type: 'SET_SIMILAR_ITEMS', items })).catch(err => {
+          if (import.meta.env.DEV) console.error('getSimilarItems failed:', err)
+        })
 
         if (hasSeries) {
-          isItemInWatchlist(itemId).then(setIsWatching).catch(() => {})
+          isItemInWatchlist(itemId).then(value => dispatch({ type: 'SET_IS_WATCHING', value })).catch(err => {
+            if (import.meta.env.DEV) console.error('isItemInWatchlist failed:', err)
+          })
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load')
-      } finally {
-        setLoading(false)
+        dispatch({ type: 'LOAD_ERROR', error: err instanceof Error ? err.message : 'Failed to load' })
       }
     }
     loadItem()
@@ -136,43 +190,38 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
 
   const handleOpenFolderDialog = useCallback(async () => {
     if (watchlistLoading) return
-    setWatchlistLoading(true)
+    dispatch({ type: 'SET_WATCHLIST_LOADING', value: true })
     try {
       const folderList = await getBookmarkFolders()
-      setFolders(folderList)
-      setFolderFocusIndex(0)
-      setShowFolderDialog(true)
+      dispatch({ type: 'OPEN_FOLDER_DIALOG', folders: folderList })
     } catch (err) {
-      console.error('Failed to load folders:', err)
-    } finally {
-      setWatchlistLoading(false)
+      if (import.meta.env.DEV) console.error('Failed to load folders:', err)
+      dispatch({ type: 'SET_WATCHLIST_LOADING', value: false })
     }
   }, [watchlistLoading])
 
   const handleToggleWatching = useCallback(async () => {
     if (watchingToggleLoading) return
-    setWatchingToggleLoading(true)
+    dispatch({ type: 'SET_WATCHING_TOGGLE_LOADING', value: true })
     try {
       await toggleWatchlist(itemId)
-      setIsWatching(prev => !prev)
+      dispatch({ type: 'TOGGLE_WATCHING' })
     } catch (err) {
-      console.error('Failed to toggle watching:', err)
-    } finally {
-      setWatchingToggleLoading(false)
+      if (import.meta.env.DEV) console.error('Failed to toggle watching:', err)
+      dispatch({ type: 'SET_WATCHING_TOGGLE_LOADING', value: false })
     }
   }, [itemId, watchingToggleLoading])
 
   const handleAddToFolder = useCallback(async () => {
     const folder = folders[folderFocusIndex]
     if (!folder || watchlistLoading) return
-    setWatchlistLoading(true)
+    dispatch({ type: 'SET_WATCHLIST_LOADING', value: true })
     try {
       await addToBookmark(itemId, folder.id)
-      setShowFolderDialog(false)
+      dispatch({ type: 'CLOSE_FOLDER_DIALOG' })
     } catch (err) {
-      console.error('Failed to add to folder:', err)
-    } finally {
-      setWatchlistLoading(false)
+      if (import.meta.env.DEV) console.error('Failed to add to folder:', err)
+      dispatch({ type: 'SET_WATCHLIST_LOADING', value: false })
     }
   }, [folders, folderFocusIndex, itemId, watchlistLoading])
 
@@ -180,13 +229,13 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
     const hasSeries = item?.seasons && item.seasons.length > 0
     const hasSimilar = similarItems.length > 0
     const hasTrailer = !!item?.trailer?.url
-    const primaryButton = hasSeries ? 'seasons' : 'play'
+    const primaryButton: FocusArea = hasSeries ? 'seasons' : 'play'
 
     if (showFolderDialog) {
       return {
-        onBack: () => setShowFolderDialog(false),
-        onUp: () => setFolderFocusIndex(prev => Math.max(0, prev - 1)),
-        onDown: () => setFolderFocusIndex(prev => Math.min(folders.length - 1, prev + 1)),
+        onBack: () => dispatch({ type: 'CLOSE_FOLDER_DIALOG' }),
+        onUp: () => dispatch({ type: 'SET_FOLDER_FOCUS_INDEX', index: Math.max(0, folderFocusIndex - 1) }),
+        onDown: () => dispatch({ type: 'SET_FOLDER_FOCUS_INDEX', index: Math.min(folders.length - 1, folderFocusIndex + 1) }),
         onEnter: handleAddToFolder
       }
     }
@@ -194,13 +243,13 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
     if (focusArea === 'qualitySelect') {
       const maxIndex = availableQualities.length - 1
       return {
-        onUp: () => setDropdownFocusIndex(prev => Math.max(0, prev - 1)),
-        onDown: () => setDropdownFocusIndex(prev => Math.min(maxIndex, prev + 1)),
+        onUp: () => dispatch({ type: 'SET_DROPDOWN_FOCUS_INDEX', index: Math.max(0, dropdownFocusIndex - 1) }),
+        onDown: () => dispatch({ type: 'SET_DROPDOWN_FOCUS_INDEX', index: Math.min(maxIndex, dropdownFocusIndex + 1) }),
         onEnter: () => {
-          setSelectedQuality(availableQualities[dropdownFocusIndex])
-          setFocusArea('play')
+          dispatch({ type: 'SET_SELECTED_QUALITY', quality: availableQualities[dropdownFocusIndex] })
+          dispatch({ type: 'SET_FOCUS_AREA', area: 'play' })
         },
-        onBack: () => setFocusArea('play')
+        onBack: () => dispatch({ type: 'SET_FOCUS_AREA', area: 'play' })
       }
     }
 
@@ -209,13 +258,13 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
         onBack,
         onLeft: () => {
           if (similarFocusIndex > 0) {
-            setSimilarFocusIndex(prev => prev - 1)
+            dispatch({ type: 'SET_SIMILAR_FOCUS_INDEX', index: similarFocusIndex - 1 })
           } else {
             onNavigateToMenu()
           }
         },
-        onRight: () => setSimilarFocusIndex(prev => Math.min(similarItems.length - 1, prev + 1)),
-        onUp: () => setFocusArea(primaryButton),
+        onRight: () => dispatch({ type: 'SET_SIMILAR_FOCUS_INDEX', index: Math.min(similarItems.length - 1, similarFocusIndex + 1) }),
+        onUp: () => dispatch({ type: 'SET_FOCUS_AREA', area: primaryButton }),
         onEnter: () => {
           const selectedItem = similarItems[similarFocusIndex]
           if (selectedItem) {
@@ -230,34 +279,34 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
       onUp: () => {
         if (focusArea === 'play' && availableQualities.length > 1) {
           const currentIdx = availableQualities.indexOf(selectedQuality || '')
-          setDropdownFocusIndex(Math.max(0, currentIdx))
-          setFocusArea('qualitySelect')
+          dispatch({ type: 'SET_DROPDOWN_FOCUS_INDEX', index: Math.max(0, currentIdx) })
+          dispatch({ type: 'SET_FOCUS_AREA', area: 'qualitySelect' })
         }
       },
       onDown: () => {
         if (hasSimilar) {
-          setFocusArea('similar')
-          setSimilarFocusIndex(0)
+          dispatch({ type: 'SET_FOCUS_AREA', area: 'similar' })
+          dispatch({ type: 'SET_SIMILAR_FOCUS_INDEX', index: 0 })
         }
       },
       onLeft: () => {
         if (focusArea === 'trailer') {
-          setFocusArea('watchlist')
+          dispatch({ type: 'SET_FOCUS_AREA', area: 'watchlist' })
         } else if (focusArea === 'watchlist') {
-          setFocusArea(hasSeries ? 'watching' : primaryButton)
+          dispatch({ type: 'SET_FOCUS_AREA', area: hasSeries ? 'watching' : primaryButton })
         } else if (focusArea === 'watching') {
-          setFocusArea(primaryButton)
+          dispatch({ type: 'SET_FOCUS_AREA', area: primaryButton })
         } else if (focusArea === 'play' || focusArea === 'seasons') {
           onNavigateToMenu()
         }
       },
       onRight: () => {
         if (focusArea === 'play' || focusArea === 'seasons') {
-          setFocusArea(hasSeries ? 'watching' : 'watchlist')
+          dispatch({ type: 'SET_FOCUS_AREA', area: hasSeries ? 'watching' : 'watchlist' })
         } else if (focusArea === 'watching') {
-          setFocusArea('watchlist')
+          dispatch({ type: 'SET_FOCUS_AREA', area: 'watchlist' })
         } else if (focusArea === 'watchlist' && hasTrailer) {
-          setFocusArea('trailer')
+          dispatch({ type: 'SET_FOCUS_AREA', area: 'trailer' })
         }
       },
       onEnter: () => {
@@ -420,111 +469,33 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
                 )}
               </div>
             </div>
-            <div class="item-column-right">
-              {countries && (
-                <p class="item-detail">
-                  <span class="item-detail-label">{t.country}:</span>
-                  <span class="item-detail-value">{countries}</span>
-                </p>
-              )}
-              {directors && (
-                <p class="item-detail">
-                  <span class="item-detail-label">{t.director}:</span>
-                  <span class="item-detail-value">{directors}</span>
-                </p>
-              )}
-              {actors && (
-                <p class="item-detail">
-                  <span class="item-detail-label">{t.cast}:</span>
-                  <span class="item-detail-value">{actors}</span>
-                </p>
-              )}
-              {audios.length > 0 && (
-                <p class="item-detail">
-                  <span class="item-detail-label">{t.audio}:</span>
-                  <span class="item-detail-value">
-                    {audios.map((audio, idx) => (
-                      <span key={audio.id}>
-                        {formatAudioLabel(audio)}
-                        {idx < audios.length - 1 && ', '}
-                      </span>
-                    ))}
-                  </span>
-                </p>
-              )}
-              {subtitles.length > 0 && (
-                <p class="item-detail">
-                  <span class="item-detail-label">{t.subtitles}:</span>
-                  <span class="item-detail-value">
-                    {subtitles.map((sub, idx) => (
-                      <span key={sub.lang}>
-                        {formatSubtitleLabel(sub)}
-                        {idx < subtitles.length - 1 && ', '}
-                      </span>
-                    ))}
-                  </span>
-                </p>
-              )}
-            </div>
+            <ItemDetails
+              countries={countries}
+              directors={directors}
+              actors={actors}
+              audios={audios}
+              subtitles={subtitles}
+            />
           </div>
 
-          {similarItems.length > 0 && (
-            <div class={`item-similar ${focusArea === 'similar' ? 'active' : ''}`}>
-              <h3 class="item-similar-title">{t.similar}</h3>
-              <div class="item-similar-row">
-                {similarItems.slice(0, 8).map((similar, idx) => (
-                  <div
-                    key={similar.id}
-                    class={`item-similar-card ${focusArea === 'similar' && similarFocusIndex === idx ? 'focused' : ''}`}
-                    onClick={() => onSelectItem(similar.id)}
-                  >
-                    {similar.posters?.medium || similar.posters?.small ? (
-                      <img
-                        src={similar.posters.medium || similar.posters.small}
-                        alt={similar.title}
-                        class="item-similar-poster"
-                      />
-                    ) : (
-                      <div class="item-similar-poster item-similar-poster-placeholder" />
-                    )}
-                    <div class="item-similar-info">
-                      <span class="item-similar-name">{similar.title}</span>
-                      <span class="item-similar-year">{similar.year}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          <SimilarItems
+            items={similarItems}
+            focusedIndex={similarFocusIndex}
+            isFocused={focusArea === 'similar'}
+            onSelectItem={onSelectItem}
+          />
         </div>
       </div>
 
     </div>
 
     {showFolderDialog && (
-      <div class="item-folder-dialog-overlay">
-        <div class="item-folder-dialog">
-          <h2>{t.addToBookmarks}</h2>
-          <div class="item-folder-list">
-            {folders.map((folder, idx) => (
-              <div
-                key={folder.id}
-                class={`item-folder-option ${folderFocusIndex === idx ? 'focused' : ''}`}
-                onClick={() => {
-                  setFolderFocusIndex(idx)
-                  handleAddToFolder()
-                }}
-              >
-                <span class="item-folder-name">{folder.title}</span>
-                <span class="item-folder-count">{folder.count}</span>
-              </div>
-            ))}
-          </div>
-          {folders.length === 0 && (
-            <p class="item-folder-empty">{t.errorNoItems}</p>
-          )}
-        </div>
-      </div>
+      <FolderDialog
+        folders={folders}
+        focusedIndex={folderFocusIndex}
+        onSelect={(index: number) => dispatch({ type: 'SET_FOLDER_FOCUS_INDEX', index })}
+        onConfirm={handleAddToFolder}
+      />
     )}
     </>
   )

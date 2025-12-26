@@ -76,7 +76,9 @@ export function useAuth(): UseAuthResult {
             refresh: result.refreshToken,
             expiresAt: Date.now() + result.expiresIn * 1000
           })
-          registerDevice().catch(() => {})
+          registerDevice().catch(err => {
+            if (import.meta.env.DEV) console.error('registerDevice failed:', err)
+          })
           setDeviceCode(null)
           setPollInterval(null)
           setState(prev => ({

@@ -77,7 +77,9 @@ export function SearchScreen({ onBack, onSelectItem, onNavigateToMenu, isActive 
         setContentTypes(types)
         saveContentTypesCache(types)
       })
-      .catch(() => {})
+      .catch(err => {
+        if (import.meta.env.DEV) console.error('getContentTypes failed:', err)
+      })
   }, [])
 
   const performSearch = useCallback(async (searchQuery: string, type: string | null) => {
@@ -97,7 +99,7 @@ export function SearchScreen({ onBack, onSelectItem, onNavigateToMenu, isActive 
       })
       setResults(response.items)
     } catch (err) {
-      console.error('Search failed:', err)
+      if (import.meta.env.DEV) console.error('Search failed:', err)
       setResults([])
     } finally {
       setLoading(false)

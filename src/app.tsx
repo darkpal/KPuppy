@@ -13,7 +13,8 @@ import { UserScreen } from './screens/UserScreen'
 import { SeasonsScreen } from './screens/SeasonsScreen'
 import { NewEpisodesScreen } from './screens/NewEpisodesScreen'
 import { PlayerScreen } from './screens/PlayerScreen'
-import { SideMenu, ALL_MENU_ITEMS_COUNT, getMenuIdByIndex } from './components/SideMenu'
+import { ALL_MENU_ITEMS_COUNT, getMenuIdByIndex } from './components/SideMenu'
+import { ScreenManager } from './components/ScreenManager'
 import { isAuthenticated, clearTokens, getTokens, getLocalSettings, saveReturnTo, getReturnTo, clearReturnTo, getContentTypesCache, saveContentTypesCache } from './storage'
 import { refreshAccessToken, getItem, setOnAuthError, getDeviceInfo, markTime, getContentTypes, Audio, Subtitle } from './api/kinopub'
 import { saveTokens } from './storage'
@@ -140,7 +141,9 @@ export function App() {
 
     getContentTypes()
       .then(types => saveContentTypesCache(types))
-      .catch(() => {})
+      .catch(err => {
+        if (import.meta.env.DEV) console.error('getContentTypes failed:', err)
+      })
   }, [state.authenticated])
 
   const handleAuthenticated = useCallback(() => {
@@ -210,7 +213,9 @@ export function App() {
         time: Math.floor(time),
         video: episode,
         season
-      }).catch(() => {})
+      }).catch(err => {
+        if (import.meta.env.DEV) console.error('markTime failed:', err)
+      })
       return prev
     })
   }, [])
@@ -442,56 +447,39 @@ export function App() {
     )
   }
 
-  if (state.seriesId) {
-    return (
-      <div style={{ display: 'flex', height: '100%' }}>
-        <SideMenu
-          selectedId={state.selectedMenuId}
-          focusedIndex={state.focusArea === 'menu' ? state.menuFocusIndex : null}
-          onSelect={handleMenuSelect}
-        />
-        <div class={`app-with-menu ${state.focusArea === 'menu' ? 'menu-expanded' : ''}`}>
-          <SeasonsScreen
-            itemId={state.seriesId}
-            onBack={handleBackFromSeries}
-            onPlay={handlePlay}
-            onNavigateToMenu={handleNavigateToMenu}
-            isActive={state.focusArea === 'content'}
-          />
-        </div>
-      </div>
-    )
-  }
+  const isContentActive = state.focusArea === 'content'
+  const isMenuFocused = state.focusArea === 'menu'
 
-  if (state.itemId) {
-    return (
-      <div style={{ display: 'flex', height: '100%' }}>
-        <SideMenu
-          selectedId={state.selectedMenuId}
-          focusedIndex={state.focusArea === 'menu' ? state.menuFocusIndex : null}
-          onSelect={handleMenuSelect}
+  const renderScreen = () => {
+    if (state.seriesId) {
+      return (
+        <SeasonsScreen
+          itemId={state.seriesId}
+          onBack={handleBackFromSeries}
+          onPlay={handlePlay}
+          onNavigateToMenu={handleNavigateToMenu}
+          isActive={isContentActive}
         />
-        <div class={`app-with-menu ${state.focusArea === 'menu' ? 'menu-expanded' : ''}`}>
-          <ItemScreen
-            itemId={state.itemId}
-            onBack={handleBackFromItem}
-            onPlay={handlePlay}
-            onPlayTrailer={handlePlayTrailer}
-            onSelectSeries={handleSelectSeries}
-            onSelectItem={handleSelectItem}
-            onNavigateToMenu={handleNavigateToMenu}
-            isActive={state.focusArea === 'content'}
-          />
-        </div>
-      </div>
-    )
-  }
+      )
+    }
 
-  const renderContent = () => {
-    const isContentActive = state.focusArea === 'content'
+    if (state.itemId) {
+      return (
+        <ItemScreen
+          itemId={state.itemId}
+          onBack={handleBackFromItem}
+          onPlay={handlePlay}
+          onPlayTrailer={handlePlayTrailer}
+          onSelectSeries={handleSelectSeries}
+          onSelectItem={handleSelectItem}
+          onNavigateToMenu={handleNavigateToMenu}
+          isActive={isContentActive}
+        />
+      )
+    }
 
     switch (state.selectedMenuId) {
-      case 'home':
+      case 'home': {
         const homeFocus = state.screenFocus['home'] || { row: 0, col: 0 }
         return (
           <MainScreen
@@ -504,6 +492,7 @@ export function App() {
             onFocusChange={(row, col) => handleFocusChange('home', row, col)}
           />
         )
+      }
       case 'search':
         return (
           <SearchScreen
@@ -560,7 +549,7 @@ export function App() {
             isActive={isContentActive}
           />
         )
-      case 'livetv':
+      case 'livetv': {
         const livetvFocus = state.screenFocus['livetv'] || { row: 0, col: 0 }
         return (
           <LiveTVScreen
@@ -571,7 +560,8 @@ export function App() {
             onFocusChange={(index) => handleFocusChange('livetv', index, 0)}
           />
         )
-      default:
+      }
+      default: {
         const titleKey = CATEGORY_TITLE_KEYS[state.selectedMenuId]
         const title = titleKey ? t[titleKey] : state.selectedMenuId
         const categoryFocus = state.screenFocus[state.selectedMenuId] || { row: 0, col: 0 }
@@ -586,19 +576,18 @@ export function App() {
             onFocusChange={(index) => handleFocusChange(state.selectedMenuId, index, 0)}
           />
         )
+      }
     }
   }
 
   return (
-    <div style={{ display: 'flex', height: '100%' }}>
-      <SideMenu
-        selectedId={state.selectedMenuId}
-        focusedIndex={state.focusArea === 'menu' ? state.menuFocusIndex : null}
-        onSelect={handleMenuSelect}
-      />
-      <div class={`app-with-menu ${state.focusArea === 'menu' ? 'menu-expanded' : ''}`}>
-        {renderContent()}
-      </div>
-    </div>
+    <ScreenManager
+      selectedMenuId={state.selectedMenuId}
+      menuFocusIndex={state.menuFocusIndex}
+      isMenuFocused={isMenuFocused}
+      onMenuSelect={handleMenuSelect}
+    >
+      {renderScreen()}
+    </ScreenManager>
   )
 }

@@ -27,7 +27,7 @@ export function SeasonsScreen({ itemId, onBack, onPlay, onNavigateToMenu, isActi
         const data = await getItem(itemId)
         setItem(data)
       } catch (err) {
-        console.error('Failed to load item:', err)
+        if (import.meta.env.DEV) console.error('Failed to load item:', err)
       } finally {
         setLoading(false)
       }
@@ -62,7 +62,7 @@ export function SeasonsScreen({ itemId, onBack, onPlay, onNavigateToMenu, isActi
         }
       })
     } catch (err) {
-      console.error('Failed to toggle watched:', err)
+      if (import.meta.env.DEV) console.error('Failed to toggle watched:', err)
     }
   }, [seasons, focusedRow, focusedCol, item])
 

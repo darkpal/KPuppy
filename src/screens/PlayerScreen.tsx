@@ -89,7 +89,7 @@ export function PlayerScreen({ url, title, audios = [], subtitles = [], startTim
           blobUrls.push(blobUrl)
           converted.push({ lang: sub.lang, url: blobUrl })
         } catch (e) {
-          console.error('Failed to convert subtitle:', sub.lang, e)
+          if (import.meta.env.DEV) console.error('Failed to convert subtitle:', sub.lang, e)
         }
       }
 

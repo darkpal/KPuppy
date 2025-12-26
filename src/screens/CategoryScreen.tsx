@@ -91,8 +91,12 @@ export function CategoryScreen({ categoryId, title, onSelectItem, onNavigateToMe
           ? allGenres.filter(g => g.type === genreType)
           : allGenres
         setGenres(filtered)
-      }).catch(() => {})
-      getCountries().then(setCountries).catch(() => {})
+      }).catch(err => {
+        if (import.meta.env.DEV) console.error('getGenres failed:', err)
+      })
+      getCountries().then(setCountries).catch(err => {
+        if (import.meta.env.DEV) console.error('getCountries failed:', err)
+      })
     }
   }, [showFilters, categoryId])
 
@@ -128,7 +132,7 @@ export function CategoryScreen({ categoryId, title, onSelectItem, onNavigateToMe
         }
       }
     } catch (err) {
-      console.error('Failed to load category:', err)
+      if (import.meta.env.DEV) console.error('Failed to load category:', err)
     } finally {
       setLoading(false)
       setLoadingMore(false)

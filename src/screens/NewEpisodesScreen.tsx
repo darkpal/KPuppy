@@ -28,7 +28,7 @@ export function NewEpisodesScreen({ onSelectItem, onNavigateToMenu, isActive }: 
         const withNewEpisodes = data.filter(item => item.new > 0)
         setItems(withNewEpisodes)
       } catch (err) {
-        console.error('Failed to load new episodes:', err)
+        if (import.meta.env.DEV) console.error('Failed to load new episodes:', err)
       } finally {
         setLoading(false)
       }

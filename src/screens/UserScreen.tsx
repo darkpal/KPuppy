@@ -22,7 +22,7 @@ export function UserScreen({ onNavigateToMenu, onLogout, isActive }: UserScreenP
         const userData = await getUser()
         setUser(userData)
       } catch (err) {
-        console.error('Failed to load user:', err)
+        if (import.meta.env.DEV) console.error('Failed to load user:', err)
       } finally {
         setLoading(false)
       }

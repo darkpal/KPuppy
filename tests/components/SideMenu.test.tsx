@@ -174,10 +174,10 @@ describe('getMenuIdByIndex', () => {
 
 describe('menu constants', () => {
   it('MENU_ITEMS_COUNT does not include user', () => {
-    expect(MENU_ITEMS_COUNT).toBe(14)
+    expect(MENU_ITEMS_COUNT).toBe(15)
   })
 
   it('ALL_MENU_ITEMS_COUNT includes user', () => {
-    expect(ALL_MENU_ITEMS_COUNT).toBe(15)
+    expect(ALL_MENU_ITEMS_COUNT).toBe(16)
   })
 })

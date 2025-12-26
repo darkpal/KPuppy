@@ -69,35 +69,43 @@ describe('kinopub API', () => {
 
   describe('requestDeviceCode', () => {
     it('sends correct POST body', async () => {
-      const mockXHR = createMockXHR({
-        code: 'device-code',
-        user_code: 'ABCD-1234',
-        verification_uri: 'https://kino.pub/device',
-        expires_in: 600,
-        interval: 5
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          code: 'device-code',
+          user_code: 'ABCD-1234',
+          verification_uri: 'https://kino.pub/device',
+          expires_in: 600,
+          interval: 5
+        })
       })
-      global.XMLHttpRequest = vi.fn(() => mockXHR) as unknown as typeof XMLHttpRequest
 
       await requestDeviceCode()
 
-      expect(mockXHR.open).toHaveBeenCalledWith('POST', 'https://api.service-kp.com/oauth2/device', true)
-      expect(mockXHR.setRequestHeader).toHaveBeenCalledWith('Content-Type', 'application/x-www-form-urlencoded')
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.service-kp.com/oauth2/device',
+        expect.objectContaining({
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+        })
+      )
 
-      const body = new URLSearchParams(mockXHR.send.mock.calls[0][0])
+      const body = new URLSearchParams(mockFetch.mock.calls[0][1].body)
       expect(body.get('grant_type')).toBe('device_code')
       expect(body.get('client_id')).toBe('xbmc')
-      expect(body.get('client_secret')).toBe('cgg3gtifu46urtfp2zp1nqtba0k2ezxh')
     })
 
     it('parses response correctly', async () => {
-      const mockXHR = createMockXHR({
-        code: 'device-code',
-        user_code: 'ABCD-1234',
-        verification_uri: 'https://kino.pub/device',
-        expires_in: 600,
-        interval: 5
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          code: 'device-code',
+          user_code: 'ABCD-1234',
+          verification_uri: 'https://kino.pub/device',
+          expires_in: 600,
+          interval: 5
+        })
       })
-      global.XMLHttpRequest = vi.fn(() => mockXHR) as unknown as typeof XMLHttpRequest
 
       const result = await requestDeviceCode()
 
@@ -111,8 +119,10 @@ describe('kinopub API', () => {
     })
 
     it('throws ApiError on failure', async () => {
-      const mockXHR = createMockXHR({}, 500)
-      global.XMLHttpRequest = vi.fn(() => mockXHR) as unknown as typeof XMLHttpRequest
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 500
+      })
 
       await expect(requestDeviceCode()).rejects.toThrow(ApiError)
     })
@@ -1931,7 +1941,7 @@ describe('kinopub API', () => {
       localStorage.setItem('kpuppy_tokens', JSON.stringify(tokens))
     })
 
-    it('sends POST request to togglewatchlist endpoint', async () => {
+    it('sends POST request to togglewatchlist endpoint with id in query', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({})
@@ -1940,13 +1950,12 @@ describe('kinopub API', () => {
       await toggleWatchlist(123)
 
       const call = mockFetch.mock.calls[0]
-      expect(call[0]).toBe('https://api.service-kp.com/v1/watching/togglewatchlist')
+      expect(call[0]).toBe('https://api.service-kp.com/v1/watching/togglewatchlist?id=123')
       expect(call[1].method).toBe('POST')
-      expect(call[1].headers['Content-Type']).toBe('application/json')
       expect(call[1].headers['Authorization']).toBe('Bearer valid-token')
     })
 
-    it('sends item id in request body', async () => {
+    it('sends correct item id in query string', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({})
@@ -1955,8 +1964,7 @@ describe('kinopub API', () => {
       await toggleWatchlist(456)
 
       const call = mockFetch.mock.calls[0]
-      const body = JSON.parse(call[1].body)
-      expect(body.id).toBe(456)
+      expect(call[0]).toContain('id=456')
     })
 
     it('throws ApiError on failure', async () => {

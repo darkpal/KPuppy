@@ -26,7 +26,7 @@ export function LiveTVScreen({ onNavigateToMenu, onBeforePlay, isActive, initial
         const data = await getTVChannels()
         setChannels(data)
       } catch (err) {
-        console.error('Failed to load TV channels:', err)
+        if (import.meta.env.DEV) console.error('Failed to load TV channels:', err)
       } finally {
         setLoading(false)
       }
@@ -48,7 +48,7 @@ export function LiveTVScreen({ onNavigateToMenu, onBeforePlay, isActive, initial
         thumbnail: channel.logo
       })
     } catch (err) {
-      console.error('Failed to play channel:', err)
+      if (import.meta.env.DEV) console.error('Failed to play channel:', err)
     }
   }, [onBeforePlay])
 

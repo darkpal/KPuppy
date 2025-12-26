@@ -28,7 +28,7 @@ export function HistoryScreen({ onSelectItem, onNavigateToMenu, isActive }: Hist
         const data = await getHistory()
         setItems(data)
       } catch (err) {
-        console.error('Failed to load history:', err)
+        if (import.meta.env.DEV) console.error('Failed to load history:', err)
       } finally {
         setLoading(false)
       }
@@ -46,7 +46,7 @@ export function HistoryScreen({ onSelectItem, onNavigateToMenu, isActive }: Hist
       setItems(prev => prev.filter(i => i.id !== item.id))
       setFocusedIndex(prev => Math.min(prev, items.length - 2))
     } catch (err) {
-      console.error('Failed to clear history item:', err)
+      if (import.meta.env.DEV) console.error('Failed to clear history item:', err)
     } finally {
       setActionLoading(false)
     }

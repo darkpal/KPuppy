@@ -42,3 +42,16 @@ export function invalidateCache(pattern?: string): void {
 export function createCacheKey(...parts: (string | number | undefined)[]): string {
   return parts.filter(p => p !== undefined).join(':')
 }
+
+export async function cachedFetch<T>(
+  key: string,
+  fetchFn: () => Promise<T>,
+  ttl?: number
+): Promise<T> {
+  const cached = getCached<T>(key, ttl)
+  if (cached) return cached
+
+  const result = await fetchFn()
+  setCache(key, result)
+  return result
+}

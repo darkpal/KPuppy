@@ -39,7 +39,7 @@ export function BookmarksScreen({ onSelectItem, onNavigateToMenu, isActive }: Bo
         const data = await getBookmarkFolders()
         setFolders(data)
       } catch (err) {
-        console.error('Failed to load bookmarks:', err)
+        if (import.meta.env.DEV) console.error('Failed to load bookmarks:', err)
       } finally {
         setLoading(false)
       }
@@ -57,7 +57,7 @@ export function BookmarksScreen({ onSelectItem, onNavigateToMenu, isActive }: Bo
       setViewMode('items')
       setFocusedIndex(0)
     } catch (err) {
-      console.error('Failed to load bookmark items:', err)
+      if (import.meta.env.DEV) console.error('Failed to load bookmark items:', err)
     } finally {
       setLoading(false)
     }
@@ -79,7 +79,7 @@ export function BookmarksScreen({ onSelectItem, onNavigateToMenu, isActive }: Bo
       setNewFolderName('')
       setShowCreateDialog(false)
     } catch (err) {
-      console.error('Failed to create folder:', err)
+      if (import.meta.env.DEV) console.error('Failed to create folder:', err)
     } finally {
       setActionLoading(false)
     }
@@ -95,7 +95,7 @@ export function BookmarksScreen({ onSelectItem, onNavigateToMenu, isActive }: Bo
       setShowDeleteConfirm(false)
       setFocusedIndex(prev => Math.max(0, prev - 1))
     } catch (err) {
-      console.error('Failed to delete folder:', err)
+      if (import.meta.env.DEV) console.error('Failed to delete folder:', err)
     } finally {
       setActionLoading(false)
     }
@@ -111,7 +111,7 @@ export function BookmarksScreen({ onSelectItem, onNavigateToMenu, isActive }: Bo
       setItems(prev => prev.filter(i => i.id !== item.id))
       setFocusedIndex(prev => Math.min(prev, items.length - 2))
     } catch (err) {
-      console.error('Failed to remove item:', err)
+      if (import.meta.env.DEV) console.error('Failed to remove item:', err)
     } finally {
       setActionLoading(false)
     }
