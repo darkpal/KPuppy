@@ -169,7 +169,7 @@ export function App() {
   }, [])
 
   const handleBackFromSeries = useCallback(() => {
-    setState(prev => ({ ...prev, seriesId: null }))
+    setState(prev => ({ ...prev, itemId: prev.seriesId, seriesId: null }))
   }, [])
 
   const handleFocusChange = useCallback((screenId: string, row: number, col: number) => {

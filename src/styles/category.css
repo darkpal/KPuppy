@@ -79,7 +79,6 @@
 
 .category-filters {
   display: flex;
-  gap: 16px;
   margin-bottom: 24px;
 }
 
@@ -87,8 +86,8 @@
   position: relative;
   display: flex;
   align-items: center;
-  gap: 8px;
   padding: 10px 16px;
+  margin-right: 16px;
   background: #1f1f1f;
   border: 2px solid transparent;
   border-radius: 4px;
@@ -97,13 +96,18 @@
   cursor: pointer;
 }
 
-.category-filter.focused {
-  border-color: #e50914;
-  background: #2a2a2a;
+.category-filter:last-child {
+  margin-right: 0;
 }
 
 .category-filter-label {
+  margin-right: 8px;
   color: #808080;
+}
+
+.category-filter.focused {
+  border-color: #e50914;
+  background: #2a2a2a;
 }
 
 .category-filter-value {

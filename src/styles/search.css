@@ -51,13 +51,18 @@
 .search-filter-button {
   display: flex;
   align-items: center;
-  gap: 8px;
   background: #333;
   border: 2px solid transparent;
   border-radius: 4px;
   padding: 12px 16px;
   cursor: pointer;
   min-width: 180px;
+}
+
+.search-filter-label {
+  margin-right: 8px;
+  font-size: 16px;
+  color: #808080;
 }
 
 .search-filter-button:hover {
@@ -67,11 +72,6 @@
 .search-filter-button.focused {
   background: #e50914;
   border-color: #ffffff;
-}
-
-.search-filter-label {
-  font-size: 16px;
-  color: #808080;
 }
 
 .search-filter-button.focused .search-filter-label {

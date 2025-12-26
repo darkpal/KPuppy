@@ -1,7 +1,6 @@
 .bookmarks-folders {
   display: flex;
   flex-direction: column;
-  gap: 8px;
   padding: 20px 0;
 }
 
@@ -10,10 +9,15 @@
   justify-content: space-between;
   align-items: center;
   padding: 20px 24px;
+  margin-bottom: 8px;
   background: rgba(255, 255, 255, 0.05);
   border-radius: 8px;
   cursor: pointer;
   transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.bookmarks-folder:last-child {
+  margin-bottom: 0;
 }
 
 .bookmarks-folder:hover {
@@ -125,11 +129,11 @@
 
 .bookmarks-dialog-buttons {
   display: flex;
-  gap: 12px;
   justify-content: flex-end;
 }
 
 .bookmarks-dialog-button {
+  margin-left: 12px;
   padding: 12px 24px;
   font-size: 16px;
   border: none;
@@ -138,6 +142,10 @@
   background: rgba(255, 255, 255, 0.1);
   color: #fff;
   transition: background 0.15s ease;
+}
+
+.bookmarks-dialog-button:first-child {
+  margin-left: 0;
 }
 
 .bookmarks-dialog-button:hover {

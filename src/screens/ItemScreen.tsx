@@ -337,111 +337,109 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
             </div>
           )}
 
-          {item.plot && <p class="item-plot">{item.plot}</p>}
+          <div class="item-two-columns">
+            <div class="item-column-left">
+              {item.plot && <p class="item-plot">{item.plot}</p>}
 
-          <div class="item-details">
-            {countries && (
-              <p class="item-detail">
-                <span class="item-detail-label">{t.country}: </span>
-                {countries}
-              </p>
-            )}
-            {directors && (
-              <p class="item-detail">
-                <span class="item-detail-label">{t.director}: </span>
-                {directors}
-              </p>
-            )}
-            {actors && (
-              <p class="item-detail">
-                <span class="item-detail-label">{t.cast}: </span>
-                {actors}
-              </p>
-            )}
-          </div>
-
-          <div class="item-actions">
-            <div class="item-play-container">
-              <button
-                class={`item-button item-button-primary ${focusArea === 'play' || focusArea === 'qualitySelect' ? 'focused' : ''}`}
-              >
-                <span class="item-button-icon">▶</span>
-                {t.play}
-                {selectedQuality && (
-                  <span class="item-quality-badge">{selectedQuality}</span>
-                )}
-                {availableQualities.length > 1 && (
-                  <span class="item-quality-hint">▲</span>
-                )}
-              </button>
-              {focusArea === 'qualitySelect' && (
-                <div class="item-dropdown item-dropdown-quality">
-                  {availableQualities.map((q, idx) => (
-                    <div
-                      key={q}
-                      class={`item-dropdown-option ${dropdownFocusIndex === idx ? 'focused' : ''} ${selectedQuality === q ? 'selected' : ''}`}
-                    >
-                      {q}
+              <div class="item-actions">
+                <div class="item-play-container">
+                  <button
+                    class={`item-button item-button-primary ${focusArea === 'play' || focusArea === 'qualitySelect' ? 'focused' : ''}`}
+                  >
+                    <span class="item-button-icon">▶</span>
+                    {t.play}
+                    {selectedQuality && (
+                      <span class="item-quality-badge">{selectedQuality}</span>
+                    )}
+                    {availableQualities.length > 1 && (
+                      <span class="item-quality-hint">▲</span>
+                    )}
+                  </button>
+                  {focusArea === 'qualitySelect' && (
+                    <div class="item-dropdown item-dropdown-quality">
+                      {availableQualities.map((q, idx) => (
+                        <div
+                          key={q}
+                          class={`item-dropdown-option ${dropdownFocusIndex === idx ? 'focused' : ''} ${selectedQuality === q ? 'selected' : ''}`}
+                        >
+                          {q}
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  )}
                 </div>
-              )}
+                <button
+                  class={`item-button item-button-secondary ${focusArea === 'watchlist' ? 'focused' : ''}`}
+                  disabled={watchlistLoading}
+                >
+                  <span class="item-button-icon">★</span>
+                  {t.addToWatchlist}
+                </button>
+                {item?.trailer?.url && (
+                  <button
+                    class={`item-button item-button-secondary ${focusArea === 'trailer' ? 'focused' : ''}`}
+                  >
+                    <span class="item-button-icon">▷</span>
+                    {t.trailer}
+                  </button>
+                )}
+                {hasSeasons && (
+                  <button
+                    class={`item-button item-button-secondary ${focusArea === 'seasons' ? 'focused' : ''}`}
+                  >
+                    <span class="item-button-icon">≡</span>
+                    {t.seasons} ({item.seasons!.length})
+                  </button>
+                )}
+              </div>
             </div>
-            <button
-              class={`item-button item-button-secondary ${focusArea === 'watchlist' ? 'focused' : ''}`}
-              disabled={watchlistLoading}
-            >
-              <span class="item-button-icon">★</span>
-              {t.addToWatchlist}
-            </button>
-            {item?.trailer?.url && (
-              <button
-                class={`item-button item-button-secondary ${focusArea === 'trailer' ? 'focused' : ''}`}
-              >
-                <span class="item-button-icon">▷</span>
-                {t.trailer}
-              </button>
-            )}
-            {hasSeasons && (
-              <button
-                class={`item-button item-button-secondary ${focusArea === 'seasons' ? 'focused' : ''}`}
-              >
-                <span class="item-button-icon">☰</span>
-                {t.seasons} ({item.seasons!.length})
-              </button>
-            )}
-          </div>
-
-          {(audios.length > 0 || subtitles.length > 0) && (
-            <div class="item-media-info">
+            <div class="item-column-right">
+              {countries && (
+                <p class="item-detail">
+                  <span class="item-detail-label">{t.country}:</span>
+                  <span class="item-detail-value">{countries}</span>
+                </p>
+              )}
+              {directors && (
+                <p class="item-detail">
+                  <span class="item-detail-label">{t.director}:</span>
+                  <span class="item-detail-value">{directors}</span>
+                </p>
+              )}
+              {actors && (
+                <p class="item-detail">
+                  <span class="item-detail-label">{t.cast}:</span>
+                  <span class="item-detail-value">{actors}</span>
+                </p>
+              )}
               {audios.length > 0 && (
-                <div class="item-media-section">
-                  <span class="item-media-label">{t.audio}:</span>
-                  <span class="item-media-list">
+                <p class="item-detail">
+                  <span class="item-detail-label">{t.audio}:</span>
+                  <span class="item-detail-value">
                     {audios.map((audio, idx) => (
-                      <span key={audio.id} class="item-media-item">
+                      <span key={audio.id}>
                         {formatAudioLabel(audio)}
                         {idx < audios.length - 1 && ', '}
                       </span>
                     ))}
                   </span>
-                </div>
+                </p>
               )}
               {subtitles.length > 0 && (
-                <div class="item-media-section">
-                  <span class="item-media-label">{t.subtitles}:</span>
-                  <span class="item-media-list">
+                <p class="item-detail">
+                  <span class="item-detail-label">{t.subtitles}:</span>
+                  <span class="item-detail-value">
                     {subtitles.map((sub, idx) => (
-                      <span key={sub.lang} class="item-media-item">
+                      <span key={sub.lang}>
                         {formatSubtitleLabel(sub)}
                         {idx < subtitles.length - 1 && ', '}
                       </span>
                     ))}
                   </span>
-                </div>
+                </p>
               )}
             </div>
-          )}
+          </div>
 
           {similarItems.length > 0 && (
             <div class={`item-similar ${focusArea === 'similar' ? 'active' : ''}`}>
