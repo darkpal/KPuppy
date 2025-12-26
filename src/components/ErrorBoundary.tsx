@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/browser'
 import { Component, ComponentChildren } from 'preact'
 import { ErrorState } from './ErrorState'
 
@@ -22,6 +23,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   }
 
   componentDidCatch(error: Error, errorInfo: { componentStack?: string }) {
+    Sentry.captureException(error, { extra: { componentStack: errorInfo.componentStack } })
     if (import.meta.env.DEV) {
       console.error('ErrorBoundary caught error:', error, errorInfo)
     }

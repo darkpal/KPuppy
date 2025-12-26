@@ -30,6 +30,7 @@ jobs:
         run: npm run build
         env:
           VITE_CLIENT_SECRET: ${{ secrets.VITE_CLIENT_SECRET }}
+          VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
 
       - name: Install webOS CLI
         run: npm install -g @webos-tools/cli
