@@ -20,10 +20,11 @@ interface ItemScreenProps {
   onSelectSeries: (seriesId: number) => void
   onSelectItem: (itemId: number) => void
   onNavigateToMenu: () => void
+  onOpenComments: (itemId: number, itemTitle: string) => void
   isActive: boolean
 }
 
-type FocusArea = 'play' | 'watching' | 'watchlist' | 'trailer' | 'seasons' | 'qualitySelect' | 'similar'
+type FocusArea = 'play' | 'watching' | 'watchlist' | 'trailer' | 'comments' | 'seasons' | 'qualitySelect' | 'similar'
 
 const QUALITY_ORDER = ['2160p', '1080p', '720p', '480p']
 
@@ -120,7 +121,7 @@ function itemScreenReducer(state: ItemScreenState, action: ItemScreenAction): It
   }
 }
 
-export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeries, onSelectItem, onNavigateToMenu, isActive }: ItemScreenProps) {
+export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeries, onSelectItem, onNavigateToMenu, onOpenComments, isActive }: ItemScreenProps) {
   const { t } = useI18n()
   const [state, dispatch] = useReducer(itemScreenReducer, initialState)
   const { item, loading, error, focusArea, selectedQuality, dropdownFocusIndex, similarItems, similarFocusIndex, watchlistLoading, showFolderDialog, folders, folderFocusIndex, isWatching, watchingToggleLoading } = state
@@ -225,6 +226,8 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
     }
   }, [folders, folderFocusIndex, itemId, watchlistLoading])
 
+  const { showComments } = getLocalSettings()
+
   const handlers = useMemo(() => {
     const hasSeries = item?.seasons && item.seasons.length > 0
     const hasSimilar = similarItems.length > 0
@@ -290,7 +293,9 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
         }
       },
       onLeft: () => {
-        if (focusArea === 'trailer') {
+        if (focusArea === 'comments') {
+          dispatch({ type: 'SET_FOCUS_AREA', area: hasTrailer ? 'trailer' : 'watchlist' })
+        } else if (focusArea === 'trailer') {
           dispatch({ type: 'SET_FOCUS_AREA', area: 'watchlist' })
         } else if (focusArea === 'watchlist') {
           dispatch({ type: 'SET_FOCUS_AREA', area: hasSeries ? 'watching' : primaryButton })
@@ -305,8 +310,14 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
           dispatch({ type: 'SET_FOCUS_AREA', area: hasSeries ? 'watching' : 'watchlist' })
         } else if (focusArea === 'watching') {
           dispatch({ type: 'SET_FOCUS_AREA', area: 'watchlist' })
-        } else if (focusArea === 'watchlist' && hasTrailer) {
-          dispatch({ type: 'SET_FOCUS_AREA', area: 'trailer' })
+        } else if (focusArea === 'watchlist') {
+          if (hasTrailer) {
+            dispatch({ type: 'SET_FOCUS_AREA', area: 'trailer' })
+          } else if (showComments) {
+            dispatch({ type: 'SET_FOCUS_AREA', area: 'comments' })
+          }
+        } else if (focusArea === 'trailer' && showComments) {
+          dispatch({ type: 'SET_FOCUS_AREA', area: 'comments' })
         }
       },
       onEnter: () => {
@@ -316,13 +327,15 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
           handleOpenFolderDialog()
         } else if (focusArea === 'trailer' && item?.trailer?.url) {
           onPlayTrailer(item.trailer.url, `${item.title} - ${t.trailer}`)
+        } else if (focusArea === 'comments' && item) {
+          onOpenComments(itemId, item.title)
         } else {
           handlePlayOrSelect()
         }
       },
       onYellow: handleOpenFolderDialog
     }
-  }, [item, focusArea, availableQualities, dropdownFocusIndex, selectedQuality, onBack, onNavigateToMenu, handlePlayOrSelect, handleOpenFolderDialog, handleAddToFolder, handleToggleWatching, similarItems, similarFocusIndex, onSelectItem, showFolderDialog, folders, folderFocusIndex, onPlayTrailer, t])
+  }, [item, focusArea, availableQualities, dropdownFocusIndex, selectedQuality, onBack, onNavigateToMenu, handlePlayOrSelect, handleOpenFolderDialog, handleAddToFolder, handleToggleWatching, similarItems, similarFocusIndex, onSelectItem, showFolderDialog, folders, folderFocusIndex, onPlayTrailer, t, showComments, onOpenComments, itemId])
 
   useKeyboardNavigation(handlers, isActive && !!item)
 
@@ -465,6 +478,14 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
                   >
                     <span class="item-button-icon">▷</span>
                     {t.trailer}
+                  </button>
+                )}
+                {showComments && (
+                  <button
+                    class={`item-button item-button-secondary ${focusArea === 'comments' ? 'focused' : ''}`}
+                  >
+                    <span class="item-button-icon">💬</span>
+                    {t.comments}
                   </button>
                 )}
               </div>

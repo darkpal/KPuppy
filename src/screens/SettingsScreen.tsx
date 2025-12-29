@@ -43,6 +43,7 @@ const ALL_SETTINGS: SettingItem[] = [
   { id: 'streamingType', labelKey: 'streaming', type: 'select', key: 'streamingType', section: 'client' },
   { id: 'quality', labelKey: 'quality', type: 'select', section: 'local' },
   { id: 'player', labelKey: 'player', type: 'select', section: 'local' },
+  { id: 'showComments', labelKey: 'showComments', type: 'toggle', section: 'local' },
   { id: 'language', labelKey: 'language', type: 'language', section: 'local' },
 ]
 
@@ -54,6 +55,7 @@ export function SettingsScreen({ onNavigateToMenu, isActive }: SettingsScreenPro
   const [settings, setSettings] = useState<DeviceSettings | null>(null)
   const [quality, setQuality] = useState<VideoQuality>(() => getLocalSettings().defaultQuality)
   const [playerType, setPlayerType] = useState<PlayerType>(() => getLocalSettings().playerType)
+  const [showComments, setShowComments] = useState<boolean>(() => getLocalSettings().showComments)
   const [focusedIndex, setFocusedIndex] = useState(0)
   const [expandedSelect, setExpandedSelect] = useState<string | null>(null)
   const [selectFocusIndex, setSelectFocusIndex] = useState(0)
@@ -160,7 +162,11 @@ export function SettingsScreen({ onNavigateToMenu, isActive }: SettingsScreenPro
   const handleActivateItem = useCallback(() => {
     const currentItem = allItems[focusedIndex]
     if (!currentItem) return
-    if (currentItem.type === 'toggle' && settings && currentItem.key) {
+    if (currentItem.type === 'toggle' && currentItem.id === 'showComments') {
+      const newValue = !showComments
+      setShowComments(newValue)
+      saveLocalSettings({ showComments: newValue })
+    } else if (currentItem.type === 'toggle' && settings && currentItem.key) {
       const currentValue = settings[currentItem.key] as number
       const newValue = currentValue ? 0 : 1
       setSettings({ ...settings, [currentItem.key]: newValue })
@@ -177,7 +183,7 @@ export function SettingsScreen({ onNavigateToMenu, isActive }: SettingsScreenPro
       setSelectFocusIndex(Math.max(0, selectedIdx))
       setExpandedSelect('language')
     }
-  }, [allItems, focusedIndex, settings, saveSettingChange])
+  }, [allItems, focusedIndex, settings, saveSettingChange, showComments])
 
   const handlers = useMemo(() => {
     if (expandedSelect) {
@@ -218,6 +224,16 @@ export function SettingsScreen({ onNavigateToMenu, isActive }: SettingsScreenPro
         class={`settings-item ${isFocused ? 'focused' : ''}`}
       >
         <span class="settings-item-label">{t[item.labelKey]}</span>
+        {item.type === 'toggle' && item.id === 'showComments' && (
+          <div class={`settings-toggle ${showComments ? 'on' : 'off'}`}>
+            <div class="settings-toggle-track">
+              <div class="settings-toggle-thumb" />
+            </div>
+            <span class="settings-toggle-text">
+              {showComments ? t.on : t.off}
+            </span>
+          </div>
+        )}
         {item.type === 'toggle' && settings && item.key && (
           <div class={`settings-toggle ${settings[item.key] ? 'on' : 'off'}`}>
             <div class="settings-toggle-track">

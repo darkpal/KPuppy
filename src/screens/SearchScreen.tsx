@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'preact/hooks'
 import { searchItems, getContentTypes, MovieItem, ContentType } from '../api/kinopub'
 import { getContentTypesCache, saveContentTypesCache } from '../storage'
 import { MovieCard } from '../components/MovieCard'
+import { Keyboard, KEYBOARD_ROWS_WITH_SEARCH, handleSpecialKey } from '../components/Keyboard'
 import { useKeyboardNavigation } from '../hooks'
 import { useI18n } from '../i18n'
 import '../styles/search.css'
@@ -15,18 +16,7 @@ interface SearchScreenProps {
 
 type FocusArea = 'keyboard' | 'filter' | 'results'
 
-const KEYBOARD_ROWS = [
-  ['А', 'Б', 'В', 'Г', 'Д', 'Е', 'Ж', 'З', 'И', 'Й', 'К', 'Л', 'М', 'Н', 'О', 'П', 'Р', 'С', 'Т', 'У', 'Ф', 'Х', 'Ц', 'Ч', 'Ш', 'Щ', 'Ъ', 'Ы', 'Ь', 'Э', 'Ю', 'Я'],
-  ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'],
-  ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', ' ', '⌫', '✕', '→'],
-]
-
-const SPECIAL_KEYS = {
-  '⌫': 'backspace',
-  '✕': 'clear',
-  '→': 'search',
-  ' ': 'space',
-}
+const KEYBOARD_ROWS = KEYBOARD_ROWS_WITH_SEARCH
 
 export function SearchScreen({ onBack, onSelectItem, onNavigateToMenu, isActive }: SearchScreenProps) {
   const { t } = useI18n()
@@ -128,25 +118,24 @@ export function SearchScreen({ onBack, onSelectItem, onNavigateToMenu, isActive 
   }, [query, selectedType, performSearch])
 
   const handleKeyPress = useCallback((key: string) => {
-    const specialAction = SPECIAL_KEYS[key as keyof typeof SPECIAL_KEYS]
+    const result = handleSpecialKey(key, query)
 
-    if (specialAction === 'backspace') {
-      setQuery(prev => prev.slice(0, -1))
-    } else if (specialAction === 'clear') {
-      setQuery('')
-      setResults([])
-      setHasSearched(false)
-    } else if (specialAction === 'search') {
+    if (result.action === 'search') {
       if (results.length > 0) {
         setFocusArea('results')
         setResultIndex(0)
       }
-    } else if (specialAction === 'space') {
-      setQuery(prev => prev + ' ')
-    } else {
-      setQuery(prev => prev + key)
+      return
     }
-  }, [results.length])
+
+    if (result.text !== query) {
+      setQuery(result.text)
+      if (result.text === '') {
+        setResults([])
+        setHasSearched(false)
+      }
+    }
+  }, [query, results.length])
 
   const filterOptions = useMemo(() => {
     return [{ id: '', title: '' }, ...contentTypes]
@@ -319,27 +308,14 @@ export function SearchScreen({ onBack, onSelectItem, onNavigateToMenu, isActive 
         )}
       </div>
 
-      <div class="search-keyboard">
-        {KEYBOARD_ROWS.map((row, rowIndex) => (
-          <div key={rowIndex} class="keyboard-row">
-            {row.map((key, colIndex) => {
-              const isSpecial = key in SPECIAL_KEYS
-              const isFocused = focusArea === 'keyboard' &&
-                keyboardRow === rowIndex &&
-                keyboardCol === colIndex
-              return (
-                <button
-                  key={`${rowIndex}-${colIndex}`}
-                  class={`keyboard-key ${isSpecial ? 'keyboard-key-special' : ''} ${isFocused ? 'focused' : ''}`}
-                  onClick={() => handleKeyPress(key)}
-                >
-                  {key}
-                </button>
-              )
-            })}
-          </div>
-        ))}
-      </div>
+      <Keyboard
+        rows={KEYBOARD_ROWS}
+        focusedRow={keyboardRow}
+        focusedCol={keyboardCol}
+        isFocused={focusArea === 'keyboard'}
+        onKeyPress={handleKeyPress}
+        className="search-keyboard"
+      />
 
       <div class="search-results">
         {loading && (

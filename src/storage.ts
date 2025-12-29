@@ -15,11 +15,13 @@ export type PlayerType = 'native' | 'builtin'
 export interface LocalSettings {
   defaultQuality: VideoQuality
   playerType: PlayerType
+  showComments: boolean
 }
 
 const DEFAULT_SETTINGS: LocalSettings = {
   defaultQuality: 'auto',
-  playerType: 'native'
+  playerType: 'native',
+  showComments: true
 }
 
 export function getLocalSettings(): LocalSettings {

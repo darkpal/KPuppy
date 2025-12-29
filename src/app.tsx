@@ -13,6 +13,8 @@ import { UserScreen } from './screens/UserScreen'
 import { SeasonsScreen } from './screens/SeasonsScreen'
 import { NewEpisodesScreen } from './screens/NewEpisodesScreen'
 import { PlayerScreen } from './screens/PlayerScreen'
+import { CommentsScreen } from './screens/CommentsScreen'
+import { RemoteDebugOverlay } from './components/RemoteDebugOverlay'
 import { ALL_MENU_ITEMS_COUNT, getMenuIdByIndex } from './components/SideMenu'
 import { ScreenManager } from './components/ScreenManager'
 import { isAuthenticated, clearTokens, getTokens, getLocalSettings, saveReturnTo, getReturnTo, clearReturnTo, getContentTypesCache, saveContentTypesCache } from './storage'
@@ -47,6 +49,8 @@ interface AppState {
   selectedMenuId: string
   itemId: number | null
   seriesId: number | null
+  commentsItemId: number | null
+  commentsItemTitle: string | null
   focusArea: FocusArea
   menuFocusIndex: number
   screenFocus: Record<string, ScreenFocusState>
@@ -78,6 +82,8 @@ export function App() {
         selectedMenuId: savedReturnTo.selectedMenuId || 'home',
         itemId: savedReturnTo.itemId,
         seriesId: savedReturnTo.seriesId,
+        commentsItemId: null,
+        commentsItemTitle: null,
         focusArea: 'content',
         menuFocusIndex: 0,
         screenFocus: savedReturnTo.screenFocus || {},
@@ -91,6 +97,8 @@ export function App() {
       selectedMenuId: 'home',
       itemId: null,
       seriesId: null,
+      commentsItemId: null,
+      commentsItemTitle: null,
       focusArea: 'content',
       menuFocusIndex: 0,
       screenFocus: {},
@@ -174,6 +182,14 @@ export function App() {
 
   const handleBackFromSeries = useCallback(() => {
     setState(prev => ({ ...prev, itemId: prev.seriesId, seriesId: null }))
+  }, [])
+
+  const handleOpenComments = useCallback((itemId: number, itemTitle: string) => {
+    setState(prev => ({ ...prev, commentsItemId: itemId, commentsItemTitle: itemTitle }))
+  }, [])
+
+  const handleBackFromComments = useCallback(() => {
+    setState(prev => ({ ...prev, commentsItemId: null, commentsItemTitle: null }))
   }, [])
 
   const handleFocusChange = useCallback((screenId: string, row: number, col: number) => {
@@ -386,7 +402,9 @@ export function App() {
             break
 
           case 461: // Back
-            if (state.seriesId) {
+            if (state.commentsItemId) {
+              handleBackFromComments()
+            } else if (state.seriesId) {
               handleBackFromSeries()
             } else if (state.itemId) {
               handleBackFromItem()
@@ -401,7 +419,7 @@ export function App() {
 
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [state.authenticated, state.focusArea, state.menuFocusIndex, state.itemId, state.seriesId, handleMenuSelect, handleLogout, handleBackFromItem, handleBackFromSeries])
+  }, [state.authenticated, state.focusArea, state.menuFocusIndex, state.itemId, state.seriesId, state.commentsItemId, handleMenuSelect, handleLogout, handleBackFromItem, handleBackFromSeries, handleBackFromComments])
 
   if (initializing) {
     return (
@@ -451,6 +469,18 @@ export function App() {
   const isMenuFocused = state.focusArea === 'menu'
 
   const renderScreen = () => {
+    if (state.commentsItemId && state.commentsItemTitle) {
+      return (
+        <CommentsScreen
+          itemId={state.commentsItemId}
+          itemTitle={state.commentsItemTitle}
+          onBack={handleBackFromComments}
+          onNavigateToMenu={handleNavigateToMenu}
+          isActive={isContentActive}
+        />
+      )
+    }
+
     if (state.seriesId) {
       return (
         <SeasonsScreen
@@ -473,6 +503,7 @@ export function App() {
           onSelectSeries={handleSelectSeries}
           onSelectItem={handleSelectItem}
           onNavigateToMenu={handleNavigateToMenu}
+          onOpenComments={handleOpenComments}
           isActive={isContentActive}
         />
       )
@@ -581,13 +612,16 @@ export function App() {
   }
 
   return (
-    <ScreenManager
-      selectedMenuId={state.selectedMenuId}
-      menuFocusIndex={state.menuFocusIndex}
-      isMenuFocused={isMenuFocused}
-      onMenuSelect={handleMenuSelect}
-    >
-      {renderScreen()}
-    </ScreenManager>
+    <>
+      <ScreenManager
+        selectedMenuId={state.selectedMenuId}
+        menuFocusIndex={state.menuFocusIndex}
+        isMenuFocused={isMenuFocused}
+        onMenuSelect={handleMenuSelect}
+      >
+        {renderScreen()}
+      </ScreenManager>
+      <RemoteDebugOverlay />
+    </>
   )
 }

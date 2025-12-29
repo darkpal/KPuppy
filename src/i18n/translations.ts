@@ -152,6 +152,19 @@ export interface Translations {
   allCountries: string
   allTypes: string
   type: string
+
+  // Comments
+  comments: string
+  showComments: string
+  writeComment: string
+  reply: string
+  markAsSpoiler: string
+  noComments: string
+  sendComment: string
+  showSpoiler: string
+  hideSpoiler: string
+  commentsError: string
+  replyingTo: string
 }
 
 const en: Translations = {
@@ -280,6 +293,18 @@ const en: Translations = {
   allCountries: 'All Countries',
   allTypes: 'All Types',
   type: 'Type',
+
+  comments: 'Comments',
+  showComments: 'Show Comments',
+  writeComment: 'Write Comment',
+  reply: 'Reply',
+  markAsSpoiler: 'Mark as Spoiler',
+  noComments: 'No comments yet',
+  sendComment: 'Send',
+  showSpoiler: 'Show spoiler',
+  hideSpoiler: 'Hide spoiler',
+  commentsError: 'Failed to load comments',
+  replyingTo: 'Replying to',
 }
 
 const ru: Translations = {
@@ -408,6 +433,18 @@ const ru: Translations = {
   allCountries: 'Все страны',
   allTypes: 'Все типы',
   type: 'Тип',
+
+  comments: 'Комментарии',
+  showComments: 'Показывать комментарии',
+  writeComment: 'Написать комментарий',
+  reply: 'Ответить',
+  markAsSpoiler: 'Отметить как спойлер',
+  noComments: 'Комментариев пока нет',
+  sendComment: 'Отправить',
+  showSpoiler: 'Показать спойлер',
+  hideSpoiler: 'Скрыть спойлер',
+  commentsError: 'Не удалось загрузить комментарии',
+  replyingTo: 'Ответ на',
 }
 
 const de: Translations = {
@@ -536,6 +573,18 @@ const de: Translations = {
   allCountries: 'Alle Länder',
   allTypes: 'Alle Typen',
   type: 'Typ',
+
+  comments: 'Kommentare',
+  showComments: 'Kommentare anzeigen',
+  writeComment: 'Kommentar schreiben',
+  reply: 'Antworten',
+  markAsSpoiler: 'Als Spoiler markieren',
+  noComments: 'Noch keine Kommentare',
+  sendComment: 'Senden',
+  showSpoiler: 'Spoiler anzeigen',
+  hideSpoiler: 'Spoiler verbergen',
+  commentsError: 'Kommentare konnten nicht geladen werden',
+  replyingTo: 'Antwort auf',
 }
 
 export const translations: Record<Language, Translations> = { en, ru, de }
