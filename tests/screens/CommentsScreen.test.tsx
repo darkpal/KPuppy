@@ -9,9 +9,11 @@ vi.mock('../../src/api/comments', () => ({
   getComments: vi.fn(),
   createComment: vi.fn(),
   replyToComment: vi.fn(),
+  editComment: vi.fn(),
+  deleteComment: vi.fn(),
   isCommentsApiAvailable: vi.fn(),
   CommentsApiError: class CommentsApiError extends Error {
-    constructor(message: string, public status: number) {
+    constructor(message: string, public status: number, public code?: string) {
       super(message)
       this.name = 'CommentsApiError'
     }
@@ -20,6 +22,7 @@ vi.mock('../../src/api/comments', () => ({
 
 vi.mock('../../src/storage', () => ({
   getTokens: vi.fn(() => ({ access: 'test-token', refresh: 'refresh-token', expiresAt: Date.now() + 3600000 })),
+  getCommentsUserId: vi.fn(() => 'test-user-id'),
 }))
 
 function renderWithI18n(component: preact.ComponentChild) {
@@ -42,7 +45,7 @@ describe('CommentsScreen', () => {
   const mockComments = [
     {
       id: 'comment-1',
-      contentId: 'content-1',
+      contentId: 'content-123',
       userId: 'user-1',
       user: { id: 'user-1', username: 'TestUser', avatar: 'https://example.com/avatar.jpg' },
       text: 'This is a test comment',
@@ -53,7 +56,7 @@ describe('CommentsScreen', () => {
     },
     {
       id: 'comment-2',
-      contentId: 'content-1',
+      contentId: 'content-123',
       userId: 'user-2',
       user: { id: 'user-2', username: 'AnotherUser' },
       text: 'This is a spoiler comment',
@@ -63,7 +66,7 @@ describe('CommentsScreen', () => {
       replies: [
         {
           id: 'reply-1',
-          contentId: 'content-1',
+          contentId: 'content-123',
           userId: 'user-1',
           user: { id: 'user-1', username: 'TestUser' },
           text: 'This is a reply',
@@ -79,8 +82,7 @@ describe('CommentsScreen', () => {
     vi.clearAllMocks()
     vi.mocked(commentsApi.isCommentsApiAvailable).mockReturnValue(true)
     vi.mocked(commentsApi.getComments).mockResolvedValue({
-      comments: [],
-      pagination: { page: 1, totalPages: 0, totalItems: 0, hasMore: false }
+      comments: []
     })
   })
 
@@ -145,8 +147,7 @@ describe('CommentsScreen', () => {
   describe('with comments', () => {
     beforeEach(() => {
       vi.mocked(commentsApi.getComments).mockResolvedValue({
-        comments: mockComments,
-        pagination: { page: 1, totalPages: 1, totalItems: 2, hasMore: false }
+        comments: mockComments
       })
     })
 
@@ -263,8 +264,7 @@ describe('CommentsScreen', () => {
   describe('compose mode', () => {
     beforeEach(() => {
       vi.mocked(commentsApi.getComments).mockResolvedValue({
-        comments: [],
-        pagination: { page: 1, totalPages: 0, totalItems: 0, hasMore: false }
+        comments: []
       })
     })
 
@@ -278,39 +278,10 @@ describe('CommentsScreen', () => {
     })
   })
 
-  describe('pagination', () => {
-    it('shows load more button when hasMore is true', async () => {
-      vi.mocked(commentsApi.getComments).mockResolvedValue({
-        comments: mockComments.slice(0, 1),
-        pagination: { page: 1, totalPages: 2, totalItems: 4, hasMore: true }
-      })
-
-      renderWithI18n(<CommentsScreen {...mockProps} />)
-
-      await waitFor(() => {
-        expect(document.querySelector('.comments-load-more')).toBeDefined()
-      })
-    })
-
-    it('hides load more when hasMore is false', async () => {
-      vi.mocked(commentsApi.getComments).mockResolvedValue({
-        comments: mockComments,
-        pagination: { page: 1, totalPages: 1, totalItems: 2, hasMore: false }
-      })
-
-      renderWithI18n(<CommentsScreen {...mockProps} />)
-
-      await waitFor(() => {
-        expect(document.querySelector('.comments-load-more-button')).toBeNull()
-      })
-    })
-  })
-
   describe('keyboard navigation', () => {
     beforeEach(() => {
       vi.mocked(commentsApi.getComments).mockResolvedValue({
-        comments: mockComments,
-        pagination: { page: 1, totalPages: 1, totalItems: 2, hasMore: false }
+        comments: mockComments
       })
     })
 
@@ -329,7 +300,7 @@ describe('CommentsScreen', () => {
       renderWithI18n(<CommentsScreen {...mockProps} />)
 
       await waitFor(() => {
-        expect(commentsApi.getComments).toHaveBeenCalledWith(123, 1)
+        expect(commentsApi.getComments).toHaveBeenCalledWith(123)
       })
     })
   })

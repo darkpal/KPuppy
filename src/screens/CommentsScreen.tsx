@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'preact/hooks'
-import { getComments, createComment, replyToComment, isCommentsApiAvailable, Comment, CommentsApiError } from '../api/comments'
+import { getComments, createComment, replyToComment, editComment, deleteComment, isCommentsApiAvailable, Comment, CommentsApiError } from '../api/comments'
+import { getCommentsUserId } from '../storage'
 import { Keyboard, KEYBOARD_ROWS, handleSpecialKey } from '../components/Keyboard'
 import { useKeyboardNavigation } from '../hooks'
 import { useI18n } from '../i18n'
@@ -13,42 +14,44 @@ interface CommentsScreenProps {
   isActive: boolean
 }
 
-type FocusArea = 'comments' | 'writeButton' | 'keyboard' | 'spoilerToggle' | 'sendButton' | 'retry' | 'loadMore'
+type FocusArea = 'comments' | 'writeButton' | 'keyboard' | 'spoilerToggle' | 'sendButton' | 'retry' | 'confirmDelete'
 
 export function CommentsScreen({ itemId, itemTitle, onBack, onNavigateToMenu, isActive }: CommentsScreenProps) {
   const { t } = useI18n()
   const [comments, setComments] = useState<Comment[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [page, setPage] = useState(1)
-  const [hasMore, setHasMore] = useState(false)
-  const [loadingMore, setLoadingMore] = useState(false)
   const [focusArea, setFocusArea] = useState<FocusArea>('comments')
   const [commentFocusIndex, setCommentFocusIndex] = useState(0)
   const [expandedSpoilers, setExpandedSpoilers] = useState<Set<string>>(new Set())
   const [replyingTo, setReplyingTo] = useState<Comment | null>(null)
+  const [editingComment, setEditingComment] = useState<Comment | null>(null)
+  const [deletingComment, setDeletingComment] = useState<Comment | null>(null)
   const [composing, setComposing] = useState(false)
   const [composedText, setComposedText] = useState('')
   const [spoilerFlag, setSpoilerFlag] = useState(false)
   const [keyboardRow, setKeyboardRow] = useState(0)
   const [keyboardCol, setKeyboardCol] = useState(0)
   const [sending, setSending] = useState(false)
+  const [confirmDeleteFocus, setConfirmDeleteFocus] = useState<'yes' | 'no'>('no')
   const listRef = useRef<HTMLDivElement>(null)
+  const currentUserId = getCommentsUserId()
 
   const flatComments = useMemo(() => {
-    const result: { comment: Comment; isReply: boolean }[] = []
-    for (const comment of comments) {
-      result.push({ comment, isReply: false })
-      if (comment.replies) {
-        for (const reply of comment.replies) {
-          result.push({ comment: reply, isReply: true })
+    const result: { comment: Comment; depth: number }[] = []
+    const flatten = (commentList: Comment[], depth: number) => {
+      for (const comment of commentList) {
+        result.push({ comment, depth })
+        if (comment.replies && comment.replies.length > 0) {
+          flatten(comment.replies, depth + 1)
         }
       }
     }
+    flatten(comments, 0)
     return result
   }, [comments])
 
-  const loadComments = useCallback(async (pageNum: number = 1, append: boolean = false) => {
+  const loadComments = useCallback(async () => {
     if (!isCommentsApiAvailable()) {
       setLoading(false)
       setError(null)
@@ -56,22 +59,10 @@ export function CommentsScreen({ itemId, itemTitle, onBack, onNavigateToMenu, is
     }
 
     try {
-      if (append) {
-        setLoadingMore(true)
-      } else {
-        setLoading(true)
-        setError(null)
-      }
-
-      const response = await getComments(itemId, pageNum)
-
-      if (append) {
-        setComments(prev => [...prev, ...response.comments])
-      } else {
-        setComments(response.comments)
-      }
-      setPage(pageNum)
-      setHasMore(response.pagination.hasMore)
+      setLoading(true)
+      setError(null)
+      const response = await getComments(itemId)
+      setComments(response.comments)
     } catch (err) {
       if (err instanceof CommentsApiError) {
         setError(err.message)
@@ -80,7 +71,6 @@ export function CommentsScreen({ itemId, itemTitle, onBack, onNavigateToMenu, is
       }
     } finally {
       setLoading(false)
-      setLoadingMore(false)
     }
   }, [itemId, t.commentsError])
 
@@ -95,23 +85,58 @@ export function CommentsScreen({ itemId, itemTitle, onBack, onNavigateToMenu, is
     }
   }, [composedText])
 
+  const addReplyToComment = useCallback((commentList: Comment[], parentId: string, reply: Comment): Comment[] => {
+    return commentList.map(c => {
+      if (c.id === parentId) {
+        return { ...c, replies: [...(c.replies || []), reply] }
+      }
+      if (c.replies && c.replies.length > 0) {
+        return { ...c, replies: addReplyToComment(c.replies, parentId, reply) }
+      }
+      return c
+    })
+  }, [])
+
+  const updateCommentInTree = useCallback((commentList: Comment[], commentId: string, updatedComment: Comment): Comment[] => {
+    return commentList.map(c => {
+      if (c.id === commentId) {
+        return { ...updatedComment, replies: c.replies }
+      }
+      if (c.replies && c.replies.length > 0) {
+        return { ...c, replies: updateCommentInTree(c.replies, commentId, updatedComment) }
+      }
+      return c
+    })
+  }, [])
+
+  const markCommentAsDeleted = useCallback((commentList: Comment[], commentId: string): Comment[] => {
+    return commentList.map(c => {
+      if (c.id === commentId) {
+        return { ...c, text: '[deleted]' }
+      }
+      if (c.replies && c.replies.length > 0) {
+        return { ...c, replies: markCommentAsDeleted(c.replies, commentId) }
+      }
+      return c
+    })
+  }, [])
+
   const handleSendComment = useCallback(async () => {
     if (!composedText.trim() || sending) return
 
     setSending(true)
     try {
-      let newComment: Comment
-      if (replyingTo) {
-        newComment = await replyToComment(replyingTo.id, composedText.trim(), spoilerFlag)
-        setComments(prev => prev.map(c => {
-          if (c.id === replyingTo.id) {
-            return { ...c, replies: [...(c.replies || []), newComment] }
-          }
-          return c
-        }))
+      let resultComment: Comment
+      if (editingComment) {
+        resultComment = await editComment(editingComment.id, composedText.trim(), spoilerFlag)
+        setComments(prev => updateCommentInTree(prev, editingComment.id, resultComment))
+        setEditingComment(null)
+      } else if (replyingTo) {
+        resultComment = await replyToComment(replyingTo.id, composedText.trim(), spoilerFlag)
+        setComments(prev => addReplyToComment(prev, replyingTo.id, resultComment))
       } else {
-        newComment = await createComment(itemId, composedText.trim(), spoilerFlag)
-        setComments(prev => [newComment, ...prev])
+        resultComment = await createComment(itemId, composedText.trim(), spoilerFlag)
+        setComments(prev => [resultComment, ...prev])
       }
 
       setComposedText('')
@@ -125,7 +150,7 @@ export function CommentsScreen({ itemId, itemTitle, onBack, onNavigateToMenu, is
     } finally {
       setSending(false)
     }
-  }, [composedText, spoilerFlag, replyingTo, itemId, sending])
+  }, [composedText, spoilerFlag, replyingTo, editingComment, itemId, sending, addReplyToComment, updateCommentInTree])
 
   const toggleSpoiler = useCallback((commentId: string) => {
     setExpandedSpoilers(prev => {
@@ -141,6 +166,7 @@ export function CommentsScreen({ itemId, itemTitle, onBack, onNavigateToMenu, is
 
   const startReply = useCallback((comment: Comment) => {
     setReplyingTo(comment)
+    setEditingComment(null)
     setComposing(true)
     setComposedText('')
     setSpoilerFlag(false)
@@ -148,6 +174,33 @@ export function CommentsScreen({ itemId, itemTitle, onBack, onNavigateToMenu, is
     setKeyboardRow(0)
     setKeyboardCol(0)
   }, [])
+
+  const startEdit = useCallback((comment: Comment) => {
+    setEditingComment(comment)
+    setReplyingTo(null)
+    setComposing(true)
+    setComposedText(comment.text)
+    setSpoilerFlag(comment.spoiler)
+    setFocusArea('keyboard')
+    setKeyboardRow(0)
+    setKeyboardCol(0)
+  }, [])
+
+  const handleDeleteComment = useCallback(async () => {
+    if (!deletingComment || sending) return
+
+    setSending(true)
+    try {
+      await deleteComment(deletingComment.id)
+      setComments(prev => markCommentAsDeleted(prev, deletingComment.id))
+      setDeletingComment(null)
+      setFocusArea('comments')
+    } catch (err) {
+      if (import.meta.env.DEV) console.error('Failed to delete comment:', err)
+    } finally {
+      setSending(false)
+    }
+  }, [deletingComment, sending, markCommentAsDeleted])
 
   const handlers = useMemo(() => {
     const cols = KEYBOARD_ROWS[keyboardRow]?.length || 12
@@ -160,17 +213,22 @@ export function CommentsScreen({ itemId, itemTitle, onBack, onNavigateToMenu, is
       }
     }
 
-    if (focusArea === 'loadMore') {
+    if (focusArea === 'confirmDelete') {
       return {
-        onBack,
-        onUp: () => {
-          if (flatComments.length > 0) {
-            setFocusArea('comments')
-            setCommentFocusIndex(flatComments.length - 1)
-          }
+        onBack: () => {
+          setDeletingComment(null)
+          setFocusArea('comments')
         },
-        onEnter: () => loadComments(page + 1, true),
-        onLeft: onNavigateToMenu
+        onLeft: () => setConfirmDeleteFocus('no'),
+        onRight: () => setConfirmDeleteFocus('yes'),
+        onEnter: () => {
+          if (confirmDeleteFocus === 'yes') {
+            handleDeleteComment()
+          } else {
+            setDeletingComment(null)
+            setFocusArea('comments')
+          }
+        }
       }
     }
 
@@ -183,6 +241,7 @@ export function CommentsScreen({ itemId, itemTitle, onBack, onNavigateToMenu, is
             } else {
               setComposing(false)
               setReplyingTo(null)
+              setEditingComment(null)
               setFocusArea('writeButton')
             }
           },
@@ -222,6 +281,7 @@ export function CommentsScreen({ itemId, itemTitle, onBack, onNavigateToMenu, is
           onBack: () => {
             setComposing(false)
             setReplyingTo(null)
+            setEditingComment(null)
             setFocusArea('writeButton')
           },
           onDown: () => {
@@ -239,6 +299,7 @@ export function CommentsScreen({ itemId, itemTitle, onBack, onNavigateToMenu, is
           onBack: () => {
             setComposing(false)
             setReplyingTo(null)
+            setEditingComment(null)
             setFocusArea('writeButton')
           },
           onDown: () => {
@@ -252,6 +313,10 @@ export function CommentsScreen({ itemId, itemTitle, onBack, onNavigateToMenu, is
     }
 
     if (focusArea === 'comments') {
+      const focusedItem = flatComments[commentFocusIndex]
+      const isOwnComment = focusedItem && currentUserId && focusedItem.comment.userId === currentUserId
+      const isDeleted = focusedItem && focusedItem.comment.text === '[deleted]'
+
       return {
         onBack,
         onLeft: () => {
@@ -267,26 +332,34 @@ export function CommentsScreen({ itemId, itemTitle, onBack, onNavigateToMenu, is
         onDown: () => {
           if (commentFocusIndex < flatComments.length - 1) {
             setCommentFocusIndex(prev => prev + 1)
-          } else if (hasMore) {
-            setFocusArea('loadMore')
           } else {
             setFocusArea('writeButton')
           }
         },
         onEnter: () => {
-          const item = flatComments[commentFocusIndex]
-          if (item) {
-            if (item.comment.spoiler && !expandedSpoilers.has(item.comment.id)) {
-              toggleSpoiler(item.comment.id)
+          if (focusedItem) {
+            if (focusedItem.comment.spoiler && !expandedSpoilers.has(focusedItem.comment.id)) {
+              toggleSpoiler(focusedItem.comment.id)
             } else {
-              startReply(item.comment)
+              startReply(focusedItem.comment)
             }
           }
         },
         onGreen: () => {
-          const item = flatComments[commentFocusIndex]
-          if (item) {
-            startReply(item.comment)
+          if (focusedItem) {
+            startReply(focusedItem.comment)
+          }
+        },
+        onBlue: () => {
+          if (isOwnComment && !isDeleted) {
+            startEdit(focusedItem.comment)
+          }
+        },
+        onRed: () => {
+          if (isOwnComment && !isDeleted) {
+            setDeletingComment(focusedItem.comment)
+            setConfirmDeleteFocus('no')
+            setFocusArea('confirmDelete')
           }
         }
       }
@@ -296,9 +369,7 @@ export function CommentsScreen({ itemId, itemTitle, onBack, onNavigateToMenu, is
       return {
         onBack,
         onUp: () => {
-          if (hasMore) {
-            setFocusArea('loadMore')
-          } else if (flatComments.length > 0) {
+          if (flatComments.length > 0) {
             setFocusArea('comments')
             setCommentFocusIndex(flatComments.length - 1)
           }
@@ -317,9 +388,9 @@ export function CommentsScreen({ itemId, itemTitle, onBack, onNavigateToMenu, is
     return { onBack }
   }, [
     focusArea, composing, keyboardRow, keyboardCol, flatComments,
-    commentFocusIndex, hasMore, expandedSpoilers, onBack, onNavigateToMenu,
-    handleKeyPress, handleSendComment, toggleSpoiler, startReply, loadComments,
-    page, composedText
+    commentFocusIndex, expandedSpoilers, onBack, onNavigateToMenu,
+    handleKeyPress, handleSendComment, toggleSpoiler, startReply, startEdit,
+    loadComments, composedText, currentUserId, confirmDeleteFocus, handleDeleteComment
   ])
 
   useKeyboardNavigation(handlers, isActive)
@@ -339,7 +410,13 @@ export function CommentsScreen({ itemId, itemTitle, onBack, onNavigateToMenu, is
 
   const formatTime = (timestamp: number): string => {
     const date = new Date(timestamp * 1000)
-    return date.toLocaleDateString()
+    return date.toLocaleString(undefined, {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
   }
 
   const getUserInitial = (username: string): string => {
@@ -393,15 +470,19 @@ export function CommentsScreen({ itemId, itemTitle, onBack, onNavigateToMenu, is
             <div class="comments-empty">{t.noComments}</div>
           )}
 
-          {flatComments.map(({ comment, isReply }, index) => {
+          {flatComments.map(({ comment, depth }, index) => {
             const isFocused = focusArea === 'comments' && commentFocusIndex === index
             const isSpoilerHidden = comment.spoiler && !expandedSpoilers.has(comment.id)
+            const indentStyle = depth > 0 ? { marginLeft: `${Math.min(depth, 4) * 24}px` } : undefined
+            const isOwnComment = currentUserId && comment.userId === currentUserId
+            const isDeleted = comment.text === '[deleted]'
 
             return (
               <div
                 key={comment.id}
                 data-comment-index={index}
-                class={`comments-item ${isFocused ? 'focused' : ''} ${isReply ? 'reply' : ''}`}
+                class={`comments-item ${isFocused ? 'focused' : ''} ${depth > 0 ? 'reply' : ''} ${isOwnComment ? 'own' : ''}`}
+                style={indentStyle}
               >
                 <div class="comments-item-header">
                   {comment.user.avatar ? (
@@ -415,29 +496,23 @@ export function CommentsScreen({ itemId, itemTitle, onBack, onNavigateToMenu, is
                     <div class="comments-item-username">{comment.user.username}</div>
                     <div class="comments-item-time">{formatTime(comment.createdAt)}</div>
                   </div>
+                  {isFocused && isOwnComment && !isDeleted && (
+                    <div class="comments-item-actions">
+                      <span class="comments-action-hint blue">{t.editComment}</span>
+                      <span class="comments-action-hint red">{t.deleteComment}</span>
+                    </div>
+                  )}
                 </div>
                 {isSpoilerHidden ? (
                   <div class={`comments-item-spoiler ${isFocused ? 'focused' : ''}`}>
                     <span class="comments-item-spoiler-text">{t.showSpoiler}</span>
                   </div>
                 ) : (
-                  <div class="comments-item-text">{comment.text}</div>
+                  <div class={`comments-item-text ${isDeleted ? 'deleted' : ''}`}>{comment.text}</div>
                 )}
               </div>
             )
           })}
-
-          {hasMore && (
-            <div class="comments-load-more">
-              {loadingMore ? (
-                <div class="comments-spinner" style={{ width: 32, height: 32 }} />
-              ) : (
-                <button class={`comments-load-more-button ${focusArea === 'loadMore' ? 'focused' : ''}`}>
-                  {t.loadingMore}
-                </button>
-              )}
-            </div>
-          )}
         </div>
 
         <div class="comments-write-section">
@@ -447,6 +522,11 @@ export function CommentsScreen({ itemId, itemTitle, onBack, onNavigateToMenu, is
             </button>
           ) : (
             <div class="comments-compose">
+              {editingComment && (
+                <div class="comments-compose-editing">
+                  {t.editing}
+                </div>
+              )}
               {replyingTo && (
                 <div class="comments-compose-replying">
                   {t.replyingTo} <strong>{replyingTo.user.username}</strong>
@@ -482,6 +562,22 @@ export function CommentsScreen({ itemId, itemTitle, onBack, onNavigateToMenu, is
           )}
         </div>
       </div>
+
+      {deletingComment && (
+        <div class="comments-delete-overlay">
+          <div class="comments-delete-dialog">
+            <p class="comments-delete-message">{t.confirmDeleteComment}</p>
+            <div class="comments-delete-buttons">
+              <button class={`comments-delete-btn cancel ${confirmDeleteFocus === 'no' ? 'focused' : ''}`}>
+                {t.cancel}
+              </button>
+              <button class={`comments-delete-btn confirm ${confirmDeleteFocus === 'yes' ? 'focused' : ''}`}>
+                {t.deleteComment}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

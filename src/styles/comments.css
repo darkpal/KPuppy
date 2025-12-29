@@ -175,8 +175,30 @@
 }
 
 .comments-item-actions {
-  margin-top: 12px;
   display: flex;
+  margin-left: auto;
+}
+
+.comments-action-hint {
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 3px;
+  margin-left: 8px;
+}
+
+.comments-action-hint.blue {
+  background: #0066cc;
+  color: #ffffff;
+}
+
+.comments-action-hint.red {
+  background: #e50914;
+  color: #ffffff;
+}
+
+.comments-item-text.deleted {
+  color: #666;
+  font-style: italic;
 }
 
 .comments-item-reply-btn {
@@ -395,4 +417,73 @@
 .comments-load-more-button.focused {
   background: #e50914;
   border-color: #ffffff;
+}
+
+.comments-compose-editing {
+  font-size: 14px;
+  color: #0066cc;
+  margin-bottom: 12px;
+  font-weight: 500;
+}
+
+.comments-delete-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.comments-delete-dialog {
+  background: #1e1e1e;
+  border-radius: 12px;
+  padding: 32px;
+  max-width: 400px;
+  text-align: center;
+}
+
+.comments-delete-message {
+  font-size: 20px;
+  color: #ffffff;
+  margin: 0 0 24px 0;
+}
+
+.comments-delete-buttons {
+  display: flex;
+  justify-content: center;
+}
+
+.comments-delete-btn {
+  padding: 12px 32px;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  margin: 0 8px;
+  border: 2px solid transparent;
+}
+
+.comments-delete-btn.cancel {
+  background: #333;
+  color: #ffffff;
+}
+
+.comments-delete-btn.cancel.focused {
+  border-color: #ffffff;
+  background: #444;
+}
+
+.comments-delete-btn.confirm {
+  background: #e50914;
+  color: #ffffff;
+}
+
+.comments-delete-btn.confirm.focused {
+  border-color: #ffffff;
+  background: #ff0a16;
 }

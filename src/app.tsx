@@ -17,8 +17,9 @@ import { CommentsScreen } from './screens/CommentsScreen'
 import { RemoteDebugOverlay } from './components/RemoteDebugOverlay'
 import { ALL_MENU_ITEMS_COUNT, getMenuIdByIndex } from './components/SideMenu'
 import { ScreenManager } from './components/ScreenManager'
-import { isAuthenticated, clearTokens, getTokens, getLocalSettings, saveReturnTo, getReturnTo, clearReturnTo, getContentTypesCache, saveContentTypesCache } from './storage'
-import { refreshAccessToken, getItem, setOnAuthError, getDeviceInfo, markTime, getContentTypes, Audio, Subtitle } from './api/kinopub'
+import { isAuthenticated, clearTokens, getTokens, getLocalSettings, saveReturnTo, getReturnTo, clearReturnTo, getContentTypesCache, saveContentTypesCache, getCommentsUserId, saveCommentsUserId, clearCommentsUserId } from './storage'
+import { refreshAccessToken, getItem, setOnAuthError, getDeviceInfo, markTime, getContentTypes, getUser, Audio, Subtitle } from './api/kinopub'
+import { provisionUser, isCommentsApiAvailable } from './api/comments'
 import { saveTokens } from './storage'
 import { launchNativePlayer, getStreamUrl } from './webos/player'
 import { useI18n } from './i18n'
@@ -154,12 +155,26 @@ export function App() {
       })
   }, [state.authenticated])
 
+  useEffect(() => {
+    if (!state.authenticated) return
+    if (!isCommentsApiAvailable()) return
+    if (getCommentsUserId()) return
+
+    getUser()
+      .then(user => provisionUser(user.username, user.avatar))
+      .then(response => saveCommentsUserId(response.userId))
+      .catch(err => {
+        if (import.meta.env.DEV) console.error('provisionUser failed:', err)
+      })
+  }, [state.authenticated])
+
   const handleAuthenticated = useCallback(() => {
     setState(prev => ({ ...prev, authenticated: true }))
   }, [])
 
   const handleLogout = useCallback(() => {
     clearTokens()
+    clearCommentsUserId()
     setState(prev => ({ ...prev, authenticated: false, itemId: null, seriesId: null, selectedMenuId: 'home' }))
   }, [])
 

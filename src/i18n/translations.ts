@@ -133,6 +133,7 @@ export interface Translations {
   deleteFolder: string
   newFolderName: string
   confirmDelete: string
+  confirmDeleteComment: string
   bookmarkAdded: string
   bookmarkRemoved: string
 
@@ -165,6 +166,10 @@ export interface Translations {
   hideSpoiler: string
   commentsError: string
   replyingTo: string
+  editComment: string
+  deleteComment: string
+  cancel: string
+  editing: string
 }
 
 const en: Translations = {
@@ -305,6 +310,11 @@ const en: Translations = {
   hideSpoiler: 'Hide spoiler',
   commentsError: 'Failed to load comments',
   replyingTo: 'Replying to',
+  editComment: 'Edit',
+  deleteComment: 'Delete',
+  confirmDeleteComment: 'Delete this comment?',
+  cancel: 'Cancel',
+  editing: 'Editing',
 }
 
 const ru: Translations = {
@@ -445,6 +455,11 @@ const ru: Translations = {
   hideSpoiler: 'Скрыть спойлер',
   commentsError: 'Не удалось загрузить комментарии',
   replyingTo: 'Ответ на',
+  editComment: 'Изменить',
+  deleteComment: 'Удалить',
+  confirmDeleteComment: 'Удалить комментарий?',
+  cancel: 'Отмена',
+  editing: 'Редактирование',
 }
 
 const de: Translations = {
@@ -585,6 +600,11 @@ const de: Translations = {
   hideSpoiler: 'Spoiler verbergen',
   commentsError: 'Kommentare konnten nicht geladen werden',
   replyingTo: 'Antwort auf',
+  editComment: 'Bearbeiten',
+  deleteComment: 'Löschen',
+  confirmDeleteComment: 'Kommentar löschen?',
+  cancel: 'Abbrechen',
+  editing: 'Bearbeiten',
 }
 
 export const translations: Record<Language, Translations> = { en, ru, de }

@@ -19,12 +19,15 @@ vi.mock('../src/storage', () => ({
   getTokens: vi.fn(),
   saveTokens: vi.fn(),
   clearTokens: vi.fn(),
-  getLocalSettings: vi.fn(() => ({ defaultQuality: 'auto', playerType: 'builtin', language: 'en' })),
+  getLocalSettings: vi.fn(() => ({ defaultQuality: 'auto', playerType: 'builtin', language: 'en', showComments: true })),
   saveReturnTo: vi.fn(),
   getReturnTo: vi.fn(() => null),
   clearReturnTo: vi.fn(),
   getContentTypesCache: vi.fn(() => null),
   saveContentTypesCache: vi.fn(),
+  getCommentsUserId: vi.fn(() => null),
+  saveCommentsUserId: vi.fn(),
+  clearCommentsUserId: vi.fn(),
 }))
 
 vi.mock('../src/api/kinopub', () => ({
@@ -33,6 +36,7 @@ vi.mock('../src/api/kinopub', () => ({
   setOnAuthError: vi.fn(),
   getDeviceInfo: vi.fn(),
   markTime: vi.fn(),
+  getUser: vi.fn(() => Promise.resolve({ username: 'testuser', avatar: null })),
   getContentTypes: vi.fn(() => Promise.resolve([])),
   getItems: vi.fn(() => Promise.resolve([])),
   getWatching: vi.fn(() => Promise.resolve([])),
@@ -70,6 +74,11 @@ vi.mock('../src/api/kinopub', () => ({
 vi.mock('../src/webos/player', () => ({
   launchNativePlayer: vi.fn(),
   getStreamUrl: vi.fn(),
+}))
+
+vi.mock('../src/api/comments', () => ({
+  provisionUser: vi.fn(() => Promise.resolve({ userId: 'test-user-id' })),
+  isCommentsApiAvailable: vi.fn(() => false),
 }))
 
 describe('App Navigation', () => {

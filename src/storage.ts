@@ -2,6 +2,7 @@ const STORAGE_KEY = 'kpuppy_tokens'
 const SETTINGS_KEY = 'kpuppy_settings'
 const RETURN_TO_KEY = 'kpuppy_return_to'
 const CONTENT_TYPES_KEY = 'kpuppy_content_types'
+const COMMENTS_USER_KEY = 'kpuppy_comments_user'
 
 export interface Tokens {
   access: string
@@ -125,4 +126,20 @@ export function saveContentTypesCache(types: CachedContentType[]): void {
     fetchedAt: Date.now()
   }
   localStorage.setItem(CONTENT_TYPES_KEY, JSON.stringify(cached))
+}
+
+export function getCommentsUserId(): string | null {
+  return localStorage.getItem(COMMENTS_USER_KEY)
+}
+
+export function saveCommentsUserId(userId: string): void {
+  if (!userId || userId === 'undefined') {
+    console.error('Attempted to save invalid comments user ID:', userId)
+    return
+  }
+  localStorage.setItem(COMMENTS_USER_KEY, userId)
+}
+
+export function clearCommentsUserId(): void {
+  localStorage.removeItem(COMMENTS_USER_KEY)
 }
