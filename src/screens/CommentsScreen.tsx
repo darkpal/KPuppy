@@ -419,8 +419,8 @@ export function CommentsScreen({ itemId, itemTitle, onBack, onNavigateToMenu, is
     })
   }
 
-  const getUserInitial = (username: string): string => {
-    return username.charAt(0).toUpperCase()
+  const getUserInitial = (displayName: string): string => {
+    return displayName.charAt(0).toUpperCase()
   }
 
   if (loading) {
@@ -489,11 +489,11 @@ export function CommentsScreen({ itemId, itemTitle, onBack, onNavigateToMenu, is
                     <img class="comments-item-avatar" src={comment.user.avatar} alt="" />
                   ) : (
                     <div class="comments-item-avatar-placeholder">
-                      {getUserInitial(comment.user.username)}
+                      {getUserInitial(comment.user.displayName)}
                     </div>
                   )}
                   <div class="comments-item-info">
-                    <div class="comments-item-username">{comment.user.username}</div>
+                    <div class="comments-item-username">{comment.user.displayName}</div>
                     <div class="comments-item-time">{formatTime(comment.createdAt)}</div>
                   </div>
                   {isFocused && isOwnComment && !isDeleted && (
@@ -529,7 +529,7 @@ export function CommentsScreen({ itemId, itemTitle, onBack, onNavigateToMenu, is
               )}
               {replyingTo && (
                 <div class="comments-compose-replying">
-                  {t.replyingTo} <strong>{replyingTo.user.username}</strong>
+                  {t.replyingTo} <strong>{replyingTo.user.displayName}</strong>
                 </div>
               )}
               <div class="comments-input">

@@ -20,6 +20,7 @@ import { ScreenManager } from './components/ScreenManager'
 import { isAuthenticated, clearTokens, getTokens, getLocalSettings, saveReturnTo, getReturnTo, clearReturnTo, getContentTypesCache, saveContentTypesCache, getCommentsUserId, saveCommentsUserId, clearCommentsUserId } from './storage'
 import { refreshAccessToken, getItem, setOnAuthError, getDeviceInfo, markTime, getContentTypes, getUser, Audio, Subtitle } from './api/kinopub'
 import { provisionUser, isCommentsApiAvailable } from './api/comments'
+import { hashUsername } from './utils/hash'
 import { saveTokens } from './storage'
 import { launchNativePlayer, getStreamUrl } from './webos/player'
 import { useI18n } from './i18n'
@@ -161,7 +162,7 @@ export function App() {
     if (getCommentsUserId()) return
 
     getUser()
-      .then(user => provisionUser(user.username, user.avatar))
+      .then(user => provisionUser(hashUsername(user.username), user.avatar))
       .then(response => saveCommentsUserId(response.userId))
       .catch(err => {
         if (import.meta.env.DEV) console.error('provisionUser failed:', err)

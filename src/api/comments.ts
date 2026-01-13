@@ -11,7 +11,7 @@ export class CommentsApiError extends Error {
 
 export interface CommentUser {
   id: string
-  username: string
+  displayName: string
   avatar?: string
 }
 
@@ -176,7 +176,7 @@ export async function deleteComment(commentId: string): Promise<void> {
 }
 
 export async function provisionUser(
-  username: string,
+  userHash: string,
   avatar?: string
 ): Promise<UserProvisionResponse> {
   if (!COMMENTS_BASE_URL) {
@@ -188,7 +188,7 @@ export async function provisionUser(
       `${COMMENTS_BASE_URL}/users/provision`,
       {
         method: 'POST',
-        body: JSON.stringify({ username, avatar: avatar || undefined })
+        body: JSON.stringify({ userHash, avatar: avatar || undefined })
       }
     )
     const data = await response.json()

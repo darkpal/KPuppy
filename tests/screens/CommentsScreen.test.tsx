@@ -47,7 +47,7 @@ describe('CommentsScreen', () => {
       id: 'comment-1',
       contentId: 'content-123',
       userId: 'user-1',
-      user: { id: 'user-1', username: 'TestUser', avatar: 'https://example.com/avatar.jpg' },
+      user: { id: 'user-1', displayName: 'Brave Tiger', avatar: 'https://example.com/avatar.jpg' },
       text: 'This is a test comment',
       spoiler: false,
       parentId: null,
@@ -58,7 +58,7 @@ describe('CommentsScreen', () => {
       id: 'comment-2',
       contentId: 'content-123',
       userId: 'user-2',
-      user: { id: 'user-2', username: 'AnotherUser' },
+      user: { id: 'user-2', displayName: 'Pink Koala' },
       text: 'This is a spoiler comment',
       spoiler: true,
       parentId: null,
@@ -68,7 +68,7 @@ describe('CommentsScreen', () => {
           id: 'reply-1',
           contentId: 'content-123',
           userId: 'user-1',
-          user: { id: 'user-1', username: 'TestUser' },
+          user: { id: 'user-1', displayName: 'Brave Tiger' },
           text: 'This is a reply',
           spoiler: false,
           parentId: 'comment-2',
@@ -178,13 +178,13 @@ describe('CommentsScreen', () => {
       })
     })
 
-    it('renders username', async () => {
+    it('renders display name', async () => {
       renderWithI18n(<CommentsScreen {...mockProps} />)
 
       await waitFor(() => {
-        const username = document.querySelector('.comments-item-username')
-        expect(username).toBeDefined()
-        expect(username?.textContent).toBe('TestUser')
+        const displayName = document.querySelector('.comments-item-username')
+        expect(displayName).toBeDefined()
+        expect(displayName?.textContent).toBe('Brave Tiger')
       })
     })
 

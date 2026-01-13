@@ -270,7 +270,7 @@ describe('comments API', () => {
     })
 
     describe('provisionUser', () => {
-      it('sends POST request with username and avatar', async () => {
+      it('sends POST request with userHash and avatar', async () => {
         mockFetch.mockResolvedValueOnce({
           ok: true,
           json: () => Promise.resolve({ userId: 'new-user-id' })
@@ -283,7 +283,7 @@ describe('comments API', () => {
           'https://api.example.com/kpuppy/users/provision',
           expect.objectContaining({
             method: 'POST',
-            body: JSON.stringify({ username: 'testuser', avatar: 'https://example.com/avatar.jpg' })
+            body: JSON.stringify({ userHash: 'testuser', avatar: 'https://example.com/avatar.jpg' })
           })
         )
       })
