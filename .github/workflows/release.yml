@@ -39,6 +39,28 @@ jobs:
       - name: Package IPK
         run: ares-package dist -o .
 
+      - name: Generate manifest
+        run: |
+          IPK_FILE=$(ls *.ipk)
+          VERSION=${GITHUB_REF_NAME#v}
+          SHA256=$(sha256sum "$IPK_FILE" | cut -d' ' -f1)
+          cat > com.kpuppy.app.manifest.json << EOF
+          {
+            "id": "com.kpuppy.app",
+            "version": "$VERSION",
+            "type": "web",
+            "title": "KPuppy",
+            "appDescription": "A lightweight webOS LG TV app for KinoPub online cinema.",
+            "iconUri": "https://raw.githubusercontent.com/twttr/KPuppy/develop/webos-meta/icon.png",
+            "sourceUrl": "https://github.com/twttr/KPuppy",
+            "rootRequired": false,
+            "ipkUrl": "$IPK_FILE",
+            "ipkHash": {
+              "sha256": "$SHA256"
+            }
+          }
+          EOF
+
       - name: Upload IPK artifact
         uses: actions/upload-artifact@v4
         with:
@@ -57,7 +79,9 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: '*.ipk'
+          files: |
+            *.ipk
+            com.kpuppy.app.manifest.json
           generate_release_notes: true
 
   update-homebrew:
