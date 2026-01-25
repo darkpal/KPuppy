@@ -45,8 +45,65 @@ jobs:
           name: kpuppy-${{ github.ref_name }}
           path: '*.ipk'
 
+      - name: Upload icons artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: icons
+          path: |
+            dist/icon.png
+            dist/largeIcon.png
+          include-hidden-files: false
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: '*.ipk'
           generate_release_notes: true
+
+  update-homebrew:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download IPK artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: kpuppy-${{ github.ref_name }}
+          path: ./ipk
+
+      - name: Download icons artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: icons
+          path: ./icons
+
+      - name: Checkout homebrew repo
+        uses: actions/checkout@v4
+        with:
+          repository: twttr/webos-apps
+          token: ${{ secrets.HOMEBREW_PAT }}
+          path: homebrew
+
+      - name: Update KPuppy app
+        run: |
+          rm -f homebrew/apps/com.kpuppy.app/*.ipk
+          cp ipk/*.ipk homebrew/apps/com.kpuppy.app/
+          cp icons/icon.png homebrew/apps/com.kpuppy.app/
+          cp icons/largeIcon.png homebrew/apps/com.kpuppy.app/
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Generate manifest
+        run: node scripts/generate-manifest.js
+        working-directory: homebrew
+
+      - name: Commit and push
+        run: |
+          cd homebrew
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Update KPuppy to ${{ github.ref_name }}"
+          git push

@@ -4,6 +4,26 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>KPuppy</title>
+    <script>
+      try { globalThis; } catch(e) { window.globalThis = window; }
+      window.__earlyErrors = [];
+      window.onerror = function(msg, url, line, col, err) {
+        window.__earlyErrors.push({ msg: msg, url: url, line: line, col: col, err: err });
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', 'https://__SENTRY_HOST__/api/__SENTRY_PROJECT__/store/?sentry_key=__SENTRY_KEY__');
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.send(JSON.stringify({
+          event_id: ('eeee' + Date.now().toString(16) + Math.random().toString(16).slice(2) + '0000000000000000').slice(0,32),
+          timestamp: new Date().toISOString(),
+          platform: 'javascript',
+          level: 'error',
+          logger: 'early-error-handler',
+          message: String(msg),
+          exception: { values: [{ type: err ? err.name : 'Error', value: String(msg) }] },
+          tags: { source: 'early-error' }
+        }));
+      };
+    </script>
   </head>
   <body>
     <div id="app"></div>

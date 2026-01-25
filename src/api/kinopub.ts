@@ -4,7 +4,7 @@ import { getCached, setCache, createCacheKey, invalidateCache, cachedFetch } fro
 const BASE_URL = 'https://api.service-kp.com'
 const CLIENT_ID = 'xbmc'
 const CLIENT_SECRET = import.meta.env.VITE_CLIENT_SECRET || ''
-const APP_VERSION = '0.0.1'
+const APP_VERSION = __APP_VERSION__
 
 let onAuthErrorCallback: (() => void) | null = null
 

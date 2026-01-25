@@ -18,7 +18,7 @@ import { RemoteDebugOverlay } from './components/RemoteDebugOverlay'
 import { ALL_MENU_ITEMS_COUNT, getMenuIdByIndex } from './components/SideMenu'
 import { ScreenManager } from './components/ScreenManager'
 import { isAuthenticated, clearTokens, getTokens, getLocalSettings, saveReturnTo, getReturnTo, clearReturnTo, getContentTypesCache, saveContentTypesCache, getCommentsUserId, saveCommentsUserId, clearCommentsUserId } from './storage'
-import { refreshAccessToken, getItem, setOnAuthError, getDeviceInfo, markTime, getContentTypes, getUser, Audio, Subtitle } from './api/kinopub'
+import { refreshAccessToken, getItem, setOnAuthError, getDeviceInfo, markTime, getContentTypes, getUser, registerDevice, Audio, Subtitle } from './api/kinopub'
 import { provisionUser, isCommentsApiAvailable } from './api/comments'
 import { hashUsername } from './utils/hash'
 import { saveTokens } from './storage'
@@ -142,6 +142,14 @@ export function App() {
 
     checkAndRefreshToken()
   }, [])
+
+  useEffect(() => {
+    if (!state.authenticated) return
+
+    registerDevice().catch(err => {
+      if (import.meta.env.DEV) console.error('registerDevice failed:', err)
+    })
+  }, [state.authenticated])
 
   useEffect(() => {
     if (!state.authenticated) return

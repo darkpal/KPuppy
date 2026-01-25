@@ -36,6 +36,7 @@ vi.mock('../src/api/kinopub', () => ({
   setOnAuthError: vi.fn(),
   getDeviceInfo: vi.fn(),
   markTime: vi.fn(),
+  registerDevice: vi.fn(() => Promise.resolve()),
   getUser: vi.fn(() => Promise.resolve({ username: 'testuser', avatar: null })),
   getContentTypes: vi.fn(() => Promise.resolve([])),
   getItems: vi.fn(() => Promise.resolve([])),
