@@ -15,6 +15,11 @@ A lightweight webOS LG TV app for KinoPub online cinema.
 - Multi-language support (English, Russian, German)
 - Quality selection (4K, 1080p, 720p, 480p)
 
+## Screenshots
+
+<img src=".github/screenshots/screen1.png" alt="Main Screen" width="400"> <img src=".github/screenshots/screen2.png" alt="Movie Details" width="400">
+<img src=".github/screenshots/screen3.png" alt="Search" width="400"> <img src=".github/screenshots/screen4.png" alt="Video Player" width="400">
+
 ## Requirements
 
 - Node.js 18+
