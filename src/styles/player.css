@@ -105,6 +105,23 @@
 .player-state {
   font-size: 24px;
   color: #fff;
+  display: flex;
+  align-items: center;
+}
+
+.icon-play {
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 10px 0 10px 16px;
+  border-color: transparent transparent transparent #fff;
+}
+
+.icon-pause {
+  width: 16px;
+  height: 20px;
+  border-left: 5px solid #fff;
+  border-right: 5px solid #fff;
 }
 
 .player-hints {

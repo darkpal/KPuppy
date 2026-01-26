@@ -365,7 +365,7 @@ export function PlayerScreen({ url, title, audios = [], subtitles = [], startTim
 
             <div class="player-controls-row">
               <div class="player-state">
-                {isPlaying ? '▶' : '⏸'}
+                {isPlaying ? <span class="icon-play" /> : <span class="icon-pause" />}
               </div>
               <div class="player-hints">
                 {audios.length > 0 && (
