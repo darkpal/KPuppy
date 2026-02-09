@@ -56,7 +56,8 @@ export function SettingsScreen({ onNavigateToMenu, isActive }: SettingsScreenPro
   const [quality, setQuality] = useState<VideoQuality>(() => getLocalSettings().defaultQuality)
   const [playerType, setPlayerType] = useState<PlayerType>(() => getLocalSettings().playerType)
   const [showComments, setShowComments] = useState<boolean>(() => getLocalSettings().showComments)
-  const [focusedIndex, setFocusedIndex] = useState(0)
+  const [focusedCol, setFocusedCol] = useState(0)
+  const [focusedRow, setFocusedRow] = useState(0)
   const [expandedSelect, setExpandedSelect] = useState<string | null>(null)
   const [selectFocusIndex, setSelectFocusIndex] = useState(0)
 
@@ -90,15 +91,17 @@ export function SettingsScreen({ onNavigateToMenu, isActive }: SettingsScreenPro
   const servers = settings?.serverLocation || []
   const streamingTypes = settings?.streamingType || []
 
-  const visibleSettings = ALL_SETTINGS.filter(item => {
-    if (item.key === 'serverLocation' && servers.length === 0) return false
-    if (item.key === 'streamingType' && streamingTypes.length === 0) return false
-    return true
-  })
-
-  const clientSettings = visibleSettings.filter(s => s.section === 'client')
-  const localSettings = visibleSettings.filter(s => s.section === 'local')
-  const allItems = [...clientSettings, ...localSettings]
+  const columns = useMemo(() => {
+    const visible = ALL_SETTINGS.filter(item => {
+      if (item.key === 'serverLocation' && servers.length === 0) return false
+      if (item.key === 'streamingType' && streamingTypes.length === 0) return false
+      return true
+    })
+    return [
+      visible.filter(s => s.section === 'client'),
+      visible.filter(s => s.section === 'local'),
+    ]
+  }, [servers.length, streamingTypes.length])
 
   const getSelectOptions = (key: string): SelectOption[] => {
     if (key === 'serverLocation') return servers
@@ -160,7 +163,7 @@ export function SettingsScreen({ onNavigateToMenu, isActive }: SettingsScreenPro
   }, [expandedSelect, selectFocusIndex, languages, settings, saveSettingChange, setLanguage])
 
   const handleActivateItem = useCallback(() => {
-    const currentItem = allItems[focusedIndex]
+    const currentItem = columns[focusedCol]?.[focusedRow]
     if (!currentItem) return
     if (currentItem.type === 'toggle' && currentItem.id === 'showComments') {
       const newValue = !showComments
@@ -183,7 +186,7 @@ export function SettingsScreen({ onNavigateToMenu, isActive }: SettingsScreenPro
       setSelectFocusIndex(Math.max(0, selectedIdx))
       setExpandedSelect('language')
     }
-  }, [allItems, focusedIndex, settings, saveSettingChange, showComments])
+  }, [columns, focusedCol, focusedRow, settings, saveSettingChange, showComments])
 
   const handlers = useMemo(() => {
     if (expandedSelect) {
@@ -195,14 +198,29 @@ export function SettingsScreen({ onNavigateToMenu, isActive }: SettingsScreenPro
         onBack: () => setExpandedSelect(null)
       }
     }
+    const currentColLength = columns[focusedCol]?.length || 0
     return {
-      onLeft: onNavigateToMenu,
-      onUp: () => setFocusedIndex(prev => Math.max(0, prev - 1)),
-      onDown: () => setFocusedIndex(prev => Math.min(allItems.length - 1, prev + 1)),
-      onEnter: handleActivateItem,
-      onRight: handleActivateItem
+      onLeft: () => {
+        if (focusedCol > 0) {
+          const targetCol = focusedCol - 1
+          setFocusedCol(targetCol)
+          setFocusedRow(prev => Math.min(prev, (columns[targetCol]?.length || 1) - 1))
+        } else {
+          onNavigateToMenu()
+        }
+      },
+      onRight: () => {
+        if (focusedCol < columns.length - 1 && (columns[focusedCol + 1]?.length || 0) > 0) {
+          const targetCol = focusedCol + 1
+          setFocusedCol(targetCol)
+          setFocusedRow(prev => Math.min(prev, (columns[targetCol]?.length || 1) - 1))
+        }
+      },
+      onUp: () => setFocusedRow(prev => Math.max(0, prev - 1)),
+      onDown: () => setFocusedRow(prev => Math.min(currentColLength - 1, prev + 1)),
+      onEnter: handleActivateItem
     }
-  }, [expandedSelect, allItems.length, onNavigateToMenu, handleSelectOption, handleActivateItem])
+  }, [expandedSelect, focusedCol, focusedRow, columns, onNavigateToMenu, handleSelectOption, handleActivateItem])
 
   useKeyboardNavigation(handlers, isActive && !loading)
 
@@ -215,8 +233,8 @@ export function SettingsScreen({ onNavigateToMenu, isActive }: SettingsScreenPro
     return languages.find(l => l.id === language)?.label || 'English'
   }
 
-  const renderSettingItem = (item: SettingItem, globalIndex: number) => {
-    const isFocused = focusedIndex === globalIndex
+  const renderSettingItem = (item: SettingItem, col: number, row: number) => {
+    const isFocused = focusedCol === col && focusedRow === row
 
     return (
       <div
@@ -279,20 +297,20 @@ export function SettingsScreen({ onNavigateToMenu, isActive }: SettingsScreenPro
       {saving && <div class="settings-saving">{t.saving}</div>}
 
       <div class="settings-sections">
-        {clientSettings.length > 0 && (
+        {columns[0].length > 0 && (
           <div class="settings-section">
             <h2 class="settings-section-title">{t.clientSettings}</h2>
             <div class="settings-list">
-              {clientSettings.map((item, idx) => renderSettingItem(item, idx))}
+              {columns[0].map((item, idx) => renderSettingItem(item, 0, idx))}
             </div>
           </div>
         )}
 
-        {localSettings.length > 0 && (
+        {columns[1].length > 0 && (
           <div class="settings-section">
             <h2 class="settings-section-title">{t.localSettings}</h2>
             <div class="settings-list">
-              {localSettings.map((item, idx) => renderSettingItem(item, clientSettings.length + idx))}
+              {columns[1].map((item, idx) => renderSettingItem(item, 1, idx))}
             </div>
           </div>
         )}

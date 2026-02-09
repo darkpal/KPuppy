@@ -11,7 +11,7 @@
   padding: 20px 24px;
   margin-bottom: 8px;
   background: rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   cursor: pointer;
   transition: background 0.15s ease, transform 0.15s ease;
 }
@@ -84,7 +84,7 @@
 
 .bookmarks-dialog {
   background: #1a1a1a;
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   padding: 32px;
   min-width: 400px;
   max-width: 90%;
@@ -114,7 +114,7 @@
   font-size: 18px;
   background: #333 !important;
   border: 2px solid rgba(255, 255, 255, 0.2);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   color: #fff !important;
   outline: none;
   margin-bottom: 24px;
@@ -137,7 +137,7 @@
   padding: 12px 24px;
   font-size: 16px;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   cursor: pointer;
   background: rgba(255, 255, 255, 0.1);
   color: #fff;

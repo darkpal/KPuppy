@@ -10,7 +10,7 @@
 
 .auth-card {
   background: #1f1f1f;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   padding: 60px 80px;
   text-align: center;
   max-width: 600px;

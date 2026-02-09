@@ -308,14 +308,16 @@ export function SearchScreen({ onBack, onSelectItem, onNavigateToMenu, isActive 
         )}
       </div>
 
-      <Keyboard
-        rows={KEYBOARD_ROWS}
-        focusedRow={keyboardRow}
-        focusedCol={keyboardCol}
-        isFocused={focusArea === 'keyboard'}
-        onKeyPress={handleKeyPress}
-        className="search-keyboard"
-      />
+      {focusArea !== 'results' && (
+        <Keyboard
+          rows={KEYBOARD_ROWS}
+          focusedRow={keyboardRow}
+          focusedCol={keyboardCol}
+          isFocused={focusArea === 'keyboard'}
+          onKeyPress={handleKeyPress}
+          className="search-keyboard"
+        />
+      )}
 
       <div class="search-results">
         {loading && (

@@ -1,0 +1,21 @@
+{
+  "extends": ["stylelint-config-standard"],
+  "plugins": ["stylelint-no-unsupported-browser-features"],
+  "rules": {
+    "plugin/no-unsupported-browser-features": [true, {
+      "severity": "warning",
+      "ignore": ["css-sel3", "css-textshadow", "border-radius", "transforms2d", "css-animation", "css-transitions", "css-gradients", "calc", "css-variables", "css-overflow"]
+    }],
+    "no-descending-specificity": null,
+    "declaration-block-no-redundant-longhand-properties": null,
+    "shorthand-property-no-redundant-values": null,
+    "color-hex-length": null,
+    "color-function-notation": null,
+    "color-function-alias-notation": null,
+    "alpha-value-notation": null,
+    "property-no-vendor-prefix": null,
+    "property-no-deprecated": null,
+    "custom-property-empty-line-before": null,
+    "declaration-block-single-line-max-declarations": null
+  }
+}

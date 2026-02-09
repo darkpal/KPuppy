@@ -6,10 +6,7 @@ export function useEventListener<K extends keyof DocumentEventMap>(
   enabled: boolean = true
 ): void {
   const savedHandler = useRef(handler)
-
-  useEffect(() => {
-    savedHandler.current = handler
-  }, [handler])
+  savedHandler.current = handler
 
   useEffect(() => {
     if (!enabled) return

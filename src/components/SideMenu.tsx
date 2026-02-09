@@ -1,5 +1,7 @@
 import { ComponentType } from 'preact'
+import { useRef } from 'preact/hooks'
 import { useI18n } from '../i18n'
+import { useScrollToFocused } from '../hooks/useScrollToFocused'
 import { Translations } from '../i18n/translations'
 import {
   HomeIcon, SearchIcon, PlayIcon, BookmarkIcon, CollectionIcon, HistoryIcon, FilmIcon, TvIcon,
@@ -51,6 +53,15 @@ interface SideMenuProps {
 export function SideMenu({ selectedId, focusedIndex, onSelect }: SideMenuProps) {
   const { t } = useI18n()
   const isExpanded = focusedIndex !== null
+  const menuItemsRef = useRef<HTMLUListElement>(null)
+
+  useScrollToFocused({
+    containerRef: menuItemsRef,
+    focusedIndex: focusedIndex ?? 0,
+    itemSelector: '.side-menu-item',
+    direction: 'vertical',
+    center: false
+  })
 
   const renderMenuItem = (item: MenuItem, index: number) => {
     const isFocused = focusedIndex === index
@@ -73,7 +84,7 @@ export function SideMenu({ selectedId, focusedIndex, onSelect }: SideMenuProps) 
       <div class="side-menu-logo">
         {isExpanded ? t.appName : 'K'}
       </div>
-      <ul class="side-menu-items">
+      <ul class="side-menu-items" ref={menuItemsRef}>
         {MENU_ITEM_CONFIGS.map((item, index) => renderMenuItem(item, index))}
       </ul>
       <ul class="side-menu-bottom">
