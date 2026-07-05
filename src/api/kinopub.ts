@@ -197,6 +197,16 @@ function mapToMovieItem(item: Record<string, unknown>): MovieItem {
   }
 }
 
+function mapToBookmarkFolder(folder: Record<string, unknown>): BookmarkFolder {
+  return {
+    id: folder.id as number,
+    title: (folder.title || '') as string,
+    count: (folder.count || 0) as number,
+    created: (folder.created || 0) as number,
+    updated: (folder.updated || 0) as number
+  }
+}
+
 export async function requestDeviceCode(): Promise<DeviceCodeResponse> {
   const body = `grant_type=device_code&client_id=${CLIENT_ID}&client_secret=${CLIENT_SECRET}`
 
@@ -269,30 +279,46 @@ export async function refreshAccessToken(refreshToken: string): Promise<TokenRes
   }
 }
 
-async function authFetch(url: string, options: RequestInit = {}): Promise<Response> {
+let refreshPromise: Promise<Tokens> | null = null
+
+async function ensureFreshTokens(): Promise<Tokens> {
   const tokens = getTokens()
   if (!tokens) {
     handleAuthError()
     throw new ApiError('Not authenticated', 401)
   }
 
-  let accessToken = tokens.access
-
-  if (Date.now() >= tokens.expiresAt) {
-    try {
-      const newTokens = await refreshAccessToken(tokens.refresh)
-      const updatedTokens: Tokens = {
-        access: newTokens.accessToken,
-        refresh: newTokens.refreshToken,
-        expiresAt: Date.now() + newTokens.expiresIn * 1000
-      }
-      saveTokens(updatedTokens)
-      accessToken = newTokens.accessToken
-    } catch {
-      handleAuthError()
-      throw new ApiError('Token refresh failed', 401)
-    }
+  if (Date.now() < tokens.expiresAt) {
+    return tokens
   }
+
+  if (!refreshPromise) {
+    refreshPromise = refreshAccessToken(tokens.refresh)
+      .then(newTokens => {
+        const updatedTokens: Tokens = {
+          access: newTokens.accessToken,
+          refresh: newTokens.refreshToken,
+          expiresAt: Date.now() + newTokens.expiresIn * 1000
+        }
+        saveTokens(updatedTokens)
+        return updatedTokens
+      })
+      .finally(() => {
+        refreshPromise = null
+      })
+  }
+
+  try {
+    return await refreshPromise
+  } catch {
+    handleAuthError()
+    throw new ApiError('Token refresh failed', 401)
+  }
+}
+
+async function authFetch(url: string, options: RequestInit = {}): Promise<Response> {
+  const freshTokens = await ensureFreshTokens()
+  const accessToken = freshTokens.access
 
   const headers: Record<string, string> = {}
   if (options.headers) {
@@ -334,6 +360,8 @@ export interface WatchingResponse {
 
 export async function getWatching(): Promise<MovieItem[]> {
   const cacheKey = 'watching'
+  const cached = getCached<MovieItem[]>(cacheKey)
+  if (cached) return cached
 
   const [moviesRes, serialsRes] = await Promise.all([
     authFetch(`${BASE_URL}/v1/watching/movies?subscribed=1`),
@@ -345,18 +373,7 @@ export async function getWatching(): Promise<MovieItem[]> {
 
   const allItems = [...(moviesData.items || []), ...(serialsData.items || [])]
 
-  const result: MovieItem[] = allItems.map((item: Record<string, unknown>) => ({
-    id: item.id as number,
-    title: item.title as string,
-    type: item.type as string,
-    year: item.year as number,
-    plot: '',
-    posters: item.posters as Poster,
-    rating: 0,
-    imdbRating: 0,
-    kinopoiskRating: 0,
-    views: 0
-  }))
+  const result: MovieItem[] = allItems.map(mapToMovieItem)
 
   setCache(cacheKey, result)
   return result
@@ -364,6 +381,8 @@ export async function getWatching(): Promise<MovieItem[]> {
 
 export async function getWatchingSerials(): Promise<WatchingItem[]> {
   const cacheKey = 'watching_serials'
+  const cached = getCached<WatchingItem[]>(cacheKey)
+  if (cached) return cached
 
   const response = await authFetch(`${BASE_URL}/v1/watching/serials?subscribed=1`)
 
@@ -392,6 +411,8 @@ export async function getWatchingSerials(): Promise<WatchingItem[]> {
 
 export async function getItems(params: ItemsParams = {}): Promise<ItemsResponse> {
   const cacheKey = createCacheKey('items', params.type, params.sort, params.page, params.perpage, params.genre, params.country)
+  const cached = getCached<ItemsResponse>(cacheKey)
+  if (cached) return cached
 
   const searchParams = new URLSearchParams()
   if (params.type) searchParams.set('type', params.type)
@@ -433,6 +454,10 @@ export interface SearchParams {
 }
 
 export async function searchItems(params: SearchParams): Promise<ItemsResponse> {
+  const cacheKey = createCacheKey('search', params.q, params.field, params.type, params.page, params.perpage)
+  const cached = getCached<ItemsResponse>(cacheKey)
+  if (cached) return cached
+
   const searchParams = new URLSearchParams()
   searchParams.set('q', params.q)
   if (params.field) searchParams.set('field', params.field)
@@ -448,7 +473,7 @@ export async function searchItems(params: SearchParams): Promise<ItemsResponse> 
 
   const data = await response.json()
 
-  return {
+  const result: ItemsResponse = {
     items: (data.items || []).map(mapToMovieItem),
     pagination: data.pagination ? {
       current: data.pagination.current,
@@ -462,6 +487,9 @@ export async function searchItems(params: SearchParams): Promise<ItemsResponse> 
       perpage: 20
     }
   }
+
+  setCache(cacheKey, result)
+  return result
 }
 
 export interface SelectOption {
@@ -693,6 +721,9 @@ export async function markTime(params: MarkTimeParams): Promise<void> {
   if (params.season !== undefined) searchParams.set('season', params.season.toString())
 
   await authFetch(`${BASE_URL}/v1/watching/marktime?${searchParams}`)
+  invalidateCache('watching')
+  invalidateCache('history')
+  invalidateCache(createCacheKey('item', params.id))
 }
 
 export interface ToggleWatchedParams {
@@ -709,6 +740,8 @@ export async function toggleWatched(params: ToggleWatchedParams): Promise<void> 
 
   await authFetch(`${BASE_URL}/v1/watching/toggle?${searchParams}`)
   invalidateCache('watching')
+  invalidateCache('history')
+  invalidateCache(createCacheKey('item', params.id))
 }
 
 export interface BookmarkFolder {
@@ -721,6 +754,8 @@ export interface BookmarkFolder {
 
 export async function getBookmarkFolders(): Promise<BookmarkFolder[]> {
   const cacheKey = 'bookmarks'
+  const cached = getCached<BookmarkFolder[]>(cacheKey)
+  if (cached) return cached
 
   const response = await authFetch(`${BASE_URL}/v1/bookmarks`)
 
@@ -738,13 +773,7 @@ export async function getBookmarkFolders(): Promise<BookmarkFolder[]> {
     return []
   }
 
-  const result: BookmarkFolder[] = items.map((item: Record<string, unknown>) => ({
-    id: item.id as number,
-    title: (item.title || '') as string,
-    count: (item.count || 0) as number,
-    created: (item.created || 0) as number,
-    updated: (item.updated || 0) as number
-  }))
+  const result: BookmarkFolder[] = items.map(mapToBookmarkFolder)
 
   setCache(cacheKey, result)
   return result
@@ -752,6 +781,8 @@ export async function getBookmarkFolders(): Promise<BookmarkFolder[]> {
 
 export async function getBookmarkItems(folderId: number): Promise<MovieItem[]> {
   const cacheKey = createCacheKey('bookmark', folderId)
+  const cached = getCached<MovieItem[]>(cacheKey)
+  if (cached) return cached
 
   const response = await authFetch(`${BASE_URL}/v1/bookmarks/${folderId}`)
 
@@ -788,6 +819,22 @@ export async function createBookmarkFolder(title: string): Promise<BookmarkFolde
     created: Date.now() / 1000,
     updated: Date.now() / 1000
   }
+}
+
+export async function getItemFolders(itemId: number): Promise<BookmarkFolder[]> {
+  const response = await authFetch(`${BASE_URL}/v1/bookmarks/get-item-folders?item=${itemId}`)
+
+  if (!response.ok) {
+    throw new ApiError('Failed to fetch item folders', response.status)
+  }
+
+  const data = await response.json()
+  const folders = data.folders || []
+  if (!Array.isArray(folders)) {
+    return []
+  }
+
+  return folders.map(mapToBookmarkFolder)
 }
 
 export async function addToBookmark(itemId: number, folderId: number): Promise<void> {
@@ -863,6 +910,8 @@ export interface Collection {
 
 export async function getCollections(): Promise<Collection[]> {
   const cacheKey = 'collections'
+  const cached = getCached<Collection[]>(cacheKey)
+  if (cached) return cached
 
   const response = await authFetch(`${BASE_URL}/v1/collections`)
 
@@ -914,6 +963,8 @@ export interface HistoryItem extends MovieItem {
 
 export async function getHistory(): Promise<HistoryItem[]> {
   const cacheKey = 'history'
+  const cached = getCached<HistoryItem[]>(cacheKey)
+  if (cached) return cached
 
   const response = await authFetch(`${BASE_URL}/v1/history`)
 
@@ -936,16 +987,7 @@ export async function getHistory(): Promise<HistoryItem[]> {
     const media = entry.media as Record<string, unknown> | undefined
 
     const historyItem: HistoryItem = {
-      id: item.id as number,
-      title: (item.title || '') as string,
-      type: (item.type || '') as string,
-      year: (item.year || 0) as number,
-      plot: (item.plot || '') as string,
-      posters: (item.posters || { small: '', medium: '', big: '' }) as Poster,
-      rating: (item.rating || 0) as number,
-      imdbRating: (item.imdb_rating || 0) as number,
-      kinopoiskRating: (item.kinopoisk_rating || 0) as number,
-      views: (item.views || 0) as number,
+      ...mapToMovieItem(item),
       watchedAt: (entry.last_seen || entry.time || entry.watched_at || item.watched_at || 0) as number
     }
 
@@ -996,7 +1038,8 @@ export async function isItemInWatchlist(itemId: number): Promise<boolean> {
   try {
     const serials = await getWatchingSerials()
     return serials.some(s => s.id === itemId)
-  } catch {
+  } catch (err) {
+    if (import.meta.env.DEV) console.error('isItemInWatchlist failed:', err)
     return false
   }
 }

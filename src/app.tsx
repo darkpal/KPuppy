@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'preact/hooks'
+import { useState, useEffect, useCallback, useRef } from 'preact/hooks'
 import { AuthScreen } from './screens/AuthScreen'
 import { MainScreen } from './screens/MainScreen'
 import { ItemScreen } from './screens/ItemScreen'
@@ -16,13 +16,15 @@ import { PlayerScreen } from './screens/PlayerScreen'
 import { CommentsScreen } from './screens/CommentsScreen'
 import { RemoteDebugOverlay } from './components/RemoteDebugOverlay'
 import { ALL_MENU_ITEMS_COUNT, getMenuIdByIndex } from './components/SideMenu'
+import { KEY_CODES } from './hooks'
 import { ScreenManager } from './components/ScreenManager'
-import { isAuthenticated, clearTokens, getTokens, getLocalSettings, saveReturnTo, getReturnTo, clearReturnTo, getContentTypesCache, saveContentTypesCache, getCommentsUserId, saveCommentsUserId, clearCommentsUserId } from './storage'
+import { isAuthenticated, clearTokens, getTokens, getLocalSettings, saveReturnTo, getReturnTo, clearReturnTo, getContentTypesCache, saveContentTypesCache, getCommentsUserId, saveCommentsUserId, clearCommentsUserId, ReturnToState } from './storage'
 import { refreshAccessToken, getItem, setOnAuthError, getDeviceInfo, markTime, getContentTypes, getUser, registerDevice, Audio, Subtitle } from './api/kinopub'
 import { provisionUser, isCommentsApiAvailable } from './api/comments'
 import { hashUsername } from './utils/hash'
 import { saveTokens } from './storage'
 import { launchNativePlayer, getStreamUrl } from './webos/player'
+import { platformBack } from './webos/service'
 import { useI18n } from './i18n'
 import { Translations } from './i18n/translations'
 import './styles/global.css'
@@ -73,28 +75,22 @@ const CATEGORY_TITLE_KEYS: Record<string, keyof Translations> = {
   tvshows: 'categoryTvShows',
 }
 
+function applyReturnTo(state: AppState, saved: ReturnToState): AppState {
+  return {
+    ...state,
+    selectedMenuId: saved.selectedMenuId || state.selectedMenuId,
+    itemId: saved.itemId,
+    seriesId: saved.seriesId,
+    screenFocus: saved.screenFocus || state.screenFocus,
+    returnToItemId: null,
+    returnToSeriesId: null
+  }
+}
+
 export function App() {
   const { t } = useI18n()
   const [state, setState] = useState<AppState>(() => {
-    const savedReturnTo = getReturnTo()
-    if (savedReturnTo) {
-      clearReturnTo()
-      return {
-        authenticated: isAuthenticated(),
-        selectedMenuId: savedReturnTo.selectedMenuId || 'home',
-        itemId: savedReturnTo.itemId,
-        seriesId: savedReturnTo.seriesId,
-        commentsItemId: null,
-        commentsItemTitle: null,
-        focusArea: 'content',
-        menuFocusIndex: 0,
-        screenFocus: savedReturnTo.screenFocus || {},
-        returnToItemId: null,
-        returnToSeriesId: null,
-        player: null
-      }
-    }
-    return {
+    const initial: AppState = {
       authenticated: isAuthenticated(),
       selectedMenuId: 'home',
       itemId: null,
@@ -108,8 +104,17 @@ export function App() {
       returnToSeriesId: null,
       player: null
     }
+
+    const savedReturnTo = getReturnTo()
+    if (savedReturnTo) {
+      clearReturnTo()
+      return applyReturnTo(initial, savedReturnTo)
+    }
+    return initial
   })
   const [initializing, setInitializing] = useState(true)
+  const stateRef = useRef(state)
+  stateRef.current = state
 
   useEffect(() => {
     async function checkAndRefreshToken() {
@@ -245,18 +250,15 @@ export function App() {
   }, [])
 
   const handleTimeUpdate = useCallback((time: number) => {
-    setState(prev => {
-      if (!prev.player) return prev
-      const { itemId, season, episode } = prev.player
-      markTime({
-        id: itemId,
-        time: Math.floor(time),
-        video: episode,
-        season
-      }).catch(err => {
-        if (import.meta.env.DEV) console.error('markTime failed:', err)
-      })
-      return prev
+    const player = stateRef.current.player
+    if (!player) return
+    markTime({
+      id: player.itemId,
+      time: Math.floor(time),
+      video: player.episode,
+      season: player.season
+    }).catch(err => {
+      if (import.meta.env.DEV) console.error('markTime failed:', err)
     })
   }, [])
 
@@ -275,24 +277,21 @@ export function App() {
   }, [])
 
   const handleBeforeNativePlay = useCallback(() => {
-    setState(prev => {
-      saveReturnTo({ itemId: prev.itemId, seriesId: prev.seriesId, selectedMenuId: prev.selectedMenuId, screenFocus: prev.screenFocus })
-      return prev
-    })
+    const { itemId, seriesId, selectedMenuId, screenFocus } = stateRef.current
+    saveReturnTo({ itemId, seriesId, selectedMenuId, screenFocus })
   }, [])
 
   const handlePlay = useCallback(async (itemId: number, season?: number, episode?: number, options?: { quality?: string }) => {
     const localSettings = getLocalSettings()
 
     if (localSettings.playerType === 'native') {
-      setState(prev => {
-        saveReturnTo({ itemId: prev.itemId, seriesId: prev.seriesId, selectedMenuId: prev.selectedMenuId, screenFocus: prev.screenFocus })
-        return {
-          ...prev,
-          returnToItemId: prev.itemId,
-          returnToSeriesId: prev.seriesId
-        }
-      })
+      const { itemId: currentItemId, seriesId, selectedMenuId, screenFocus } = stateRef.current
+      saveReturnTo({ itemId: currentItemId, seriesId, selectedMenuId, screenFocus })
+      setState(prev => ({
+        ...prev,
+        returnToItemId: prev.itemId,
+        returnToSeriesId: prev.seriesId
+      }))
     }
 
     try {
@@ -359,18 +358,12 @@ export function App() {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         const savedReturnTo = getReturnTo()
+        if (savedReturnTo) {
+          clearReturnTo()
+        }
         setState(prev => {
           if (savedReturnTo) {
-            clearReturnTo()
-            return {
-              ...prev,
-              selectedMenuId: savedReturnTo.selectedMenuId || prev.selectedMenuId,
-              itemId: savedReturnTo.itemId,
-              seriesId: savedReturnTo.seriesId,
-              screenFocus: savedReturnTo.screenFocus || prev.screenFocus,
-              returnToItemId: null,
-              returnToSeriesId: null
-            }
+            return applyReturnTo(prev, savedReturnTo)
           }
           if (prev.returnToItemId !== null || prev.returnToSeriesId !== null) {
             return {
@@ -396,7 +389,7 @@ export function App() {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (state.focusArea === 'menu') {
         switch (event.keyCode) {
-          case 38: // Up
+          case KEY_CODES.UP:
             setState(prev => ({
               ...prev,
               menuFocusIndex: Math.max(0, prev.menuFocusIndex - 1)
@@ -404,7 +397,7 @@ export function App() {
             event.preventDefault()
             break
 
-          case 40: // Down
+          case KEY_CODES.DOWN:
             setState(prev => ({
               ...prev,
               menuFocusIndex: Math.min(ALL_MENU_ITEMS_COUNT - 1, prev.menuFocusIndex + 1)
@@ -412,20 +405,21 @@ export function App() {
             event.preventDefault()
             break
 
-          case 39: // Right
+          case KEY_CODES.RIGHT:
             setState(prev => ({ ...prev, focusArea: 'content' }))
             event.preventDefault()
             break
 
-          case 13: // Enter
+          case KEY_CODES.ENTER: {
             const menuId = getMenuIdByIndex(state.menuFocusIndex)
             if (menuId) {
               handleMenuSelect(menuId)
             }
             event.preventDefault()
             break
+          }
 
-          case 461: // Back
+          case KEY_CODES.BACK:
             if (state.commentsItemId) {
               handleBackFromComments()
             } else if (state.seriesId) {
@@ -433,7 +427,7 @@ export function App() {
             } else if (state.itemId) {
               handleBackFromItem()
             } else {
-              handleLogout()
+              platformBack()
             }
             event.preventDefault()
             break
@@ -443,7 +437,7 @@ export function App() {
 
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [state.authenticated, state.focusArea, state.menuFocusIndex, state.itemId, state.seriesId, state.commentsItemId, handleMenuSelect, handleLogout, handleBackFromItem, handleBackFromSeries, handleBackFromComments])
+  }, [state.authenticated, state.focusArea, state.menuFocusIndex, state.itemId, state.seriesId, state.commentsItemId, handleMenuSelect, handleBackFromItem, handleBackFromSeries, handleBackFromComments])
 
   if (initializing) {
     return (
@@ -538,7 +532,7 @@ export function App() {
         const homeFocus = state.screenFocus['home'] || { row: 0, col: 0 }
         return (
           <MainScreen
-            onLogout={handleNavigateToMenu}
+            onBack={handleNavigateToMenu}
             onSelectItem={handleSelectItem}
             onNavigateToMenu={handleNavigateToMenu}
             isActive={isContentActive}

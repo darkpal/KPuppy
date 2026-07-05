@@ -1,6 +1,7 @@
-import { useRef, useEffect } from 'preact/hooks'
+import { useRef } from 'preact/hooks'
 import { MovieItem } from '../api/kinopub'
 import { MovieCard } from './MovieCard'
+import { useScrollToFocused } from '../hooks'
 
 interface EpisodeInfo {
   season: number
@@ -24,24 +25,13 @@ interface MovieRowProps {
 export function MovieRow({ title, movies, loading, focusedIndex, onSelect }: MovieRowProps) {
   const gridRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    if (gridRef.current && focusedIndex !== null && movies.length > 0) {
-      const card = gridRef.current.children[focusedIndex] as HTMLElement
-      if (card) {
-        const container = gridRef.current
-        const cardRect = card.getBoundingClientRect()
-        const containerRect = container.getBoundingClientRect()
-
-        const cardCenter = cardRect.left + cardRect.width / 2
-        const containerCenter = containerRect.left + containerRect.width / 2
-
-        if (cardCenter < containerRect.left + 200 || cardCenter > containerRect.right - 200) {
-          const scrollOffset = cardCenter - containerCenter
-          container.scrollLeft += scrollOffset
-        }
-      }
-    }
-  }, [focusedIndex, movies.length])
+  useScrollToFocused({
+    containerRef: gridRef,
+    focusedIndex,
+    itemSelector: ':scope > *',
+    direction: 'horizontal',
+    itemCount: movies.length
+  })
 
   if (loading) {
     return (

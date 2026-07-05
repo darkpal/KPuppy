@@ -59,7 +59,7 @@ describe('UserScreen', () => {
 
       renderWithI18n(<UserScreen {...mockProps} />)
 
-      expect(document.querySelector('.user-spinner')).toBeDefined()
+      expect(document.querySelector('.spinner')).not.toBeNull()
     })
 
     it('shows title during loading', () => {

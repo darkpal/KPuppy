@@ -1,13 +1,15 @@
 import { useState, useEffect, useRef, useMemo } from 'preact/hooks'
 import { getItems, getWatching, MovieItem, ItemsParams } from '../api/kinopub'
+import { getLocalSettings } from '../storage'
 import { MovieRow } from '../components/MovieRow'
-import { useKeyboardNavigation } from '../hooks'
+import { useKeyboardNavigation, useScrollToFocused } from '../hooks'
+import { LoadingState } from '../components/LoadingSpinner'
 import { useI18n } from '../i18n'
 import { Translations } from '../i18n/translations'
 import '../styles/main.css'
 
 interface MainScreenProps {
-  onLogout: () => void
+  onBack: () => void
   onSelectItem: (itemId: number) => void
   onNavigateToMenu: () => void
   isActive: boolean
@@ -44,10 +46,15 @@ const ROW_CONFIGS: RowConfig[] = [
   { id: 'new-tvshows', titleKey: 'newTvShows', params: { type: 'tvshow', sort: 'created-', perpage: 10 } },
 ]
 
-export function MainScreen({ onLogout, onSelectItem, onNavigateToMenu, isActive, initialFocusRow = 0, initialFocusCol = 0, onFocusChange }: MainScreenProps) {
+export function MainScreen({ onBack, onSelectItem, onNavigateToMenu, isActive, initialFocusRow = 0, initialFocusCol = 0, onFocusChange }: MainScreenProps) {
   const { t } = useI18n()
+  const [rowConfigs] = useState<RowConfig[]>(() =>
+    getLocalSettings().showContinueWatching
+      ? ROW_CONFIGS
+      : ROW_CONFIGS.filter(config => !config.isWatching)
+  )
   const [rows, setRows] = useState<ContentRow[]>(() =>
-    ROW_CONFIGS.map(config => ({
+    rowConfigs.map(config => ({
       ...config,
       items: [],
       loading: true
@@ -56,6 +63,7 @@ export function MainScreen({ onLogout, onSelectItem, onNavigateToMenu, isActive,
   const [focusedRow, setFocusedRow] = useState(initialFocusRow)
   const [focusedCol, setFocusedCol] = useState(initialFocusCol)
   const [error] = useState<string | null>(null)
+  const rowsContainerRef = useRef<HTMLDivElement>(null)
   const onFocusChangeRef = useRef(onFocusChange)
   onFocusChangeRef.current = onFocusChange
 
@@ -64,24 +72,8 @@ export function MainScreen({ onLogout, onSelectItem, onNavigateToMenu, isActive,
   }, [focusedRow, focusedCol])
 
   useEffect(() => {
-    if (initialFocusRow > 0) {
-      const timer = setTimeout(() => {
-        const rowElement = document.querySelector(`[data-row="${initialFocusRow}"]`) as HTMLElement
-        const container = document.querySelector('.rows-container') as HTMLElement
-        if (rowElement && container) {
-          const rowTop = rowElement.offsetTop
-          const containerHeight = container.clientHeight
-          const rowHeight = rowElement.clientHeight
-          container.scrollTop = rowTop - (containerHeight / 2) + (rowHeight / 2)
-        }
-      }, 100)
-      return () => clearTimeout(timer)
-    }
-  }, [])
-
-  useEffect(() => {
     async function loadRow(index: number) {
-      const config = ROW_CONFIGS[index]
+      const config = rowConfigs[index]
       try {
         let items: MovieItem[]
         if (config.isWatching) {
@@ -102,13 +94,13 @@ export function MainScreen({ onLogout, onSelectItem, onNavigateToMenu, isActive,
     }
 
     async function loadRowsSequentially() {
-      for (let i = 0; i < ROW_CONFIGS.length; i++) {
+      for (let i = 0; i < rowConfigs.length; i++) {
         await loadRow(i)
       }
     }
 
     loadRowsSequentially()
-  }, [])
+  }, [rowConfigs])
 
   const handlers = useMemo(() => {
     const currentRow = rows[focusedRow]
@@ -149,32 +141,25 @@ export function MainScreen({ onLogout, onSelectItem, onNavigateToMenu, isActive,
           onSelectItem(movie.id)
         }
       },
-      onBack: onLogout
+      onBack
     }
-  }, [focusedRow, focusedCol, rows, onLogout, onSelectItem, onNavigateToMenu])
+  }, [focusedRow, focusedCol, rows, onBack, onSelectItem, onNavigateToMenu])
 
   useKeyboardNavigation(handlers, isActive)
 
-  useEffect(() => {
-    const rowElement = document.querySelector(`[data-row="${focusedRow}"]`) as HTMLElement
-    const container = document.querySelector('.rows-container') as HTMLElement
-    if (rowElement && container) {
-      const rowTop = rowElement.offsetTop
-      const containerHeight = container.clientHeight
-      const rowHeight = rowElement.clientHeight
-      container.scrollTop = rowTop - (containerHeight / 2) + (rowHeight / 2)
-    }
-  }, [focusedRow])
-
   const allLoading = rows.every(row => row.loading)
+
+  useScrollToFocused({
+    containerRef: rowsContainerRef,
+    focusedIndex: focusedRow,
+    itemSelector: '[data-row]',
+    itemCount: allLoading ? 0 : rows.length
+  })
 
   if (allLoading) {
     return (
       <div class="main-screen">
-        <div class="main-loading">
-          <div class="main-spinner" />
-          <span style={{ color: '#b3b3b3', fontSize: '20px' }}>{t.loadingContent}</span>
-        </div>
+        <LoadingState message={t.loadingContent} />
       </div>
     )
   }
@@ -192,7 +177,7 @@ export function MainScreen({ onLogout, onSelectItem, onNavigateToMenu, isActive,
 
   return (
     <div class="main-screen">
-      <div class="rows-container">
+      <div class="rows-container" ref={rowsContainerRef}>
         {rows.map((row, rowIndex) => (
           <div key={row.id} data-row={rowIndex}>
             <MovieRow

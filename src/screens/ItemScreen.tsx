@@ -1,7 +1,8 @@
 import { useEffect, useCallback, useMemo, useReducer } from 'preact/hooks'
-import { getItem, getSimilarItems, getBookmarkFolders, addToBookmark, toggleWatchlist, isItemInWatchlist, ItemDetails as ItemDetailsType, MovieItem, VideoFile, BookmarkFolder } from '../api/kinopub'
+import { getItem, getSimilarItems, getBookmarkFolders, getItemFolders, addToBookmark, removeFromBookmark, toggleWatchlist, isItemInWatchlist, ItemDetails as ItemDetailsType, MovieItem, VideoFile, BookmarkFolder } from '../api/kinopub'
 import { getLocalSettings } from '../storage'
 import { useKeyboardNavigation } from '../hooks'
+import { LoadingState } from '../components/LoadingSpinner'
 import { useI18n } from '../i18n'
 import { ItemDetails } from '../components/ItemDetails'
 import { SimilarItems } from '../components/SimilarItems'
@@ -45,6 +46,7 @@ interface ItemScreenState {
   watchlistLoading: boolean
   showFolderDialog: boolean
   folders: BookmarkFolder[]
+  itemFolderIds: number[]
   folderFocusIndex: number
   isWatching: boolean
   watchingToggleLoading: boolean
@@ -61,7 +63,8 @@ type ItemScreenAction =
   | { type: 'SET_DROPDOWN_FOCUS_INDEX'; index: number }
   | { type: 'SET_SIMILAR_FOCUS_INDEX'; index: number }
   | { type: 'SET_FOLDER_FOCUS_INDEX'; index: number }
-  | { type: 'OPEN_FOLDER_DIALOG'; folders: BookmarkFolder[] }
+  | { type: 'OPEN_FOLDER_DIALOG'; folders: BookmarkFolder[]; itemFolderIds: number[] }
+  | { type: 'SET_FOLDER_STATE'; folders: BookmarkFolder[]; itemFolderIds: number[] }
   | { type: 'CLOSE_FOLDER_DIALOG' }
   | { type: 'SET_WATCHLIST_LOADING'; value: boolean }
   | { type: 'SET_WATCHING_TOGGLE_LOADING'; value: boolean }
@@ -79,6 +82,7 @@ const initialState: ItemScreenState = {
   watchlistLoading: false,
   showFolderDialog: false,
   folders: [],
+  itemFolderIds: [],
   folderFocusIndex: 0,
   isWatching: false,
   watchingToggleLoading: false,
@@ -107,7 +111,9 @@ function itemScreenReducer(state: ItemScreenState, action: ItemScreenAction): It
     case 'SET_FOLDER_FOCUS_INDEX':
       return { ...state, folderFocusIndex: action.index }
     case 'OPEN_FOLDER_DIALOG':
-      return { ...state, showFolderDialog: true, folders: action.folders, folderFocusIndex: 0, watchlistLoading: false }
+      return { ...state, showFolderDialog: true, folders: action.folders, itemFolderIds: action.itemFolderIds, folderFocusIndex: 0, watchlistLoading: false }
+    case 'SET_FOLDER_STATE':
+      return { ...state, folders: action.folders, itemFolderIds: action.itemFolderIds, watchlistLoading: false }
     case 'CLOSE_FOLDER_DIALOG':
       return { ...state, showFolderDialog: false, watchlistLoading: false }
     case 'SET_WATCHLIST_LOADING':
@@ -124,7 +130,7 @@ function itemScreenReducer(state: ItemScreenState, action: ItemScreenAction): It
 export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeries, onSelectItem, onNavigateToMenu, onOpenComments, isActive }: ItemScreenProps) {
   const { t } = useI18n()
   const [state, dispatch] = useReducer(itemScreenReducer, initialState)
-  const { item, loading, error, focusArea, selectedQuality, dropdownFocusIndex, similarItems, similarFocusIndex, watchlistLoading, showFolderDialog, folders, folderFocusIndex, isWatching, watchingToggleLoading } = state
+  const { item, loading, error, focusArea, selectedQuality, dropdownFocusIndex, similarItems, similarFocusIndex, watchlistLoading, showFolderDialog, folders, itemFolderIds, folderFocusIndex, isWatching, watchingToggleLoading } = state
 
   useEffect(() => {
     async function loadItem() {
@@ -193,13 +199,16 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
     if (watchlistLoading) return
     dispatch({ type: 'SET_WATCHLIST_LOADING', value: true })
     try {
-      const folderList = await getBookmarkFolders()
-      dispatch({ type: 'OPEN_FOLDER_DIALOG', folders: folderList })
+      const [folderList, itemFolders] = await Promise.all([
+        getBookmarkFolders(),
+        getItemFolders(itemId).catch(() => [] as BookmarkFolder[])
+      ])
+      dispatch({ type: 'OPEN_FOLDER_DIALOG', folders: folderList, itemFolderIds: itemFolders.map(folder => folder.id) })
     } catch (err) {
       if (import.meta.env.DEV) console.error('Failed to load folders:', err)
       dispatch({ type: 'SET_WATCHLIST_LOADING', value: false })
     }
-  }, [watchlistLoading])
+  }, [watchlistLoading, itemId])
 
   const handleToggleWatching = useCallback(async () => {
     if (watchingToggleLoading) return
@@ -213,18 +222,32 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
     }
   }, [itemId, watchingToggleLoading])
 
-  const handleAddToFolder = useCallback(async () => {
+  const handleToggleFolder = useCallback(async () => {
     const folder = folders[folderFocusIndex]
     if (!folder || watchlistLoading) return
+    const isInFolder = itemFolderIds.includes(folder.id)
     dispatch({ type: 'SET_WATCHLIST_LOADING', value: true })
     try {
-      await addToBookmark(itemId, folder.id)
-      dispatch({ type: 'CLOSE_FOLDER_DIALOG' })
+      if (isInFolder) {
+        await removeFromBookmark(itemId, folder.id)
+        dispatch({
+          type: 'SET_FOLDER_STATE',
+          folders: folders.map(f => f.id === folder.id ? { ...f, count: Math.max(0, f.count - 1) } : f),
+          itemFolderIds: itemFolderIds.filter(id => id !== folder.id)
+        })
+      } else {
+        await addToBookmark(itemId, folder.id)
+        dispatch({
+          type: 'SET_FOLDER_STATE',
+          folders: folders.map(f => f.id === folder.id ? { ...f, count: f.count + 1 } : f),
+          itemFolderIds: [...itemFolderIds, folder.id]
+        })
+      }
     } catch (err) {
-      if (import.meta.env.DEV) console.error('Failed to add to folder:', err)
+      if (import.meta.env.DEV) console.error('Failed to toggle folder:', err)
       dispatch({ type: 'SET_WATCHLIST_LOADING', value: false })
     }
-  }, [folders, folderFocusIndex, itemId, watchlistLoading])
+  }, [folders, folderFocusIndex, itemFolderIds, itemId, watchlistLoading])
 
   const { showComments } = getLocalSettings()
 
@@ -239,7 +262,7 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
         onBack: () => dispatch({ type: 'CLOSE_FOLDER_DIALOG' }),
         onUp: () => dispatch({ type: 'SET_FOLDER_FOCUS_INDEX', index: Math.max(0, folderFocusIndex - 1) }),
         onDown: () => dispatch({ type: 'SET_FOLDER_FOCUS_INDEX', index: Math.min(folders.length - 1, folderFocusIndex + 1) }),
-        onEnter: handleAddToFolder
+        onEnter: handleToggleFolder
       }
     }
 
@@ -335,16 +358,14 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
       },
       onYellow: handleOpenFolderDialog
     }
-  }, [item, focusArea, availableQualities, dropdownFocusIndex, selectedQuality, onBack, onNavigateToMenu, handlePlayOrSelect, handleOpenFolderDialog, handleAddToFolder, handleToggleWatching, similarItems, similarFocusIndex, onSelectItem, showFolderDialog, folders, folderFocusIndex, onPlayTrailer, t, showComments, onOpenComments, itemId])
+  }, [item, focusArea, availableQualities, dropdownFocusIndex, selectedQuality, onBack, onNavigateToMenu, handlePlayOrSelect, handleOpenFolderDialog, handleToggleFolder, handleToggleWatching, similarItems, similarFocusIndex, onSelectItem, showFolderDialog, folders, folderFocusIndex, onPlayTrailer, t, showComments, onOpenComments, itemId])
 
   useKeyboardNavigation(handlers, isActive && !!item)
 
   if (loading) {
     return (
       <div class="item-screen">
-        <div class="item-loading">
-          <div class="item-spinner" />
-        </div>
+        <LoadingState />
       </div>
     )
   }
@@ -513,9 +534,10 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
     {showFolderDialog && (
       <FolderDialog
         folders={folders}
+        bookmarkedFolderIds={itemFolderIds}
         focusedIndex={folderFocusIndex}
         onSelect={(index: number) => dispatch({ type: 'SET_FOLDER_FOCUS_INDEX', index })}
-        onConfirm={handleAddToFolder}
+        onConfirm={handleToggleFolder}
       />
     )}
     </>

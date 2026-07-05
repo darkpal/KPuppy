@@ -50,7 +50,7 @@ describe('LiveTVScreen', () => {
 
       renderWithI18n(<LiveTVScreen {...mockProps} />)
 
-      expect(document.querySelector('.livetv-spinner')).toBeDefined()
+      expect(document.querySelector('.spinner')).not.toBeNull()
     })
 
     it('shows title during loading', () => {

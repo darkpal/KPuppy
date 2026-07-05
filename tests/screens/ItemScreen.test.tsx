@@ -10,7 +10,9 @@ vi.mock('../../src/api/kinopub', () => ({
   getItem: vi.fn(),
   getSimilarItems: vi.fn(),
   getBookmarkFolders: vi.fn(),
+  getItemFolders: vi.fn(),
   addToBookmark: vi.fn(),
+  removeFromBookmark: vi.fn(),
   toggleWatchlist: vi.fn(),
   isItemInWatchlist: vi.fn(),
 }))
@@ -100,7 +102,7 @@ describe('ItemScreen', () => {
 
       renderWithI18n(<ItemScreen {...mockProps} />)
 
-      expect(document.querySelector('.item-spinner')).toBeDefined()
+      expect(document.querySelector('.spinner')).not.toBeNull()
     })
   })
 

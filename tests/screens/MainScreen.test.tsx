@@ -33,7 +33,7 @@ const mockMovie = {
 
 describe('MainScreen', () => {
   const mockProps = {
-    onLogout: vi.fn(),
+    onBack: vi.fn(),
     onSelectItem: vi.fn(),
     onNavigateToMenu: vi.fn(),
     isActive: true,
@@ -59,7 +59,7 @@ describe('MainScreen', () => {
 
       renderWithI18n(<MainScreen {...mockProps} />)
 
-      expect(document.querySelector('.main-spinner')).toBeDefined()
+      expect(document.querySelector('.spinner')).not.toBeNull()
       expect(screen.getByText('Loading content...')).toBeDefined()
     })
   })

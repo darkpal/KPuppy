@@ -41,7 +41,7 @@ describe('AuthScreen', () => {
 
       renderWithI18n(<AuthScreen onAuthenticated={mockOnAuthenticated} />)
 
-      expect(document.querySelector('.auth-spinner')).toBeDefined()
+      expect(document.querySelector('.spinner')).not.toBeNull()
       expect(screen.getByText('Loading...')).toBeDefined()
     })
   })

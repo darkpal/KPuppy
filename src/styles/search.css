@@ -176,26 +176,6 @@
   margin: 16px;
 }
 
-.search-loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 60px;
-}
-
-.search-spinner {
-  width: 48px;
-  height: 48px;
-  border: 4px solid #333;
-  border-top-color: #e50914;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
 .search-empty,
 .search-hint {
   display: flex;

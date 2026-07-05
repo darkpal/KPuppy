@@ -1,6 +1,7 @@
-import { useState, useEffect, useMemo, useCallback } from 'preact/hooks'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'preact/hooks'
 import { getTVChannels, TVChannel } from '../api/kinopub'
-import { useKeyboardNavigation } from '../hooks'
+import { useKeyboardNavigation, useScrollToFocused, createGridNavigationHandlers } from '../hooks'
+import { LoadingState } from '../components/LoadingSpinner'
 import { useI18n } from '../i18n'
 import { launchNativePlayer } from '../webos/player'
 import '../styles/livetv.css'
@@ -18,6 +19,7 @@ export function LiveTVScreen({ onNavigateToMenu, onBeforePlay, isActive, initial
   const [channels, setChannels] = useState<TVChannel[]>([])
   const [loading, setLoading] = useState(true)
   const [focusedIndex, setFocusedIndex] = useState(initialFocusIndex)
+  const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     async function loadChannels() {
@@ -52,62 +54,40 @@ export function LiveTVScreen({ onNavigateToMenu, onBeforePlay, isActive, initial
     }
   }, [onBeforePlay])
 
-  const handlers = useMemo(() => {
-    const channelCount = channels.length
-    const itemsPerRow = 4
-
-    return {
-      onLeft: () => {
-        if (focusedIndex % itemsPerRow === 0) {
-          onNavigateToMenu()
-        } else {
-          setFocusedIndex(prev => Math.max(0, prev - 1))
-        }
-      },
-      onRight: () => setFocusedIndex(prev => Math.min(channelCount - 1, prev + 1)),
-      onUp: () => setFocusedIndex(prev => Math.max(0, prev - itemsPerRow)),
-      onDown: () => {
-        const newIndex = focusedIndex + itemsPerRow
-        if (newIndex < channelCount) {
-          setFocusedIndex(newIndex)
-        }
-      },
-      onEnter: () => {
-        const channel = channels[focusedIndex]
-        if (channel) {
-          handlePlayChannel(channel)
-        }
+  const handlers = useMemo(() => createGridNavigationHandlers({
+    itemCount: channels.length,
+    itemsPerRow: 4,
+    focusedIndex,
+    setFocusedIndex,
+    onSelect: (index) => {
+      const channel = channels[index]
+      if (channel) {
+        handlePlayChannel(channel)
       }
-    }
-  }, [channels, focusedIndex, onNavigateToMenu, handlePlayChannel])
+    },
+    onLeftEdge: onNavigateToMenu
+  }), [channels, focusedIndex, onNavigateToMenu, handlePlayChannel])
 
   useKeyboardNavigation(handlers, isActive && !loading)
 
-  useEffect(() => {
-    const focusedEl = document.querySelector(`[data-channel-index="${focusedIndex}"]`) as HTMLElement
-    const container = document.querySelector('.livetv-screen') as HTMLElement
-    if (focusedEl && container) {
-      const elTop = focusedEl.offsetTop
-      const containerHeight = container.clientHeight
-      const elHeight = focusedEl.clientHeight
-      const targetScroll = elTop - (containerHeight / 2) + (elHeight / 2)
-      container.scrollTop = Math.max(0, targetScroll)
-    }
-  }, [focusedIndex])
+  useScrollToFocused({
+    containerRef,
+    focusedIndex,
+    itemSelector: '[data-channel-index]',
+    itemCount: channels.length
+  })
 
   if (loading) {
     return (
       <div class="livetv-screen">
         <h1 class="livetv-title">{t.menuLiveTV}</h1>
-        <div class="livetv-loading">
-          <div class="livetv-spinner" />
-        </div>
+        <LoadingState />
       </div>
     )
   }
 
   return (
-    <div class="livetv-screen">
+    <div class="livetv-screen" ref={containerRef}>
       <h1 class="livetv-title">{t.menuLiveTV}</h1>
       <div class="livetv-grid">
         {channels.map((channel, index) => (

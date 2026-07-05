@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'preact/hooks'
 import { getItems, getWatching, getGenres, getCountries, MovieItem, ItemsParams, Genre, Country } from '../api/kinopub'
 import { MovieCard } from '../components/MovieCard'
-import { useKeyboardNavigation, useItemsPerRow } from '../hooks'
+import { GridScreen } from '../components/GridScreen'
+import { useKeyboardNavigation, useGridLayout, createGridNavigationHandlers } from '../hooks'
+import { LoadingState } from '../components/LoadingSpinner'
 import { useI18n } from '../i18n'
 import '../styles/category.css'
 
@@ -25,7 +27,6 @@ const CATEGORY_PARAMS: Record<string, ItemsParams> = {
 }
 
 const ITEMS_PER_PAGE = 48
-const RENDER_BUFFER = 24
 
 type FocusArea = 'filter' | 'grid'
 
@@ -41,7 +42,7 @@ export function CategoryScreen({ categoryId, title, onSelectItem, onNavigateToMe
   const prevCategoryIdRef = useRef<string>(categoryId)
   const onFocusChangeRef = useRef(onFocusChange)
   onFocusChangeRef.current = onFocusChange
-  const itemsPerRow = useItemsPerRow('.category-grid', [items.length])
+  const { itemsPerRow, cardWidth } = useGridLayout('.category-grid', 240, [items.length])
 
   const [genres, setGenres] = useState<Genre[]>([])
   const [countries, setCountries] = useState<Country[]>([])
@@ -57,22 +58,6 @@ export function CategoryScreen({ categoryId, title, onSelectItem, onNavigateToMe
   useEffect(() => {
     onFocusChangeRef.current?.(focusedIndex)
   }, [focusedIndex])
-
-  useEffect(() => {
-    if (initialFocusIndex > 0) {
-      const timer = setTimeout(() => {
-        const focusedEl = document.querySelector(`[data-category-index="${initialFocusIndex}"]`) as HTMLElement
-        const container = document.querySelector('.category-screen') as HTMLElement
-        if (focusedEl && container) {
-          const elTop = focusedEl.offsetTop
-          const containerHeight = container.clientHeight
-          const elHeight = focusedEl.clientHeight
-          container.scrollTop = elTop - (containerHeight / 2) + (elHeight / 2)
-        }
-      }, 100)
-      return () => clearTimeout(timer)
-    }
-  }, [])
 
   useEffect(() => {
     if (showFilters) {
@@ -206,37 +191,32 @@ export function CategoryScreen({ categoryId, title, onSelectItem, onNavigateToMe
       }
     }
 
-    return {
-      onLeft: () => {
-        if (focusedIndex % itemsPerRow === 0) {
-          onNavigateToMenu()
-        } else {
-          setFocusedIndex(prev => Math.max(0, prev - 1))
-        }
-      },
-      onRight: () => setFocusedIndex(prev => Math.min(itemCount - 1, prev + 1)),
-      onUp: () => {
-        if (currentRow === 0 && showFilters) {
-          setFocusArea('filter')
-        } else {
-          setFocusedIndex(prev => Math.max(0, prev - itemsPerRow))
-        }
-      },
-      onDown: () => {
-        const newIndex = focusedIndex + itemsPerRow
-        if (newIndex < itemCount) {
-          setFocusedIndex(newIndex)
-        } else if (hasMore) {
-          loadMore()
-        }
-        if (currentRow >= totalRows - 2 && hasMore) {
-          loadMore()
-        }
-      },
-      onEnter: () => {
-        const item = items[focusedIndex]
+    const gridHandlers = createGridNavigationHandlers({
+      itemCount,
+      itemsPerRow,
+      focusedIndex,
+      setFocusedIndex,
+      onSelect: (index) => {
+        const item = items[index]
         if (item) {
           onSelectItem(item.id)
+        }
+      },
+      onLeftEdge: onNavigateToMenu,
+      onTopEdge: showFilters ? () => setFocusArea('filter') : undefined,
+      onBottomEdge: () => {
+        if (hasMore) {
+          loadMore()
+        }
+      }
+    })
+
+    return {
+      ...gridHandlers,
+      onDown: () => {
+        gridHandlers.onDown?.()
+        if (currentRow >= totalRows - 2 && hasMore) {
+          loadMore()
         }
       }
     }
@@ -262,51 +242,37 @@ export function CategoryScreen({ categoryId, title, onSelectItem, onNavigateToMe
     }
   }, [dropdownFocusIndex, filterDropdownOpen])
 
-  useEffect(() => {
-    const focusedEl = document.querySelector(`[data-category-index="${focusedIndex}"]`) as HTMLElement
-    const container = document.querySelector('.category-screen') as HTMLElement
-    if (focusedEl && container) {
-      const elTop = focusedEl.offsetTop
-      const containerHeight = container.clientHeight
-      const elHeight = focusedEl.clientHeight
-      const targetScroll = elTop - (containerHeight / 2) + (elHeight / 2)
-      container.scrollTop = Math.max(0, targetScroll)
-    }
-  }, [focusedIndex])
-
-  const getVisibleRange = useCallback(() => {
-    const focusedRow = Math.floor(focusedIndex / itemsPerRow)
-    const bufferRows = Math.ceil(RENDER_BUFFER / itemsPerRow)
-    const startRow = Math.max(0, focusedRow - bufferRows)
-    const endRow = focusedRow + bufferRows + 1
-    const startIndex = startRow * itemsPerRow
-    const endIndex = Math.min(items.length, endRow * itemsPerRow)
-    return { startIndex, endIndex, startRow }
-  }, [focusedIndex, itemsPerRow, items.length])
-
   if (loading) {
     return (
       <div class="category-screen">
         <h1 class="category-title">{title}</h1>
-        <div class="category-loading">
-          <div class="category-spinner" />
-        </div>
+        <LoadingState />
       </div>
     )
   }
-
-  const { startIndex, endIndex, startRow } = getVisibleRange()
-  const visibleItems = items.slice(startIndex, endIndex)
-  const itemHeight = 300
-  const totalHeight = Math.ceil(items.length / itemsPerRow) * itemHeight
 
   const selectedGenreTitle = selectedGenre ? genres.find(g => g.id === selectedGenre)?.title : null
   const selectedCountryTitle = selectedCountry ? countries.find(c => c.id === selectedCountry)?.title : null
 
   return (
-    <div class="category-screen" ref={containerRef}>
-      <h1 class="category-title">{title}</h1>
-      {showFilters && (
+    <GridScreen
+      title={title}
+      loading={false}
+      items={items}
+      focusedIndex={focusedIndex}
+      itemsPerRow={itemsPerRow}
+      renderItem={(item, _index, focused) => (
+        <MovieCard
+          movie={item}
+          focused={focused}
+          onSelect={() => onSelectItem(item.id)}
+        />
+      )}
+      getItemKey={(item) => item.id}
+      emptyMessage={t.errorNoItems}
+      containerRef={containerRef}
+      cardWidth={cardWidth}
+      header={showFilters && (
         <div class="category-filters">
           <div class={`category-filter ${focusArea === 'filter' && filterFocusIndex === 0 ? 'focused' : ''}`}>
             <span class="category-filter-label">{t.genre}:</span>
@@ -348,42 +314,12 @@ export function CategoryScreen({ categoryId, title, onSelectItem, onNavigateToMe
           </div>
         </div>
       )}
-      <div
-        class="category-grid-container"
-        style={{ height: `${totalHeight}px`, position: 'relative' }}
-      >
-        <div
-          class="category-grid"
-          style={{
-            position: 'absolute',
-            top: `${startRow * itemHeight}px`,
-            left: 0,
-            right: 0
-          }}
-        >
-          {visibleItems.map((item, index) => {
-            const actualIndex = startIndex + index
-            return (
-              <div key={item.id} data-category-index={actualIndex}>
-                <MovieCard
-                  movie={item}
-                  focused={focusedIndex === actualIndex}
-                  onSelect={() => onSelectItem(item.id)}
-                />
-              </div>
-            )
-          })}
-        </div>
-      </div>
-      {loadingMore && (
+      footer={loadingMore && (
         <div class="category-loading-more">
           <div class="category-spinner-small" />
           <span>{t.loadingMore}</span>
         </div>
       )}
-      {items.length === 0 && (
-        <div class="category-empty">{t.errorNoItems}</div>
-      )}
-    </div>
+    />
   )
 }

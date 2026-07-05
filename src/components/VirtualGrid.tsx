@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'preact/hooks'
+import { useCallback, useEffect, useRef, useState } from 'preact/hooks'
 import { ComponentChildren } from 'preact'
 
 interface VirtualGridProps<T> {
@@ -11,6 +11,7 @@ interface VirtualGridProps<T> {
   getItemKey: (item: T, index: number) => string | number
   containerClass?: string
   emptyMessage?: string
+  cardWidth?: number
 }
 
 export function VirtualGrid<T>({
@@ -22,9 +23,12 @@ export function VirtualGrid<T>({
   renderItem,
   getItemKey,
   containerClass = 'category-grid',
-  emptyMessage
+  emptyMessage,
+  cardWidth
 }: VirtualGridProps<T>) {
-  const [, setScrollTrigger] = useState(0)
+  const [measuredRowHeight, setMeasuredRowHeight] = useState(0)
+  const rowHeight = measuredRowHeight || itemHeight
+  const rootRef = useRef<HTMLDivElement>(null)
 
   const getVisibleRange = useCallback(() => {
     const focusedRow = Math.floor(focusedIndex / itemsPerRow)
@@ -38,13 +42,34 @@ export function VirtualGrid<T>({
 
   useEffect(() => {
     const container = document.querySelector('.category-screen') as HTMLElement
-    if (container && items.length > 0) {
-      const focusedRow = Math.floor(focusedIndex / itemsPerRow)
-      const targetScroll = focusedRow * itemHeight - container.clientHeight / 2 + itemHeight / 2
-      container.scrollTop = Math.max(0, targetScroll)
+    const root = rootRef.current
+    if (!container || !root || items.length === 0) return
+
+    const cells = root.querySelectorAll('[data-category-index]')
+    if (cells.length > itemsPerRow) {
+      const firstRowTop = cells[0].getBoundingClientRect().top
+      const secondRowTop = cells[itemsPerRow].getBoundingClientRect().top
+      const measured = secondRowTop - firstRowTop
+      if (measured > 0 && Math.abs(measured - rowHeight) > 1) {
+        setMeasuredRowHeight(measured)
+        return
+      }
+    } else if (cells.length > 0) {
+      const measured = cells[0].getBoundingClientRect().height + 32
+      if (measured > 32 && Math.abs(measured - rowHeight) > 1) {
+        setMeasuredRowHeight(measured)
+        return
+      }
     }
-    setScrollTrigger(prev => prev + 1)
-  }, [focusedIndex, itemsPerRow, itemHeight, items.length])
+
+    const focusedCell = root.querySelector(`[data-category-index="${focusedIndex}"]`) as HTMLElement
+    if (focusedCell) {
+      const containerTop = container.getBoundingClientRect().top
+      const cellRect = focusedCell.getBoundingClientRect()
+      const cellTop = cellRect.top - containerTop + container.scrollTop
+      container.scrollTop = Math.max(0, cellTop - container.clientHeight / 2 + cellRect.height / 2)
+    }
+  }, [focusedIndex, itemsPerRow, rowHeight, items.length, cardWidth])
 
   if (items.length === 0 && emptyMessage) {
     return <div class="category-empty">{emptyMessage}</div>
@@ -52,20 +77,22 @@ export function VirtualGrid<T>({
 
   const { startIndex, endIndex, startRow } = getVisibleRange()
   const visibleItems = items.slice(startIndex, endIndex)
-  const totalHeight = Math.ceil(items.length / itemsPerRow) * itemHeight
+  const totalHeight = Math.ceil(items.length / itemsPerRow) * rowHeight
 
   return (
     <div
       class="category-grid-container"
+      ref={rootRef}
       style={{ height: `${totalHeight}px`, position: 'relative' }}
     >
       <div
         class={containerClass}
         style={{
           position: 'absolute',
-          top: `${startRow * itemHeight}px`,
+          top: `${startRow * rowHeight}px`,
           left: 0,
-          right: 0
+          right: 0,
+          ...(cardWidth ? { '--card-width': `${cardWidth}px` } : {})
         }}
       >
         {visibleItems.map((item, index) => {

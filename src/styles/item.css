@@ -231,21 +231,6 @@
   height: 100%;
 }
 
-.item-spinner {
-  width: 48px;
-  height: 48px;
-  border: 4px solid #333;
-  border-top-color: #e50914;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 .item-seasons {
   margin-top: 20px;
 }
@@ -484,8 +469,20 @@
 }
 
 .item-folder-name {
+  flex: 1;
   font-size: 18px;
   font-weight: 500;
+  color: #fff;
+}
+
+.item-folder-added {
+  font-size: 18px;
+  font-weight: 700;
+  color: #46d369;
+  margin-right: 12px;
+}
+
+.item-folder-option.focused .item-folder-added {
   color: #fff;
 }
 

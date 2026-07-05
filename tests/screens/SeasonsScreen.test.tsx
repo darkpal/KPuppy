@@ -99,7 +99,7 @@ describe('SeasonsScreen', () => {
 
       renderWithI18n(<SeasonsScreen {...mockProps} />)
 
-      expect(document.querySelector('.seasons-spinner')).toBeDefined()
+      expect(document.querySelector('.spinner')).not.toBeNull()
     })
   })
 

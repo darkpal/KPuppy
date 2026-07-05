@@ -29,24 +29,41 @@
   margin: 16px;
 }
 
-.category-loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 50%;
+.category-grid .movie-card {
+  width: var(--card-width, 300px);
+  height: calc(var(--card-width, 300px) * 1.5);
 }
 
-.category-spinner {
-  width: 48px;
-  height: 48px;
-  border: 4px solid #333;
-  border-top-color: #e50914;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
+.history-section-title {
+  font-size: 22px;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 8px 0 12px;
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
+.history-series-grid .movie-card {
+  width: var(--card-width, 280px);
+  height: calc(var(--card-width, 280px) * 0.5625);
+}
+
+.history-series-grid .movie-card-overlay {
+  padding-top: 24px;
+}
+
+.history-series-grid .movie-card-title {
+  font-size: 16px;
+}
+
+.history-series-grid .movie-card-title-secondary {
+  display: none;
+}
+
+.history-series-grid .movie-card-year {
+  display: none;
+}
+
+.history-series-grid .movie-card-badge {
+  font-size: 13px;
 }
 
 .category-empty {

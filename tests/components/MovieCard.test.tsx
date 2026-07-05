@@ -121,6 +121,26 @@ describe('MovieCard', () => {
 
       expect(screen.queryByText(/S\d+E\d+/)).toBeNull()
     })
+
+    it('prefers episode thumbnail over poster when provided', () => {
+      const movie = createMockMovie()
+      const episodeInfo = { season: 1, episode: 3, title: 'Episode Title', thumbnail: 'episode-thumb.jpg' }
+
+      render(<MovieCard movie={movie} focused={false} episodeInfo={episodeInfo} />)
+
+      const img = screen.getByAltText(movie.title)
+      expect(img.getAttribute('src')).toBe('episode-thumb.jpg')
+    })
+
+    it('falls back to poster when episodeInfo has no thumbnail', () => {
+      const movie = createMockMovie()
+      const episodeInfo = { season: 1, episode: 3, title: 'Episode Title' }
+
+      render(<MovieCard movie={movie} focused={false} episodeInfo={episodeInfo} />)
+
+      const img = screen.getByAltText(movie.title)
+      expect(img.getAttribute('src')).toBe('http://example.com/medium.jpg')
+    })
   })
 
   describe('interactions', () => {
@@ -147,22 +167,22 @@ describe('MovieCard', () => {
   })
 
   describe('focus state', () => {
-    it('applies focused styles when focused', () => {
+    it('applies focused class when focused', () => {
       const movie = createMockMovie()
 
       const { container } = render(<MovieCard movie={movie} focused={true} />)
 
       const card = container.firstChild as HTMLElement
-      expect(card.style.border).toContain('rgb(229, 9, 20)')
+      expect(card.classList.contains('focused')).toBe(true)
     })
 
-    it('does not apply focused styles when not focused', () => {
+    it('does not apply focused class when not focused', () => {
       const movie = createMockMovie()
 
       const { container } = render(<MovieCard movie={movie} focused={false} />)
 
       const card = container.firstChild as HTMLElement
-      expect(card.style.border).toContain('transparent')
+      expect(card.classList.contains('focused')).toBe(false)
     })
   })
 })

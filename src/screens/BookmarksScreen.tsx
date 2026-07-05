@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'preact/hooks'
 import { getBookmarkFolders, getBookmarkItems, createBookmarkFolder, deleteBookmarkFolder, removeFromBookmark, BookmarkFolder, MovieItem } from '../api/kinopub'
 import { MovieCard } from '../components/MovieCard'
-import { VirtualGrid } from '../components/VirtualGrid'
-import { useKeyboardNavigation, useItemsPerRow } from '../hooks'
+import { GridScreen } from '../components/GridScreen'
+import { useKeyboardNavigation, useGridLayout, createGridNavigationHandlers } from '../hooks'
+import { LoadingState } from '../components/LoadingSpinner'
 import { useI18n } from '../i18n'
 import '../styles/category.css'
 import '../styles/bookmarks.css'
@@ -30,7 +31,7 @@ export function BookmarksScreen({ onSelectItem, onNavigateToMenu, isActive }: Bo
   const [actionLoading, setActionLoading] = useState(false)
   const [dialogFocusIndex, setDialogFocusIndex] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
-  const itemsPerRow = useItemsPerRow('.category-grid', [items.length, viewMode])
+  const { itemsPerRow, cardWidth } = useGridLayout('.category-grid', 240, [items.length, viewMode])
 
   useEffect(() => {
     async function loadFolders() {
@@ -202,34 +203,23 @@ export function BookmarksScreen({ onSelectItem, onNavigateToMenu, isActive }: Bo
     }
   }, [folders, focusedIndex, onNavigateToMenu, loadFolderItems, showCreateDialog, showDeleteConfirm, handleCreateFolder, handleDeleteFolder, t, dialogFocusIndex])
 
-  const itemsHandlers = useMemo(() => {
-    const itemCount = items.length
-    return {
-      onLeft: () => {
-        if (focusedIndex % itemsPerRow === 0) {
-          onNavigateToMenu()
-        } else {
-          setFocusedIndex(prev => Math.max(0, prev - 1))
-        }
-      },
-      onRight: () => setFocusedIndex(prev => Math.min(itemCount - 1, prev + 1)),
-      onUp: () => setFocusedIndex(prev => Math.max(0, prev - itemsPerRow)),
-      onDown: () => {
-        const newIndex = focusedIndex + itemsPerRow
-        if (newIndex < itemCount) {
-          setFocusedIndex(newIndex)
-        }
-      },
-      onEnter: () => {
-        const item = items[focusedIndex]
+  const itemsHandlers = useMemo(() => ({
+    ...createGridNavigationHandlers({
+      itemCount: items.length,
+      itemsPerRow,
+      focusedIndex,
+      setFocusedIndex,
+      onSelect: (index) => {
+        const item = items[index]
         if (item) {
           onSelectItem(item.id)
         }
       },
-      onBack: goBackToFolders,
-      onRed: handleRemoveItem
-    }
-  }, [items, focusedIndex, onNavigateToMenu, onSelectItem, itemsPerRow, goBackToFolders, handleRemoveItem])
+      onLeftEdge: onNavigateToMenu
+    }),
+    onBack: goBackToFolders,
+    onRed: handleRemoveItem
+  }), [items, focusedIndex, onNavigateToMenu, onSelectItem, itemsPerRow, goBackToFolders, handleRemoveItem])
 
   useKeyboardNavigation(
     viewMode === 'folders' ? foldersHandlers : itemsHandlers,
@@ -248,26 +238,25 @@ export function BookmarksScreen({ onSelectItem, onNavigateToMenu, isActive }: Bo
     return (
       <div class="category-screen">
         <h1 class="category-title">{t.menuBookmarks}</h1>
-        <div class="category-loading">
-          <div class="category-spinner" />
-        </div>
+        <LoadingState />
       </div>
     )
   }
 
   if (viewMode === 'items' && selectedFolder) {
     return (
-      <div class="category-screen" ref={containerRef}>
-        <h1 class="category-title">{selectedFolder.title}</h1>
-        <VirtualGrid
-          items={items}
-          focusedIndex={focusedIndex}
-          itemsPerRow={itemsPerRow}
-          renderItem={renderItem}
-          getItemKey={(item) => item.id}
-          emptyMessage={t.errorNoItems}
-        />
-      </div>
+      <GridScreen
+        title={selectedFolder.title}
+        loading={false}
+        items={items}
+        focusedIndex={focusedIndex}
+        itemsPerRow={itemsPerRow}
+        renderItem={renderItem}
+        getItemKey={(item) => item.id}
+        emptyMessage={t.errorNoItems}
+        containerRef={containerRef}
+        cardWidth={cardWidth}
+      />
     )
   }
 

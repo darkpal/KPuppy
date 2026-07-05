@@ -31,26 +31,6 @@
   padding-bottom: 40px;
 }
 
-.seasons-loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 50%;
-}
-
-.seasons-spinner {
-  width: 48px;
-  height: 48px;
-  border: 4px solid #333;
-  border-top-color: #e50914;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
 .seasons-empty {
   display: flex;
   align-items: center;
@@ -62,6 +42,15 @@
 
 .episode-row {
   margin-bottom: 32px;
+}
+
+.seasons-episode-grid .episode-card {
+  width: var(--card-width, 280px);
+  margin-right: 0;
+}
+
+.seasons-episode-grid .episode-thumbnail {
+  height: calc(var(--card-width, 280px) * 0.5625);
 }
 
 .episode-grid {

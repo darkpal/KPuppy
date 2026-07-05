@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'preact/hooks'
 import { getDeviceInfo, updateDeviceSettings, DeviceSettings, SelectOption } from '../api/kinopub'
 import { getLocalSettings, saveLocalSettings, VideoQuality, PlayerType } from '../storage'
+import { LoadingState } from '../components/LoadingSpinner'
 import { useKeyboardNavigation } from '../hooks'
 import { useI18n, Language } from '../i18n'
 import '../styles/settings.css'
@@ -44,6 +45,7 @@ const ALL_SETTINGS: SettingItem[] = [
   { id: 'quality', labelKey: 'quality', type: 'select', section: 'local' },
   { id: 'player', labelKey: 'player', type: 'select', section: 'local' },
   { id: 'showComments', labelKey: 'showComments', type: 'toggle', section: 'local' },
+  { id: 'showContinueWatching', labelKey: 'showContinueWatching', type: 'toggle', section: 'local' },
   { id: 'language', labelKey: 'language', type: 'language', section: 'local' },
 ]
 
@@ -56,6 +58,7 @@ export function SettingsScreen({ onNavigateToMenu, isActive }: SettingsScreenPro
   const [quality, setQuality] = useState<VideoQuality>(() => getLocalSettings().defaultQuality)
   const [playerType, setPlayerType] = useState<PlayerType>(() => getLocalSettings().playerType)
   const [showComments, setShowComments] = useState<boolean>(() => getLocalSettings().showComments)
+  const [showContinueWatching, setShowContinueWatching] = useState<boolean>(() => getLocalSettings().showContinueWatching)
   const [focusedCol, setFocusedCol] = useState(0)
   const [focusedRow, setFocusedRow] = useState(0)
   const [expandedSelect, setExpandedSelect] = useState<string | null>(null)
@@ -169,6 +172,10 @@ export function SettingsScreen({ onNavigateToMenu, isActive }: SettingsScreenPro
       const newValue = !showComments
       setShowComments(newValue)
       saveLocalSettings({ showComments: newValue })
+    } else if (currentItem.type === 'toggle' && currentItem.id === 'showContinueWatching') {
+      const newValue = !showContinueWatching
+      setShowContinueWatching(newValue)
+      saveLocalSettings({ showContinueWatching: newValue })
     } else if (currentItem.type === 'toggle' && settings && currentItem.key) {
       const currentValue = settings[currentItem.key] as number
       const newValue = currentValue ? 0 : 1
@@ -186,7 +193,7 @@ export function SettingsScreen({ onNavigateToMenu, isActive }: SettingsScreenPro
       setSelectFocusIndex(Math.max(0, selectedIdx))
       setExpandedSelect('language')
     }
-  }, [columns, focusedCol, focusedRow, settings, saveSettingChange, showComments])
+  }, [columns, focusedCol, focusedRow, settings, saveSettingChange, showComments, showContinueWatching])
 
   const handlers = useMemo(() => {
     if (expandedSelect) {
@@ -252,6 +259,16 @@ export function SettingsScreen({ onNavigateToMenu, isActive }: SettingsScreenPro
             </span>
           </div>
         )}
+        {item.type === 'toggle' && item.id === 'showContinueWatching' && (
+          <div class={`settings-toggle ${showContinueWatching ? 'on' : 'off'}`}>
+            <div class="settings-toggle-track">
+              <div class="settings-toggle-thumb" />
+            </div>
+            <span class="settings-toggle-text">
+              {showContinueWatching ? t.on : t.off}
+            </span>
+          </div>
+        )}
         {item.type === 'toggle' && settings && item.key && (
           <div class={`settings-toggle ${settings[item.key] ? 'on' : 'off'}`}>
             <div class="settings-toggle-track">
@@ -284,9 +301,7 @@ export function SettingsScreen({ onNavigateToMenu, isActive }: SettingsScreenPro
     return (
       <div class="settings-screen">
         <h1 class="settings-title">{t.settings}</h1>
-        <div class="settings-loading">
-          <div class="settings-spinner" />
-        </div>
+        <LoadingState />
       </div>
     )
   }

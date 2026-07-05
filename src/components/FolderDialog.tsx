@@ -3,12 +3,13 @@ import { useI18n } from '../i18n'
 
 interface FolderDialogProps {
   folders: BookmarkFolder[]
+  bookmarkedFolderIds: number[]
   focusedIndex: number
   onSelect: (index: number) => void
   onConfirm: () => void
 }
 
-export function FolderDialog({ folders, focusedIndex, onSelect, onConfirm }: FolderDialogProps) {
+export function FolderDialog({ folders, bookmarkedFolderIds, focusedIndex, onSelect, onConfirm }: FolderDialogProps) {
   const { t } = useI18n()
 
   return (
@@ -26,6 +27,9 @@ export function FolderDialog({ folders, focusedIndex, onSelect, onConfirm }: Fol
               }}
             >
               <span class="item-folder-name">{folder.title}</span>
+              {bookmarkedFolderIds.includes(folder.id) && (
+                <span class="item-folder-added">✓</span>
+              )}
               <span class="item-folder-count">{folder.count}</span>
             </div>
           ))}

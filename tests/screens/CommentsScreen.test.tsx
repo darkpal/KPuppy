@@ -122,7 +122,7 @@ describe('CommentsScreen', () => {
 
       renderWithI18n(<CommentsScreen {...mockProps} />)
 
-      expect(document.querySelector('.comments-spinner')).toBeDefined()
+      expect(document.querySelector('.spinner')).not.toBeNull()
     })
   })
 

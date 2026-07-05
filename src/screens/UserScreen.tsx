@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'preact/hooks'
 import { getUser, User } from '../api/kinopub'
 import { useKeyboardNavigation } from '../hooks'
+import { LoadingState } from '../components/LoadingSpinner'
 import { useI18n } from '../i18n'
 import '../styles/user.css'
 
@@ -58,9 +59,7 @@ export function UserScreen({ onNavigateToMenu, onLogout, isActive }: UserScreenP
     return (
       <div class="user-screen">
         <h1 class="user-title">{t.profile}</h1>
-        <div class="user-loading">
-          <div class="user-spinner" />
-        </div>
+        <LoadingState />
       </div>
     )
   }

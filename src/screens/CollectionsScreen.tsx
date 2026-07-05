@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'preact/hooks'
 import { getCollections, getCollectionItems, Collection, MovieItem } from '../api/kinopub'
 import { MovieCard } from '../components/MovieCard'
-import { VirtualGrid } from '../components/VirtualGrid'
-import { useKeyboardNavigation, useItemsPerRow } from '../hooks'
+import { GridScreen } from '../components/GridScreen'
+import { useKeyboardNavigation, useGridLayout, createGridNavigationHandlers } from '../hooks'
+import { LoadingState } from '../components/LoadingSpinner'
 import { useI18n } from '../i18n'
 import '../styles/category.css'
 import '../styles/bookmarks.css'
@@ -25,7 +26,7 @@ export function CollectionsScreen({ onSelectItem, onNavigateToMenu, isActive }: 
   const [focusedIndex, setFocusedIndex] = useState(0)
   const [savedCollectionIndex, setSavedCollectionIndex] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
-  const itemsPerRow = useItemsPerRow('.category-grid', [items.length, viewMode])
+  const { itemsPerRow, cardWidth } = useGridLayout('.category-grid', 240, [items.length, viewMode])
 
   useEffect(() => {
     async function loadCollections() {
@@ -79,33 +80,22 @@ export function CollectionsScreen({ onSelectItem, onNavigateToMenu, isActive }: 
     }
   }, [collections, focusedIndex, onNavigateToMenu, loadCollectionItems])
 
-  const itemsHandlers = useMemo(() => {
-    const itemCount = items.length
-    return {
-      onLeft: () => {
-        if (focusedIndex % itemsPerRow === 0) {
-          onNavigateToMenu()
-        } else {
-          setFocusedIndex(prev => Math.max(0, prev - 1))
-        }
-      },
-      onRight: () => setFocusedIndex(prev => Math.min(itemCount - 1, prev + 1)),
-      onUp: () => setFocusedIndex(prev => Math.max(0, prev - itemsPerRow)),
-      onDown: () => {
-        const newIndex = focusedIndex + itemsPerRow
-        if (newIndex < itemCount) {
-          setFocusedIndex(newIndex)
-        }
-      },
-      onEnter: () => {
-        const item = items[focusedIndex]
+  const itemsHandlers = useMemo(() => ({
+    ...createGridNavigationHandlers({
+      itemCount: items.length,
+      itemsPerRow,
+      focusedIndex,
+      setFocusedIndex,
+      onSelect: (index) => {
+        const item = items[index]
         if (item) {
           onSelectItem(item.id)
         }
       },
-      onBack: goBackToCollections
-    }
-  }, [items, focusedIndex, onNavigateToMenu, onSelectItem, itemsPerRow, goBackToCollections])
+      onLeftEdge: onNavigateToMenu
+    }),
+    onBack: goBackToCollections
+  }), [items, focusedIndex, onNavigateToMenu, onSelectItem, itemsPerRow, goBackToCollections])
 
   useKeyboardNavigation(
     viewMode === 'collections' ? collectionsHandlers : itemsHandlers,
@@ -124,26 +114,25 @@ export function CollectionsScreen({ onSelectItem, onNavigateToMenu, isActive }: 
     return (
       <div class="category-screen">
         <h1 class="category-title">{t.menuCollections}</h1>
-        <div class="category-loading">
-          <div class="category-spinner" />
-        </div>
+        <LoadingState />
       </div>
     )
   }
 
   if (viewMode === 'items' && selectedCollection) {
     return (
-      <div class="category-screen" ref={containerRef}>
-        <h1 class="category-title">{selectedCollection.title}</h1>
-        <VirtualGrid
-          items={items}
-          focusedIndex={focusedIndex}
-          itemsPerRow={itemsPerRow}
-          renderItem={renderItem}
-          getItemKey={(item) => item.id}
-          emptyMessage={t.errorNoItems}
-        />
-      </div>
+      <GridScreen
+        title={selectedCollection.title}
+        loading={false}
+        items={items}
+        focusedIndex={focusedIndex}
+        itemsPerRow={itemsPerRow}
+        renderItem={renderItem}
+        getItemKey={(item) => item.id}
+        emptyMessage={t.errorNoItems}
+        containerRef={containerRef}
+        cardWidth={cardWidth}
+      />
     )
   }
 

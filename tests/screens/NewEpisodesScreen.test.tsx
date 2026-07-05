@@ -51,7 +51,7 @@ describe('NewEpisodesScreen', () => {
 
       renderWithI18n(<NewEpisodesScreen {...mockProps} />)
 
-      expect(document.querySelector('.category-spinner')).toBeDefined()
+      expect(document.querySelector('.spinner')).not.toBeNull()
     })
 
     it('shows title during loading', () => {

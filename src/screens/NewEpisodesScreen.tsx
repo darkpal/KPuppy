@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'preact/hooks'
 import { getWatchingSerials, WatchingItem } from '../api/kinopub'
 import { MovieCard } from '../components/MovieCard'
-import { VirtualGrid } from '../components/VirtualGrid'
-import { useKeyboardNavigation, useItemsPerRow } from '../hooks'
+import { GridScreen } from '../components/GridScreen'
+import { useKeyboardNavigation, useGridLayout, createGridNavigationHandlers } from '../hooks'
 import { useI18n } from '../i18n'
 import '../styles/category.css'
 
@@ -18,7 +18,7 @@ export function NewEpisodesScreen({ onSelectItem, onNavigateToMenu, isActive }: 
   const [loading, setLoading] = useState(true)
   const [focusedIndex, setFocusedIndex] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
-  const itemsPerRow = useItemsPerRow('.category-grid', [items.length])
+  const { itemsPerRow, cardWidth } = useGridLayout('.category-grid', 240, [items.length])
 
   useEffect(() => {
     async function loadNewEpisodes() {
@@ -36,32 +36,19 @@ export function NewEpisodesScreen({ onSelectItem, onNavigateToMenu, isActive }: 
     loadNewEpisodes()
   }, [])
 
-  const handlers = useMemo(() => {
-    const itemCount = items.length
-    return {
-      onLeft: () => {
-        if (focusedIndex % itemsPerRow === 0) {
-          onNavigateToMenu()
-        } else {
-          setFocusedIndex(prev => Math.max(0, prev - 1))
-        }
-      },
-      onRight: () => setFocusedIndex(prev => Math.min(itemCount - 1, prev + 1)),
-      onUp: () => setFocusedIndex(prev => Math.max(0, prev - itemsPerRow)),
-      onDown: () => {
-        const newIndex = focusedIndex + itemsPerRow
-        if (newIndex < itemCount) {
-          setFocusedIndex(newIndex)
-        }
-      },
-      onEnter: () => {
-        const item = items[focusedIndex]
-        if (item) {
-          onSelectItem(item.id)
-        }
+  const handlers = useMemo(() => createGridNavigationHandlers({
+    itemCount: items.length,
+    itemsPerRow,
+    focusedIndex,
+    setFocusedIndex,
+    onSelect: (index) => {
+      const item = items[index]
+      if (item) {
+        onSelectItem(item.id)
       }
-    }
-  }, [items, focusedIndex, onNavigateToMenu, onSelectItem, itemsPerRow])
+    },
+    onLeftEdge: onNavigateToMenu
+  }), [items, focusedIndex, onNavigateToMenu, onSelectItem, itemsPerRow])
 
   useKeyboardNavigation(handlers, isActive && !loading)
 
@@ -91,28 +78,18 @@ export function NewEpisodesScreen({ onSelectItem, onNavigateToMenu, isActive }: 
     )
   }, [onSelectItem, t])
 
-  if (loading) {
-    return (
-      <div class="category-screen">
-        <h1 class="category-title">{t.menuNewEpisodes}</h1>
-        <div class="category-loading">
-          <div class="category-spinner" />
-        </div>
-      </div>
-    )
-  }
-
   return (
-    <div class="category-screen" ref={containerRef}>
-      <h1 class="category-title">{t.menuNewEpisodes}</h1>
-      <VirtualGrid
-        items={items}
-        focusedIndex={focusedIndex}
-        itemsPerRow={itemsPerRow}
-        renderItem={renderItem}
-        getItemKey={(item) => item.id}
-        emptyMessage={t.errorNoItems}
-      />
-    </div>
+    <GridScreen
+      title={t.menuNewEpisodes}
+      loading={loading}
+      items={items}
+      focusedIndex={focusedIndex}
+      itemsPerRow={itemsPerRow}
+      renderItem={renderItem}
+      getItemKey={(item) => item.id}
+      emptyMessage={t.errorNoItems}
+      containerRef={containerRef}
+      cardWidth={cardWidth}
+    />
   )
 }

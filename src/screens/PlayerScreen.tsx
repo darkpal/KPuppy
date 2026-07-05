@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'preact/hooks'
 import { Audio, Subtitle } from '../api/kinopub'
+import { KEY_CODES } from '../hooks'
 import { useI18n } from '../i18n'
 import '../styles/player.css'
 
@@ -237,7 +238,7 @@ export function PlayerScreen({ url, title, audios = [], subtitles = [], startTim
           : controls.selectedSubtitleIndex
 
         switch (e.keyCode) {
-          case 38: // Up
+          case KEY_CODES.UP:
             if (controls.activePanel === 'audio' && currentIndex > 0) {
               selectAudio(currentIndex - 1)
             } else if (controls.activePanel === 'subtitles' && currentIndex > -1) {
@@ -245,7 +246,7 @@ export function PlayerScreen({ url, title, audios = [], subtitles = [], startTim
             }
             e.preventDefault()
             break
-          case 40: // Down
+          case KEY_CODES.DOWN:
             if (controls.activePanel === 'audio' && currentIndex < items.length - 1) {
               selectAudio(currentIndex + 1)
             } else if (controls.activePanel === 'subtitles' && currentIndex < items.length - 1) {
@@ -253,8 +254,8 @@ export function PlayerScreen({ url, title, audios = [], subtitles = [], startTim
             }
             e.preventDefault()
             break
-          case 13: // Enter
-          case 461: // Back
+          case KEY_CODES.ENTER:
+          case KEY_CODES.BACK:
             setControls(prev => ({ ...prev, activePanel: 'none' }))
             e.preventDefault()
             break
@@ -263,37 +264,37 @@ export function PlayerScreen({ url, title, audios = [], subtitles = [], startTim
       }
 
       switch (e.keyCode) {
-        case 13: // Enter/OK
+        case KEY_CODES.ENTER:
           togglePlay()
           e.preventDefault()
           break
-        case 37: // Left
+        case KEY_CODES.LEFT:
           seek(-10)
           e.preventDefault()
           break
-        case 39: // Right
+        case KEY_CODES.RIGHT:
           seek(10)
           e.preventDefault()
           break
-        case 38: // Up
+        case KEY_CODES.UP:
           seek(60)
           e.preventDefault()
           break
-        case 40: // Down
+        case KEY_CODES.DOWN:
           seek(-60)
           e.preventDefault()
           break
-        case 461: // Back
+        case KEY_CODES.BACK:
           onBack()
           e.preventDefault()
           break
-        case 403: // Red - Audio
+        case KEY_CODES.RED:
           if (audios.length > 0) {
             setControls(prev => ({ ...prev, activePanel: 'audio' }))
           }
           e.preventDefault()
           break
-        case 404: // Green - Subtitles
+        case KEY_CODES.GREEN:
           if (convertedSubs.length > 0) {
             setControls(prev => ({ ...prev, activePanel: 'subtitles' }))
           }

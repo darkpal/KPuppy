@@ -1,4 +1,5 @@
 import { MovieItem } from '../api/kinopub'
+import '../styles/movie-card.css'
 
 interface EpisodeInfo {
   season: number
@@ -30,82 +31,20 @@ export function MovieCard({ movie, focused, onSelect, episodeInfo, badge }: Movi
   const { primary, secondary } = splitTitle(movie.title)
 
   const episodeBadge = badge || (episodeInfo ? `S${episodeInfo.season}E${episodeInfo.episode}` : null)
-
-  const cardStyle = {
-    width: '300px',
-    height: '450px',
-    borderRadius: '4px',
-    overflow: 'hidden',
-    position: 'relative' as const,
-    cursor: 'pointer',
-    border: focused ? '2px solid #e50914' : '2px solid transparent',
-    boxShadow: focused ? '0 8px 20px rgba(0,0,0,0.6)' : 'none',
-    zIndex: focused ? 10 : 1,
-    flexShrink: 0
-  }
-
-  const imageStyle = {
-    width: '100%',
-    height: '100%',
-    objectFit: 'cover' as const,
-    backgroundColor: '#1f1f1f'
-  }
-
-  const overlayStyle = {
-    position: 'absolute' as const,
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: '40px 12px 12px',
-    background: 'linear-gradient(transparent, rgba(0,0,0,0.9))',
-    opacity: focused ? 1 : 0.8
-  }
-
-  const titleStyle = {
-    fontSize: '24px',
-    fontWeight: 600,
-    color: '#ffffff',
-    marginBottom: '4px',
-    lineHeight: 1.2
-  }
-
-  const secondaryTitleStyle = {
-    fontSize: '18px',
-    fontWeight: 400,
-    color: '#b3b3b3',
-    marginBottom: '6px',
-    lineHeight: 1.2
-  }
-
-  const yearStyle = {
-    fontSize: '20px',
-    color: '#888888'
-  }
-
-  const badgeStyle = {
-    position: 'absolute' as const,
-    top: '8px',
-    right: '8px',
-    background: '#e50914',
-    color: '#fff',
-    padding: '4px 8px',
-    borderRadius: '4px',
-    fontSize: '16px',
-    fontWeight: 600
-  }
+  const imageSrc = episodeInfo?.thumbnail || movie.posters?.medium || movie.posters?.big || movie.posters?.small
 
   return (
-    <div style={cardStyle} onClick={onSelect}>
+    <div class={`movie-card ${focused ? 'focused' : ''}`} onClick={onSelect}>
       <img
-        src={movie.posters?.medium || movie.posters?.big || movie.posters?.small}
+        src={imageSrc}
         alt={movie.title}
-        style={imageStyle}
+        class="movie-card-image"
       />
-      {episodeBadge && <div style={badgeStyle}>{episodeBadge}</div>}
-      <div style={overlayStyle}>
-        <div style={titleStyle}>{primary}</div>
-        {secondary && <div style={secondaryTitleStyle}>{secondary}</div>}
-        <div style={yearStyle}>{movie.year}</div>
+      {episodeBadge && <div class="movie-card-badge">{episodeBadge}</div>}
+      <div class="movie-card-overlay">
+        <div class="movie-card-title">{primary}</div>
+        {secondary && <div class="movie-card-title-secondary">{secondary}</div>}
+        {movie.year > 0 && <div class="movie-card-year">{movie.year}</div>}
       </div>
     </div>
   )

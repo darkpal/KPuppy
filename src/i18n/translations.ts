@@ -157,6 +157,7 @@ export interface Translations {
   // Comments
   comments: string
   showComments: string
+  showContinueWatching: string
   writeComment: string
   reply: string
   markAsSpoiler: string
@@ -301,6 +302,7 @@ const en: Translations = {
 
   comments: 'Comments',
   showComments: 'Show Comments',
+  showContinueWatching: 'Show Continue Watching on Home',
   writeComment: 'Write Comment',
   reply: 'Reply',
   markAsSpoiler: 'Mark as Spoiler',
@@ -446,6 +448,7 @@ const ru: Translations = {
 
   comments: 'Комментарии',
   showComments: 'Показывать комментарии',
+  showContinueWatching: 'Показывать «Продолжить просмотр» на главной',
   writeComment: 'Написать комментарий',
   reply: 'Ответить',
   markAsSpoiler: 'Отметить как спойлер',
@@ -591,6 +594,7 @@ const de: Translations = {
 
   comments: 'Kommentare',
   showComments: 'Kommentare anzeigen',
+  showContinueWatching: '„Weiterschauen“ auf Startseite anzeigen',
   writeComment: 'Kommentar schreiben',
   reply: 'Antworten',
   markAsSpoiler: 'Als Spoiler markieren',

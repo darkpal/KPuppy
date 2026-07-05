@@ -3,7 +3,8 @@ import { searchItems, getContentTypes, MovieItem, ContentType } from '../api/kin
 import { getContentTypesCache, saveContentTypesCache } from '../storage'
 import { MovieCard } from '../components/MovieCard'
 import { Keyboard, KEYBOARD_ROWS_WITH_SEARCH, handleSpecialKey } from '../components/Keyboard'
-import { useKeyboardNavigation } from '../hooks'
+import { useKeyboardNavigation, useScrollToFocused, createGridNavigationHandlers } from '../hooks'
+import { LoadingState } from '../components/LoadingSpinner'
 import { useI18n } from '../i18n'
 import '../styles/search.css'
 
@@ -16,7 +17,6 @@ interface SearchScreenProps {
 
 type FocusArea = 'keyboard' | 'filter' | 'results'
 
-const KEYBOARD_ROWS = KEYBOARD_ROWS_WITH_SEARCH
 
 export function SearchScreen({ onBack, onSelectItem, onNavigateToMenu, isActive }: SearchScreenProps) {
   const { t } = useI18n()
@@ -30,6 +30,7 @@ export function SearchScreen({ onBack, onSelectItem, onNavigateToMenu, isActive 
   const [hasSearched, setHasSearched] = useState(false)
   const [resultsPerRow, setResultsPerRow] = useState(6)
   const searchTimeoutRef = useRef<number | null>(null)
+  const resultsContainerRef = useRef<HTMLDivElement>(null)
   const [contentTypes, setContentTypes] = useState<ContentType[]>([])
   const [selectedType, setSelectedType] = useState<string | null>(null)
   const [filterDropdownOpen, setFilterDropdownOpen] = useState(false)
@@ -142,7 +143,7 @@ export function SearchScreen({ onBack, onSelectItem, onNavigateToMenu, isActive 
   }, [contentTypes])
 
   const handlers = useMemo(() => {
-    const cols = KEYBOARD_ROWS[keyboardRow]?.length || 12
+    const cols = KEYBOARD_ROWS_WITH_SEARCH[keyboardRow]?.length || 12
 
     if (focusArea === 'filter') {
       if (filterDropdownOpen) {
@@ -192,22 +193,22 @@ export function SearchScreen({ onBack, onSelectItem, onNavigateToMenu, isActive 
         onUp: () => {
           if (keyboardRow > 0) {
             setKeyboardRow(prev => prev - 1)
-            setKeyboardCol(prev => Math.min(prev, KEYBOARD_ROWS[keyboardRow - 1].length - 1))
+            setKeyboardCol(prev => Math.min(prev, KEYBOARD_ROWS_WITH_SEARCH[keyboardRow - 1].length - 1))
           } else if (contentTypes.length > 0) {
             setFocusArea('filter')
           }
         },
         onDown: () => {
-          if (keyboardRow < KEYBOARD_ROWS.length - 1) {
+          if (keyboardRow < KEYBOARD_ROWS_WITH_SEARCH.length - 1) {
             setKeyboardRow(prev => prev + 1)
-            setKeyboardCol(prev => Math.min(prev, KEYBOARD_ROWS[keyboardRow + 1].length - 1))
+            setKeyboardCol(prev => Math.min(prev, KEYBOARD_ROWS_WITH_SEARCH[keyboardRow + 1].length - 1))
           } else if (results.length > 0) {
             setFocusArea('results')
             setResultIndex(0)
           }
         },
         onEnter: () => {
-          const key = KEYBOARD_ROWS[keyboardRow]?.[keyboardCol]
+          const key = KEYBOARD_ROWS_WITH_SEARCH[keyboardRow]?.[keyboardCol]
           if (key) {
             handleKeyPress(key)
           }
@@ -216,53 +217,32 @@ export function SearchScreen({ onBack, onSelectItem, onNavigateToMenu, isActive 
     }
 
     return {
-      onBack: () => setFocusArea('keyboard'),
-      onLeft: () => {
-        if (resultIndex % resultsPerRow === 0) {
-          onNavigateToMenu()
-        } else {
-          setResultIndex(prev => prev - 1)
-        }
-      },
-      onRight: () => setResultIndex(prev => (prev < results.length - 1 ? prev + 1 : prev)),
-      onUp: () => {
-        const newIndex = resultIndex - resultsPerRow
-        if (newIndex >= 0) {
-          setResultIndex(newIndex)
-        } else {
-          setFocusArea('keyboard')
-        }
-      },
-      onDown: () => {
-        const newIndex = resultIndex + resultsPerRow
-        if (newIndex < results.length) {
-          setResultIndex(newIndex)
-        }
-      },
-      onEnter: () => {
-        const item = results[resultIndex]
-        if (item) {
-          onSelectItem(item.id)
-        }
-      }
+      ...createGridNavigationHandlers({
+        itemCount: results.length,
+        itemsPerRow: resultsPerRow,
+        focusedIndex: resultIndex,
+        setFocusedIndex: setResultIndex,
+        onSelect: (index) => {
+          const item = results[index]
+          if (item) {
+            onSelectItem(item.id)
+          }
+        },
+        onLeftEdge: onNavigateToMenu,
+        onTopEdge: () => setFocusArea('keyboard')
+      }),
+      onBack: () => setFocusArea('keyboard')
     }
   }, [focusArea, keyboardRow, keyboardCol, results, resultIndex, resultsPerRow, query, onBack, onSelectItem, handleKeyPress, onNavigateToMenu, filterDropdownOpen, filterDropdownIndex, filterOptions, contentTypes.length])
 
   useKeyboardNavigation(handlers, isActive)
 
-  useEffect(() => {
-    if (focusArea === 'results' && results.length > 0) {
-      const resultEl = document.querySelector(`[data-result-index="${resultIndex}"]`) as HTMLElement
-      const container = document.querySelector('.search-results') as HTMLElement
-      if (resultEl && container) {
-        const elTop = resultEl.offsetTop
-        const containerHeight = container.clientHeight
-        const elHeight = resultEl.clientHeight
-        const targetScroll = elTop - (containerHeight / 2) + (elHeight / 2)
-        container.scrollTop = Math.max(0, targetScroll)
-      }
-    }
-  }, [resultIndex, focusArea, results.length])
+  useScrollToFocused({
+    containerRef: resultsContainerRef,
+    focusedIndex: focusArea === 'results' ? resultIndex : null,
+    itemSelector: '[data-result-index]',
+    itemCount: results.length
+  })
 
   const selectedTypeName = useMemo(() => {
     if (!selectedType) return t.allTypes
@@ -310,7 +290,7 @@ export function SearchScreen({ onBack, onSelectItem, onNavigateToMenu, isActive 
 
       {focusArea !== 'results' && (
         <Keyboard
-          rows={KEYBOARD_ROWS}
+          rows={KEYBOARD_ROWS_WITH_SEARCH}
           focusedRow={keyboardRow}
           focusedCol={keyboardCol}
           isFocused={focusArea === 'keyboard'}
@@ -319,11 +299,9 @@ export function SearchScreen({ onBack, onSelectItem, onNavigateToMenu, isActive 
         />
       )}
 
-      <div class="search-results">
+      <div class="search-results" ref={resultsContainerRef}>
         {loading && (
-          <div class="search-loading">
-            <div class="search-spinner" />
-          </div>
+          <LoadingState />
         )}
 
         {!loading && hasSearched && results.length === 0 && (

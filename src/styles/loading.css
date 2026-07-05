@@ -1,26 +1,4 @@
-.loading-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  min-height: 200px;
-}
 
-.loading-spinner {
-  width: 48px;
-  height: 48px;
-  border: 4px solid rgba(255, 255, 255, 0.2);
-  border-top-color: #e50914;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-.loading-message {
-  margin-top: 16px;
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 14px;
-}
 
 .error-state {
   display: flex;
@@ -55,8 +33,3 @@
   background: #f40612;
 }
 
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}

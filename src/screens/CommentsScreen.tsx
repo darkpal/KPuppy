@@ -3,6 +3,7 @@ import { getComments, createComment, replyToComment, editComment, deleteComment,
 import { getCommentsUserId } from '../storage'
 import { Keyboard, KEYBOARD_ROWS, handleSpecialKey } from '../components/Keyboard'
 import { useKeyboardNavigation } from '../hooks'
+import { LoadingState } from '../components/LoadingSpinner'
 import { useI18n } from '../i18n'
 import '../styles/comments.css'
 
@@ -430,9 +431,7 @@ export function CommentsScreen({ itemId, itemTitle, onBack, onNavigateToMenu, is
           <h1 class="comments-header-title">{itemTitle}</h1>
           <p class="comments-header-subtitle">{t.comments}</p>
         </div>
-        <div class="comments-loading">
-          <div class="comments-spinner" />
-        </div>
+        <LoadingState />
       </div>
     )
   }

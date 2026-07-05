@@ -59,7 +59,7 @@ describe('CollectionsScreen', () => {
 
       renderWithI18n(<CollectionsScreen {...mockProps} />)
 
-      expect(document.querySelector('.category-spinner')).toBeDefined()
+      expect(document.querySelector('.spinner')).not.toBeNull()
     })
 
     it('shows title during loading', () => {

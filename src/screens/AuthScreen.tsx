@@ -1,5 +1,6 @@
 import { useEffect } from 'preact/hooks'
 import { useAuth } from '../hooks/useAuth'
+import { LoadingState } from '../components/LoadingSpinner'
 import { useI18n } from '../i18n'
 import '../styles/auth.css'
 
@@ -26,10 +27,7 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps) {
   if (isLoading && !userCode) {
     return (
       <div class="auth-screen">
-        <div class="auth-loading">
-          <div class="auth-spinner" />
-          <span style={{ color: '#b3b3b3', fontSize: '20px' }}>{t.loading}</span>
-        </div>
+        <LoadingState message={t.loading} />
       </div>
     )
   }

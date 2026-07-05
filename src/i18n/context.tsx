@@ -17,14 +17,18 @@ function getStoredLanguage(): Language {
     if (stored && ['en', 'ru', 'de'].includes(stored)) {
       return stored as Language
     }
-  } catch {}
+  } catch (err) {
+    if (import.meta.env.DEV) console.warn('Failed to read stored language:', err)
+  }
   return 'en'
 }
 
 function storeLanguage(lang: Language): void {
   try {
     localStorage.setItem(STORAGE_KEY, lang)
-  } catch {}
+  } catch (err) {
+    if (import.meta.env.DEV) console.warn('Failed to store language:', err)
+  }
 }
 
 const I18nContext = createContext<I18nContextValue | null>(null)

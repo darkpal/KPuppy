@@ -17,12 +17,14 @@ export interface LocalSettings {
   defaultQuality: VideoQuality
   playerType: PlayerType
   showComments: boolean
+  showContinueWatching: boolean
 }
 
 const DEFAULT_SETTINGS: LocalSettings = {
   defaultQuality: 'auto',
   playerType: 'native',
-  showComments: true
+  showComments: true,
+  showContinueWatching: true
 }
 
 export function getLocalSettings(): LocalSettings {
