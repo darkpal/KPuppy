@@ -13,15 +13,12 @@ import { UserScreen } from './screens/UserScreen'
 import { SeasonsScreen } from './screens/SeasonsScreen'
 import { NewEpisodesScreen } from './screens/NewEpisodesScreen'
 import { PlayerScreen } from './screens/PlayerScreen'
-import { CommentsScreen } from './screens/CommentsScreen'
 import { RemoteDebugOverlay } from './components/RemoteDebugOverlay'
 import { ALL_MENU_ITEMS_COUNT, getMenuIdByIndex } from './components/SideMenu'
 import { KEY_CODES } from './hooks'
 import { ScreenManager } from './components/ScreenManager'
-import { isAuthenticated, clearTokens, getTokens, getLocalSettings, saveReturnTo, getReturnTo, clearReturnTo, getContentTypesCache, saveContentTypesCache, getCommentsUserId, saveCommentsUserId, clearCommentsUserId, ReturnToState } from './storage'
-import { refreshAccessToken, getItem, setOnAuthError, getDeviceInfo, markTime, getContentTypes, getUser, registerDevice, Audio, Subtitle } from './api/kinopub'
-import { provisionUser, isCommentsApiAvailable } from './api/comments'
-import { hashUsername } from './utils/hash'
+import { isAuthenticated, clearTokens, getTokens, getLocalSettings, saveReturnTo, getReturnTo, clearReturnTo, getContentTypesCache, saveContentTypesCache, ReturnToState } from './storage'
+import { refreshAccessToken, getItem, setOnAuthError, getDeviceInfo, markTime, getContentTypes, registerDevice, Audio, Subtitle } from './api/kinopub'
 import { saveTokens } from './storage'
 import { launchNativePlayer, getStreamUrl } from './webos/player'
 import { platformBack } from './webos/service'
@@ -53,8 +50,6 @@ interface AppState {
   selectedMenuId: string
   itemId: number | null
   seriesId: number | null
-  commentsItemId: number | null
-  commentsItemTitle: string | null
   focusArea: FocusArea
   menuFocusIndex: number
   screenFocus: Record<string, ScreenFocusState>
@@ -95,8 +90,6 @@ export function App() {
       selectedMenuId: 'home',
       itemId: null,
       seriesId: null,
-      commentsItemId: null,
-      commentsItemTitle: null,
       focusArea: 'content',
       menuFocusIndex: 0,
       screenFocus: {},
@@ -169,26 +162,12 @@ export function App() {
       })
   }, [state.authenticated])
 
-  useEffect(() => {
-    if (!state.authenticated) return
-    if (!isCommentsApiAvailable()) return
-    if (getCommentsUserId()) return
-
-    getUser()
-      .then(user => provisionUser(hashUsername(user.username), user.avatar))
-      .then(response => saveCommentsUserId(response.userId))
-      .catch(err => {
-        if (import.meta.env.DEV) console.error('provisionUser failed:', err)
-      })
-  }, [state.authenticated])
-
   const handleAuthenticated = useCallback(() => {
     setState(prev => ({ ...prev, authenticated: true }))
   }, [])
 
   const handleLogout = useCallback(() => {
     clearTokens()
-    clearCommentsUserId()
     setState(prev => ({ ...prev, authenticated: false, itemId: null, seriesId: null, selectedMenuId: 'home' }))
   }, [])
 
@@ -211,14 +190,6 @@ export function App() {
 
   const handleBackFromSeries = useCallback(() => {
     setState(prev => ({ ...prev, itemId: prev.seriesId, seriesId: null }))
-  }, [])
-
-  const handleOpenComments = useCallback((itemId: number, itemTitle: string) => {
-    setState(prev => ({ ...prev, commentsItemId: itemId, commentsItemTitle: itemTitle }))
-  }, [])
-
-  const handleBackFromComments = useCallback(() => {
-    setState(prev => ({ ...prev, commentsItemId: null, commentsItemTitle: null }))
   }, [])
 
   const handleFocusChange = useCallback((screenId: string, row: number, col: number) => {
@@ -420,9 +391,7 @@ export function App() {
           }
 
           case KEY_CODES.BACK:
-            if (state.commentsItemId) {
-              handleBackFromComments()
-            } else if (state.seriesId) {
+            if (state.seriesId) {
               handleBackFromSeries()
             } else if (state.itemId) {
               handleBackFromItem()
@@ -437,7 +406,7 @@ export function App() {
 
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [state.authenticated, state.focusArea, state.menuFocusIndex, state.itemId, state.seriesId, state.commentsItemId, handleMenuSelect, handleBackFromItem, handleBackFromSeries, handleBackFromComments])
+  }, [state.authenticated, state.focusArea, state.menuFocusIndex, state.itemId, state.seriesId, handleMenuSelect, handleBackFromItem, handleBackFromSeries])
 
   if (initializing) {
     return (
@@ -487,18 +456,6 @@ export function App() {
   const isMenuFocused = state.focusArea === 'menu'
 
   const renderScreen = () => {
-    if (state.commentsItemId && state.commentsItemTitle) {
-      return (
-        <CommentsScreen
-          itemId={state.commentsItemId}
-          itemTitle={state.commentsItemTitle}
-          onBack={handleBackFromComments}
-          onNavigateToMenu={handleNavigateToMenu}
-          isActive={isContentActive}
-        />
-      )
-    }
-
     if (state.seriesId) {
       return (
         <SeasonsScreen
@@ -521,7 +478,6 @@ export function App() {
           onSelectSeries={handleSelectSeries}
           onSelectItem={handleSelectItem}
           onNavigateToMenu={handleNavigateToMenu}
-          onOpenComments={handleOpenComments}
           isActive={isContentActive}
         />
       )

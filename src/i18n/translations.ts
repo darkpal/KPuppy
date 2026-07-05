@@ -133,7 +133,6 @@ export interface Translations {
   deleteFolder: string
   newFolderName: string
   confirmDelete: string
-  confirmDeleteComment: string
   bookmarkAdded: string
   bookmarkRemoved: string
 
@@ -154,23 +153,8 @@ export interface Translations {
   allTypes: string
   type: string
 
-  // Comments
-  comments: string
-  showComments: string
+  // Home screen
   showContinueWatching: string
-  writeComment: string
-  reply: string
-  markAsSpoiler: string
-  noComments: string
-  sendComment: string
-  showSpoiler: string
-  hideSpoiler: string
-  commentsError: string
-  replyingTo: string
-  editComment: string
-  deleteComment: string
-  cancel: string
-  editing: string
 }
 
 const en: Translations = {
@@ -300,23 +284,7 @@ const en: Translations = {
   allTypes: 'All Types',
   type: 'Type',
 
-  comments: 'Comments',
-  showComments: 'Show Comments',
   showContinueWatching: 'Show Continue Watching on Home',
-  writeComment: 'Write Comment',
-  reply: 'Reply',
-  markAsSpoiler: 'Mark as Spoiler',
-  noComments: 'No comments yet',
-  sendComment: 'Send',
-  showSpoiler: 'Show spoiler',
-  hideSpoiler: 'Hide spoiler',
-  commentsError: 'Failed to load comments',
-  replyingTo: 'Replying to',
-  editComment: 'Edit',
-  deleteComment: 'Delete',
-  confirmDeleteComment: 'Delete this comment?',
-  cancel: 'Cancel',
-  editing: 'Editing',
 }
 
 const ru: Translations = {
@@ -446,23 +414,7 @@ const ru: Translations = {
   allTypes: 'Все типы',
   type: 'Тип',
 
-  comments: 'Комментарии',
-  showComments: 'Показывать комментарии',
   showContinueWatching: 'Показывать «Продолжить просмотр» на главной',
-  writeComment: 'Написать комментарий',
-  reply: 'Ответить',
-  markAsSpoiler: 'Отметить как спойлер',
-  noComments: 'Комментариев пока нет',
-  sendComment: 'Отправить',
-  showSpoiler: 'Показать спойлер',
-  hideSpoiler: 'Скрыть спойлер',
-  commentsError: 'Не удалось загрузить комментарии',
-  replyingTo: 'Ответ на',
-  editComment: 'Изменить',
-  deleteComment: 'Удалить',
-  confirmDeleteComment: 'Удалить комментарий?',
-  cancel: 'Отмена',
-  editing: 'Редактирование',
 }
 
 const de: Translations = {
@@ -592,23 +544,7 @@ const de: Translations = {
   allTypes: 'Alle Typen',
   type: 'Typ',
 
-  comments: 'Kommentare',
-  showComments: 'Kommentare anzeigen',
   showContinueWatching: '„Weiterschauen“ auf Startseite anzeigen',
-  writeComment: 'Kommentar schreiben',
-  reply: 'Antworten',
-  markAsSpoiler: 'Als Spoiler markieren',
-  noComments: 'Noch keine Kommentare',
-  sendComment: 'Senden',
-  showSpoiler: 'Spoiler anzeigen',
-  hideSpoiler: 'Spoiler verbergen',
-  commentsError: 'Kommentare konnten nicht geladen werden',
-  replyingTo: 'Antwort auf',
-  editComment: 'Bearbeiten',
-  deleteComment: 'Löschen',
-  confirmDeleteComment: 'Kommentar löschen?',
-  cancel: 'Abbrechen',
-  editing: 'Bearbeiten',
 }
 
 export const translations: Record<Language, Translations> = { en, ru, de }

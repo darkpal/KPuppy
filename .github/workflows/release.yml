@@ -31,7 +31,6 @@ jobs:
         env:
           VITE_CLIENT_SECRET: ${{ secrets.VITE_CLIENT_SECRET }}
           VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
-          VITE_COMMENTS_API_URL: https://api.twttr.io/kpuppy
 
       - name: Install webOS CLI
         run: npm install -g @webos-tools/cli

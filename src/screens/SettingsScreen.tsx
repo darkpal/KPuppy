@@ -44,7 +44,6 @@ const ALL_SETTINGS: SettingItem[] = [
   { id: 'streamingType', labelKey: 'streaming', type: 'select', key: 'streamingType', section: 'client' },
   { id: 'quality', labelKey: 'quality', type: 'select', section: 'local' },
   { id: 'player', labelKey: 'player', type: 'select', section: 'local' },
-  { id: 'showComments', labelKey: 'showComments', type: 'toggle', section: 'local' },
   { id: 'showContinueWatching', labelKey: 'showContinueWatching', type: 'toggle', section: 'local' },
   { id: 'language', labelKey: 'language', type: 'language', section: 'local' },
 ]
@@ -57,7 +56,6 @@ export function SettingsScreen({ onNavigateToMenu, isActive }: SettingsScreenPro
   const [settings, setSettings] = useState<DeviceSettings | null>(null)
   const [quality, setQuality] = useState<VideoQuality>(() => getLocalSettings().defaultQuality)
   const [playerType, setPlayerType] = useState<PlayerType>(() => getLocalSettings().playerType)
-  const [showComments, setShowComments] = useState<boolean>(() => getLocalSettings().showComments)
   const [showContinueWatching, setShowContinueWatching] = useState<boolean>(() => getLocalSettings().showContinueWatching)
   const [focusedCol, setFocusedCol] = useState(0)
   const [focusedRow, setFocusedRow] = useState(0)
@@ -168,11 +166,7 @@ export function SettingsScreen({ onNavigateToMenu, isActive }: SettingsScreenPro
   const handleActivateItem = useCallback(() => {
     const currentItem = columns[focusedCol]?.[focusedRow]
     if (!currentItem) return
-    if (currentItem.type === 'toggle' && currentItem.id === 'showComments') {
-      const newValue = !showComments
-      setShowComments(newValue)
-      saveLocalSettings({ showComments: newValue })
-    } else if (currentItem.type === 'toggle' && currentItem.id === 'showContinueWatching') {
+    if (currentItem.type === 'toggle' && currentItem.id === 'showContinueWatching') {
       const newValue = !showContinueWatching
       setShowContinueWatching(newValue)
       saveLocalSettings({ showContinueWatching: newValue })
@@ -193,7 +187,7 @@ export function SettingsScreen({ onNavigateToMenu, isActive }: SettingsScreenPro
       setSelectFocusIndex(Math.max(0, selectedIdx))
       setExpandedSelect('language')
     }
-  }, [columns, focusedCol, focusedRow, settings, saveSettingChange, showComments, showContinueWatching])
+  }, [columns, focusedCol, focusedRow, settings, saveSettingChange, showContinueWatching])
 
   const handlers = useMemo(() => {
     if (expandedSelect) {
@@ -249,16 +243,6 @@ export function SettingsScreen({ onNavigateToMenu, isActive }: SettingsScreenPro
         class={`settings-item ${isFocused ? 'focused' : ''}`}
       >
         <span class="settings-item-label">{t[item.labelKey]}</span>
-        {item.type === 'toggle' && item.id === 'showComments' && (
-          <div class={`settings-toggle ${showComments ? 'on' : 'off'}`}>
-            <div class="settings-toggle-track">
-              <div class="settings-toggle-thumb" />
-            </div>
-            <span class="settings-toggle-text">
-              {showComments ? t.on : t.off}
-            </span>
-          </div>
-        )}
         {item.type === 'toggle' && item.id === 'showContinueWatching' && (
           <div class={`settings-toggle ${showContinueWatching ? 'on' : 'off'}`}>
             <div class="settings-toggle-track">
