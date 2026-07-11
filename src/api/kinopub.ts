@@ -185,16 +185,45 @@ export interface ItemsParams {
     | 'year-'
     | 'title'
     | 'title-'
-  /** Kinopub web: period=month|week|day|all (e.g. /movie?order=views&period=month) */
-  period?: 'day' | 'week' | 'month' | 'year' | 'all'
   page?: number
   perpage?: number
   genre?: number
   country?: number
   year?: string
   quality?: '4k'
-  /** e.g. ["created>=1710000000"] */
+  /** e.g. ["created>=1710000000"] — same fields as sort */
   conditions?: string[]
+}
+
+/** Calendar month ago as unix seconds (matches ValeraGin dayjs().add(-1, 'month')). */
+export function monthAgoUnix(now = Date.now()): number {
+  const d = new Date(now)
+  d.setMonth(d.getMonth() - 1)
+  return Math.floor(d.getTime() / 1000)
+}
+
+function encodeQueryValue(value: string | number): string {
+  return encodeURIComponent(String(value))
+}
+
+/** Build /v1/items query like ValeraGin (encode conditions[0] brackets). */
+export function buildItemsQuery(params: ItemsParams): string {
+  const parts: string[] = []
+  if (params.type) parts.push(`type=${encodeQueryValue(params.type)}`)
+  if (params.sort) parts.push(`sort=${encodeQueryValue(params.sort)}`)
+  if (params.page !== undefined) parts.push(`page=${encodeQueryValue(params.page)}`)
+  if (params.perpage) parts.push(`perpage=${encodeQueryValue(params.perpage)}`)
+  if (params.genre) parts.push(`genre=${encodeQueryValue(params.genre)}`)
+  if (params.country) parts.push(`country=${encodeQueryValue(params.country)}`)
+  if (params.year) parts.push(`year=${encodeQueryValue(params.year)}`)
+  if (params.quality) parts.push(`quality=${encodeQueryValue(params.quality)}`)
+  if (params.conditions) {
+    params.conditions.forEach((condition, index) => {
+      // PHP array keys must be encoded the same way as ValeraGin normalizeArrayParams
+      parts.push(`${encodeQueryValue(`conditions[${index}]`)}=${encodeQueryValue(condition)}`)
+    })
+  }
+  return parts.join('&')
 }
 
 export class ApiError extends Error {
@@ -439,40 +468,17 @@ export async function getItems(params: ItemsParams = {}): Promise<ItemsResponse>
     'items',
     params.type,
     params.sort,
-    params.period,
     params.page,
     params.perpage,
     params.genre,
     params.country,
+    params.year,
     ...(params.conditions || [])
   )
   const cached = getCached<ItemsResponse>(cacheKey)
   if (cached) return cached
 
-  const searchParams = new URLSearchParams()
-  if (params.type) searchParams.set('type', params.type)
-  if (params.sort) searchParams.set('sort', params.sort)
-  if (params.period) searchParams.set('period', params.period)
-  if (params.page !== undefined) searchParams.set('page', params.page.toString())
-  if (params.perpage) searchParams.set('perpage', params.perpage.toString())
-  if (params.genre) searchParams.set('genre', params.genre.toString())
-  if (params.country) searchParams.set('country', params.country.toString())
-  if (params.year) searchParams.set('year', params.year)
-  if (params.conditions) {
-    // Build conditions without encoding [] — PHP expects conditions[0]=...
-    params.conditions.forEach((condition, index) => {
-      searchParams.append(`conditions[${index}]`, condition)
-    })
-  }
-
-  // URLSearchParams encodes brackets; rebuild query so keys stay conditions[0]
-  const query = Array.from(searchParams.entries())
-    .map(([key, value]) => {
-      const rawKey = key.replace(/%5B/gi, '[').replace(/%5D/gi, ']')
-      return `${rawKey}=${encodeURIComponent(value)}`
-    })
-    .join('&')
-
+  const query = buildItemsQuery(params)
   const response = await authFetch(`${BASE_URL}/v1/items?${query}`)
 
   if (!response.ok) {

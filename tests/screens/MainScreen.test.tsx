@@ -5,12 +5,14 @@ import { MainScreen } from '../../src/screens/MainScreen'
 import { I18nProvider } from '../../src/i18n/context'
 import * as kinopub from '../../src/api/kinopub'
 
-vi.mock('../../src/api/kinopub', () => ({
-  getItems: vi.fn(),
-  getWatching: vi.fn(),
-  getPopularItems: vi.fn(),
-  getFreshItems: vi.fn(),
-}))
+vi.mock('../../src/api/kinopub', async () => {
+  const actual = await vi.importActual<typeof import('../../src/api/kinopub')>('../../src/api/kinopub')
+  return {
+    ...actual,
+    getItems: vi.fn(),
+    getWatching: vi.fn(),
+  }
+})
 
 function renderWithI18n(component: preact.ComponentChild) {
   return render(
@@ -44,13 +46,10 @@ describe('MainScreen', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(kinopub.getWatching).mockResolvedValue([])
-    const empty = {
+    vi.mocked(kinopub.getItems).mockResolvedValue({
       items: [],
       pagination: { current: 1, total: 1, totalItems: 0, perpage: 10 }
-    }
-    vi.mocked(kinopub.getItems).mockResolvedValue(empty)
-    vi.mocked(kinopub.getPopularItems).mockResolvedValue(empty)
-    vi.mocked(kinopub.getFreshItems).mockResolvedValue(empty)
+    })
   })
 
   afterEach(() => {
@@ -61,8 +60,6 @@ describe('MainScreen', () => {
     it('shows loading spinner initially', async () => {
       vi.mocked(kinopub.getWatching).mockImplementation(() => new Promise(() => {}))
       vi.mocked(kinopub.getItems).mockImplementation(() => new Promise(() => {}))
-      vi.mocked(kinopub.getPopularItems).mockImplementation(() => new Promise(() => {}))
-      vi.mocked(kinopub.getFreshItems).mockImplementation(() => new Promise(() => {}))
 
       renderWithI18n(<MainScreen {...mockProps} />)
 
@@ -96,12 +93,17 @@ describe('MainScreen', () => {
       })
     })
 
-    it('fetches popular and fresh feeds on mount', async () => {
+    it('fetches popular movies with views- and created month condition', async () => {
       renderWithI18n(<MainScreen {...mockProps} />)
 
       await waitFor(() => {
-        expect(kinopub.getPopularItems).toHaveBeenCalled()
-        expect(kinopub.getFreshItems).toHaveBeenCalled()
+        expect(kinopub.getItems).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: 'movie',
+            sort: 'views-',
+            conditions: [expect.stringMatching(/^created>=\d+$/)]
+          })
+        )
       })
     })
   })
@@ -110,8 +112,6 @@ describe('MainScreen', () => {
     it('handles API error gracefully', async () => {
       vi.mocked(kinopub.getWatching).mockRejectedValue(new Error('API Error'))
       vi.mocked(kinopub.getItems).mockRejectedValue(new Error('API Error'))
-      vi.mocked(kinopub.getPopularItems).mockRejectedValue(new Error('API Error'))
-      vi.mocked(kinopub.getFreshItems).mockRejectedValue(new Error('API Error'))
 
       renderWithI18n(<MainScreen {...mockProps} />)
 

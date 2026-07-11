@@ -6,6 +6,8 @@ import {
   getItems,
   getItem,
   searchItems,
+  buildItemsQuery,
+  monthAgoUnix,
   getDeviceInfo,
   updateDeviceSettings,
   getUser,
@@ -262,6 +264,25 @@ describe('kinopub API', () => {
       expect(url.searchParams.get('sort')).toBe('created-')
       expect(url.searchParams.get('page')).toBe('2')
       expect(url.searchParams.get('perpage')).toBe('20')
+    })
+
+    it('encodes conditions like ValeraGin (brackets in key)', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          items: [],
+          pagination: { current: 0, total: 0, total_items: 0, perpage: 20 }
+        })
+      })
+
+      await getItems({
+        type: 'movie',
+        sort: 'views-',
+        conditions: ['created>=1710000000']
+      })
+
+      const url = String(mockFetch.mock.calls[0][0])
+      expect(url).toContain('conditions%5B0%5D=created%3E%3D1710000000')
     })
 
     it('transforms response to camelCase', async () => {

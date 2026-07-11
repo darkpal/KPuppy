@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'preact/hooks'
-import { getItems, getPopularItems, getFreshItems, getWatching, MovieItem, ItemsParams } from '../api/kinopub'
+import { getItems, getWatching, MovieItem, ItemsParams, monthAgoUnix } from '../api/kinopub'
 import { getLocalSettings } from '../storage'
 import { MovieRow } from '../components/MovieRow'
 import { useKeyboardNavigation, useScrollToFocused } from '../hooks'
@@ -18,13 +18,10 @@ interface MainScreenProps {
   onFocusChange?: (row: number, col: number) => void
 }
 
-type FeedSource = 'items' | 'popular' | 'fresh'
-
 interface ContentRow {
   id: string
   titleKey: keyof Translations
   params?: ItemsParams
-  feed?: FeedSource
   isWatching?: boolean
   items: MovieItem[]
   loading: boolean
@@ -34,37 +31,41 @@ interface RowConfig {
   id: string
   titleKey: keyof Translations
   params?: ItemsParams
-  feed?: FeedSource
   isWatching?: boolean
 }
 
 function createHomeRowConfigs(): RowConfig[] {
-  // Kinopub web /popular → /v1/items/popular (not views- + created filter)
+  // kino.watch «Популярные фильмы» → /movie?order=views&period=month
+  // API has no period=; maps to sort=views- + created>=(calendar month ago)
+  const lastMonth = monthAgoUnix()
+
   return [
     { id: 'watching', titleKey: 'categoryContinueWatching', isWatching: true },
     {
       id: 'popular-movies',
       titleKey: 'popularMovies',
-      feed: 'popular',
-      params: { type: 'movie', page: 0, perpage: 20 }
+      params: {
+        type: 'movie',
+        sort: 'views-',
+        page: 0,
+        perpage: 20,
+        conditions: [`created>=${lastMonth}`]
+      }
     },
     {
       id: 'new-movies',
       titleKey: 'newMovies',
-      feed: 'fresh',
-      params: { type: 'movie', page: 0, perpage: 20 }
+      params: { type: 'movie', sort: 'created-', page: 0, perpage: 20 }
     },
     {
       id: 'popular-series',
       titleKey: 'popularSeries',
-      feed: 'popular',
-      params: { type: 'serial', page: 0, perpage: 20 }
+      params: { type: 'serial', sort: 'watchers-', page: 0, perpage: 20 }
     },
     {
       id: 'new-series',
       titleKey: 'newSeries',
-      feed: 'fresh',
-      params: { type: 'serial', page: 0, perpage: 20 }
+      params: { type: 'serial', sort: 'created-', page: 0, perpage: 20 }
     },
     {
       id: 'new-concerts',
@@ -122,12 +123,6 @@ export function MainScreen({ onBack, onSelectItem, onNavigateToMenu, isActive, i
         let items: MovieItem[]
         if (config.isWatching) {
           items = await getWatching()
-        } else if (config.feed === 'popular') {
-          const response = await getPopularItems(config.params?.type, config.params?.perpage ?? 20)
-          items = response.items
-        } else if (config.feed === 'fresh') {
-          const response = await getFreshItems(config.params?.type, config.params?.perpage ?? 20)
-          items = response.items
         } else {
           const response = await getItems(config.params!)
           items = response.items
