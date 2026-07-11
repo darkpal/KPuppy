@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'preact/hooks'
 import type { JSX } from 'preact'
 import { Audio, Subtitle } from '../api/kinopub'
+import { withHlsAudioIndex } from '../webos/player'
 import { KEY_CODES } from '../hooks'
 import { useI18n } from '../i18n'
 import '../styles/player.css'
@@ -252,59 +253,40 @@ export function PlayerScreen({ url, title, audios = [], subtitles = [], startTim
   const selectAudio = useCallback((listIndex: number) => {
     const video = videoRef.current
     setControls(prev => ({ ...prev, selectedAudioIndex: listIndex }))
-    if (!video) return
+    if (!video || listIndex < 0) return
 
-    // HTML5 AudioTrackList is 0..N-1. Kinopub audios[] can be longer / use
-    // non-sequential MPEG indices (1,2,3,10…) — never use those as array indexes.
-    const audioTracks = (video as unknown as {
-      audioTracks?: { length: number; [i: number]: { enabled: boolean; language?: string } }
-    }).audioTracks
-    if (!audioTracks || audioTracks.length === 0) return
-
-    let trackIndex = listIndex
-    if (trackIndex < 0 || trackIndex >= audioTracks.length) {
-      const audio = audios[listIndex]
-      const lang = audio?.lang?.toLowerCase().slice(0, 2)
-      if (lang) {
-        const sameLangList = audios
-          .map((a, i) => ({ a, i }))
-          .filter(({ a }) => a.lang?.toLowerCase().startsWith(lang))
-        const ordinal = sameLangList.findIndex(({ i }) => i === listIndex)
-        const matched: number[] = []
-        for (let t = 0; t < audioTracks.length; t++) {
-          const trackLang = (audioTracks[t].language || '').toLowerCase()
-          if (trackLang.startsWith(lang)) matched.push(t)
+    // Kinopub classic HLS switches озвучка by playlist: master-v1a1, master-v1a2, …
+    const currentSrc = video.currentSrc || video.getAttribute('src') || url
+    const nextSrc = withHlsAudioIndex(currentSrc, listIndex)
+    if (nextSrc !== currentSrc) {
+      const resumeAt = video.currentTime
+      const wasPaused = video.paused
+      const onLoaded = () => {
+        video.removeEventListener('loadedmetadata', onLoaded)
+        if (resumeAt > 0 && Number.isFinite(resumeAt)) {
+          video.currentTime = resumeAt
         }
-        if (ordinal >= 0 && ordinal < matched.length) {
-          trackIndex = matched[ordinal]
-        } else if (matched.length === 1) {
-          trackIndex = matched[0]
-        } else {
-          trackIndex = Math.min(listIndex, audioTracks.length - 1)
+        if (!wasPaused) {
+          void video.play()
         }
-      } else {
-        trackIndex = Math.min(listIndex, audioTracks.length - 1)
       }
+      video.addEventListener('loadedmetadata', onLoaded)
+      video.src = nextSrc
+      flushTime(resumeAt)
+      return
     }
 
-    trackIndex = Math.max(0, Math.min(trackIndex, audioTracks.length - 1))
+    // Some streams expose multiple HTML5 audioTracks (rare on webOS without HLS.js)
+    const audioTracks = (video as unknown as {
+      audioTracks?: { length: number; [i: number]: { enabled: boolean } }
+    }).audioTracks
+    if (!audioTracks || audioTracks.length <= 1) return
 
+    const trackIndex = Math.min(listIndex, audioTracks.length - 1)
     for (let i = 0; i < audioTracks.length; i++) {
       audioTracks[i].enabled = i === trackIndex
     }
-
-    // Some webOS builds leave all tracks off → total silence
-    let anyEnabled = false
-    for (let i = 0; i < audioTracks.length; i++) {
-      if (audioTracks[i].enabled) {
-        anyEnabled = true
-        break
-      }
-    }
-    if (!anyEnabled) {
-      audioTracks[0].enabled = true
-    }
-  }, [audios])
+  }, [url, flushTime])
 
   const selectSubtitle = useCallback((index: number) => {
     const video = videoRef.current

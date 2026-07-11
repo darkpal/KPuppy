@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getStreamUrl } from '../../src/webos/player'
+import { getStreamUrl, withHlsAudioIndex } from '../../src/webos/player'
 
 describe('player', () => {
   describe('getStreamUrl', () => {
@@ -43,6 +43,10 @@ describe('player', () => {
       expect(getStreamUrl([mockFiles[2]])).toBe('https://1080p-hls4.m3u8')
     })
 
+    it('can prefer classic hls for builtin audio switching', () => {
+      expect(getStreamUrl([mockFiles[2]], undefined, undefined, { preferClassicHls: true })).toBe('https://1080p.m3u8')
+    })
+
     it('falls back to hls2 when hls4 unavailable', () => {
       expect(getStreamUrl([mockFiles[1]])).toBe('https://720p-hls2.m3u8')
     })
@@ -62,6 +66,16 @@ describe('player', () => {
 
     it('falls back to first file for invalid preferred quality', () => {
       expect(getStreamUrl(mockFiles, '360p')).toBe('https://480p.m3u8')
+    })
+  })
+
+  describe('withHlsAudioIndex', () => {
+    it('rewrites master-v1aN segment', () => {
+      expect(withHlsAudioIndex('https://cdn/master-v1a1.m3u8', 2)).toBe('https://cdn/master-v1a3.m3u8')
+    })
+
+    it('leaves unrelated urls unchanged', () => {
+      expect(withHlsAudioIndex('https://cdn/hls4.m3u8', 1)).toBe('https://cdn/hls4.m3u8')
     })
   })
 })

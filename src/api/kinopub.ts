@@ -459,12 +459,21 @@ export async function getItems(params: ItemsParams = {}): Promise<ItemsResponse>
   if (params.country) searchParams.set('country', params.country.toString())
   if (params.year) searchParams.set('year', params.year)
   if (params.conditions) {
+    // Build conditions without encoding [] — PHP expects conditions[0]=...
     params.conditions.forEach((condition, index) => {
       searchParams.append(`conditions[${index}]`, condition)
     })
   }
 
-  const response = await authFetch(`${BASE_URL}/v1/items?${searchParams}`)
+  // URLSearchParams encodes brackets; rebuild query so keys stay conditions[0]
+  const query = Array.from(searchParams.entries())
+    .map(([key, value]) => {
+      const rawKey = key.replace(/%5B/gi, '[').replace(/%5D/gi, ']')
+      return `${rawKey}=${encodeURIComponent(value)}`
+    })
+    .join('&')
+
+  const response = await authFetch(`${BASE_URL}/v1/items?${query}`)
 
   if (!response.ok) {
     throw new ApiError('Failed to fetch items', response.status)

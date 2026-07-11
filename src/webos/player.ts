@@ -50,7 +50,8 @@ export async function launchNativePlayer(payload: VideoPayload): Promise<void> {
 export function getStreamUrl(
   files: Array<{ quality: string; url: { http?: string; hls?: string; hls2?: string; hls4?: string } }>,
   preferredQuality?: string,
-  streamingType?: string
+  streamingType?: string,
+  options?: { preferClassicHls?: boolean }
 ): string | null {
   if (!files || files.length === 0) return null
 
@@ -73,6 +74,12 @@ export function getStreamUrl(
 
   const url = selectedFile.url
   const type = streamingType?.toLowerCase() as keyof typeof url
+
+  // Classic HLS embeds озвучка as master-v1a1/a2… — needed for builtin track switch
+  if (options?.preferClassicHls && url.hls) {
+    return url.hls
+  }
+
   const fallbackOrder: (keyof typeof url)[] = ['hls4', 'hls2', 'hls', 'http']
 
   if (type && url[type]) return url[type]
@@ -82,4 +89,13 @@ export function getStreamUrl(
   }
 
   return null
+}
+
+/** Kinopub classic HLS: switch озвучка via master-v1aN playlist segment */
+export function withHlsAudioIndex(streamUrl: string, audioListIndex: number): string {
+  if (!streamUrl || audioListIndex < 0) return streamUrl
+  if (/master-v1a\d+/i.test(streamUrl)) {
+    return streamUrl.replace(/master-v1a\d+/i, `master-v1a${audioListIndex + 1}`)
+  }
+  return streamUrl
 }

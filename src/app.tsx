@@ -311,7 +311,12 @@ export function App() {
       } catch {
       }
 
-      const streamUrl = getStreamUrl(files || [], preferredQuality, streamingType)
+      const streamUrl = getStreamUrl(
+        files || [],
+        preferredQuality,
+        streamingType,
+        localSettings.playerType === 'builtin' ? { preferClassicHls: true } : undefined
+      )
       if (!streamUrl) return
 
       if (localSettings.playerType === 'builtin') {

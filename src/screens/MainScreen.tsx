@@ -35,50 +35,57 @@ interface RowConfig {
 }
 
 function createHomeRowConfigs(): RowConfig[] {
-  // Match Kinopub website index links:
-  // /movie?order=views&period=month, /movie?order=added&period=all, etc.
-  // API: sort views-/created-/watchers- + period
+  // Kinopub web: /movie?order=views&period=month → API sort=views- + created last month
+  // (API ignores period=; website maps it server-side)
+  const lastMonth = Math.floor(Date.now() / 1000) - 30 * 24 * 60 * 60
+
   return [
     { id: 'watching', titleKey: 'categoryContinueWatching', isWatching: true },
     {
       id: 'popular-movies',
       titleKey: 'popularMovies',
-      params: { type: 'movie', sort: 'views-', period: 'month', page: 0, perpage: 20 }
+      params: {
+        type: 'movie',
+        sort: 'views-',
+        page: 0,
+        perpage: 20,
+        conditions: [`created>=${lastMonth}`]
+      }
     },
     {
       id: 'new-movies',
       titleKey: 'newMovies',
-      params: { type: 'movie', sort: 'created-', period: 'all', page: 0, perpage: 20 }
+      params: { type: 'movie', sort: 'created-', page: 0, perpage: 20 }
     },
     {
       id: 'popular-series',
       titleKey: 'popularSeries',
-      params: { type: 'serial', sort: 'watchers-', period: 'all', page: 0, perpage: 20 }
+      params: { type: 'serial', sort: 'watchers-', page: 0, perpage: 20 }
     },
     {
       id: 'new-series',
       titleKey: 'newSeries',
-      params: { type: 'serial', sort: 'created-', period: 'all', page: 0, perpage: 20 }
+      params: { type: 'serial', sort: 'created-', page: 0, perpage: 20 }
     },
     {
       id: 'new-concerts',
       titleKey: 'newConcerts',
-      params: { type: 'concert', sort: 'created-', period: 'all', page: 0, perpage: 20 }
+      params: { type: 'concert', sort: 'created-', page: 0, perpage: 20 }
     },
     {
       id: 'new-docs',
       titleKey: 'newDocs',
-      params: { type: 'documovie', sort: 'created-', period: 'all', page: 0, perpage: 20 }
+      params: { type: 'documovie', sort: 'created-', page: 0, perpage: 20 }
     },
     {
       id: 'new-docuseries',
       titleKey: 'newDocuseries',
-      params: { type: 'docuserial', sort: 'created-', period: 'all', page: 0, perpage: 20 }
+      params: { type: 'docuserial', sort: 'created-', page: 0, perpage: 20 }
     },
     {
       id: 'new-tvshows',
       titleKey: 'newTvShows',
-      params: { type: 'tvshow', sort: 'created-', period: 'all', page: 0, perpage: 20 }
+      params: { type: 'tvshow', sort: 'created-', page: 0, perpage: 20 }
     },
   ]
 }
