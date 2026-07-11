@@ -34,25 +34,49 @@ interface RowConfig {
   isWatching?: boolean
 }
 
-const ROW_CONFIGS: RowConfig[] = [
-  { id: 'watching', titleKey: 'categoryContinueWatching', isWatching: true },
-  { id: 'popular-movies', titleKey: 'popularMovies', params: { type: 'movie', sort: 'views', perpage: 10 } },
-  { id: 'new-movies', titleKey: 'newMovies', params: { type: 'movie', sort: 'created-', perpage: 10 } },
-  { id: 'popular-series', titleKey: 'popularSeries', params: { type: 'serial', sort: 'views', perpage: 10 } },
-  { id: 'new-series', titleKey: 'newSeries', params: { type: 'serial', sort: 'created-', perpage: 10 } },
-  { id: 'new-concerts', titleKey: 'newConcerts', params: { type: 'concert', sort: 'created-', perpage: 10 } },
-  { id: 'new-3d', titleKey: 'new3D', params: { type: '3D', sort: 'created-', perpage: 10 } },
-  { id: 'new-docs', titleKey: 'newDocs', params: { type: 'documovie', sort: 'created-', perpage: 10 } },
-  { id: 'new-tvshows', titleKey: 'newTvShows', params: { type: 'tvshow', sort: 'created-', perpage: 10 } },
-]
+function getLastMonthUnix(): number {
+  const date = new Date()
+  date.setMonth(date.getMonth() - 1)
+  return Math.floor(date.getTime() / 1000)
+}
+
+function createHomeRowConfigs(): RowConfig[] {
+  const lastMonth = getLastMonthUnix()
+
+  return [
+    { id: 'watching', titleKey: 'categoryContinueWatching', isWatching: true },
+    {
+      id: 'popular-movies',
+      titleKey: 'popularMovies',
+      params: {
+        type: 'movie',
+        sort: 'views-',
+        perpage: 20,
+        conditions: [`created>=${lastMonth}`]
+      }
+    },
+    { id: 'new-movies', titleKey: 'newMovies', params: { type: 'movie', sort: 'created-', perpage: 20 } },
+    {
+      id: 'popular-series',
+      titleKey: 'popularSeries',
+      params: { type: 'serial', sort: 'watchers-', perpage: 20 }
+    },
+    { id: 'new-series', titleKey: 'newSeries', params: { type: 'serial', sort: 'created-', perpage: 20 } },
+    { id: 'new-concerts', titleKey: 'newConcerts', params: { type: 'concert', sort: 'created-', perpage: 20 } },
+    { id: 'new-docs', titleKey: 'newDocs', params: { type: 'documovie', sort: 'created-', perpage: 20 } },
+    { id: 'new-docuseries', titleKey: 'newDocuseries', params: { type: 'docuserial', sort: 'created-', perpage: 20 } },
+    { id: 'new-tvshows', titleKey: 'newTvShows', params: { type: 'tvshow', sort: 'created-', perpage: 20 } },
+  ]
+}
 
 export function MainScreen({ onBack, onSelectItem, onNavigateToMenu, isActive, initialFocusRow = 0, initialFocusCol = 0, onFocusChange }: MainScreenProps) {
   const { t } = useI18n()
-  const [rowConfigs] = useState<RowConfig[]>(() =>
-    getLocalSettings().showContinueWatching
-      ? ROW_CONFIGS
-      : ROW_CONFIGS.filter(config => !config.isWatching)
-  )
+  const [rowConfigs] = useState<RowConfig[]>(() => {
+    const configs = createHomeRowConfigs()
+    return getLocalSettings().showContinueWatching
+      ? configs
+      : configs.filter(config => !config.isWatching)
+  })
   const [rows, setRows] = useState<ContentRow[]>(() =>
     rowConfigs.map(config => ({
       ...config,

@@ -172,13 +172,27 @@ export interface ItemsResponse {
 
 export interface ItemsParams {
   type?: 'movie' | 'serial' | 'documovie' | 'docuserial' | 'tvshow' | 'concert' | '3D'
-  sort?: 'created-' | 'created' | 'rating' | 'views' | 'year' | 'title'
+  sort?:
+    | 'created-'
+    | 'created'
+    | 'rating'
+    | 'rating-'
+    | 'views'
+    | 'views-'
+    | 'watchers'
+    | 'watchers-'
+    | 'year'
+    | 'year-'
+    | 'title'
+    | 'title-'
   page?: number
   perpage?: number
   genre?: number
   country?: number
   year?: string
   quality?: '4k'
+  /** e.g. ["created>=1710000000"] — same as Kinopub web/home */
+  conditions?: string[]
 }
 
 export class ApiError extends Error {
@@ -419,7 +433,16 @@ export async function getWatchingSerials(): Promise<WatchingItem[]> {
 }
 
 export async function getItems(params: ItemsParams = {}): Promise<ItemsResponse> {
-  const cacheKey = createCacheKey('items', params.type, params.sort, params.page, params.perpage, params.genre, params.country)
+  const cacheKey = createCacheKey(
+    'items',
+    params.type,
+    params.sort,
+    params.page,
+    params.perpage,
+    params.genre,
+    params.country,
+    ...(params.conditions || [])
+  )
   const cached = getCached<ItemsResponse>(cacheKey)
   if (cached) return cached
 
@@ -431,6 +454,11 @@ export async function getItems(params: ItemsParams = {}): Promise<ItemsResponse>
   if (params.genre) searchParams.set('genre', params.genre.toString())
   if (params.country) searchParams.set('country', params.country.toString())
   if (params.year) searchParams.set('year', params.year)
+  if (params.conditions) {
+    params.conditions.forEach((condition, index) => {
+      searchParams.set(`conditions[${index}]`, condition)
+    })
+  }
 
   const response = await authFetch(`${BASE_URL}/v1/items?${searchParams}`)
 

@@ -47,6 +47,7 @@ export interface Translations {
   newConcerts: string
   new3D: string
   newDocs: string
+  newDocuseries: string
   newTvShows: string
 
   // Search
@@ -194,6 +195,7 @@ const en: Translations = {
   newConcerts: 'New Concerts',
   new3D: 'New 3D',
   newDocs: 'New Documentaries',
+  newDocuseries: 'New Docuseries',
   newTvShows: 'New TV Shows',
 
   searchPlaceholder: 'Search...',
@@ -324,6 +326,7 @@ const ru: Translations = {
   newConcerts: 'Новые концерты',
   new3D: 'Новое 3D',
   newDocs: 'Новые документальные',
+  newDocuseries: 'Новые докусериалы',
   newTvShows: 'Новые ТВ-шоу',
 
   searchPlaceholder: 'Поиск...',
@@ -454,6 +457,7 @@ const de: Translations = {
   newConcerts: 'Neue Konzerte',
   new3D: 'Neues 3D',
   newDocs: 'Neue Dokumentationen',
+  newDocuseries: 'Neue Doku-Serien',
   newTvShows: 'Neue TV-Shows',
 
   searchPlaceholder: 'Suchen...',
