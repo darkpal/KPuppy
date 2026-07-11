@@ -23,24 +23,29 @@ function TestComponent() {
 
 describe('I18nContext', () => {
   beforeEach(() => {
-    localStorage.removeItem('kpuppy_language')
+    localStorage.removeItem(STORAGE_KEY)
     localStorage.removeItem('kpuppy_device_defaults_applied')
+    vi.stubGlobal('navigator', {
+      language: 'en-US',
+      languages: ['en-US'],
+    })
   })
 
   describe('I18nProvider', () => {
-    it('provides default Russian language when no stored preference', () => {
+    it('uses system language when no stored preference', () => {
+      vi.stubGlobal('navigator', { language: 'de-DE', languages: ['de-DE'] })
+
       render(
         <I18nProvider>
           <TestComponent />
         </I18nProvider>
       )
 
-      expect(screen.getByTestId('language').textContent).toBe('ru')
-      expect(screen.getByTestId('app-name').textContent).toBe('KPuppy')
-      expect(screen.getByTestId('menu-home').textContent).toBe('Главная')
+      expect(screen.getByTestId('language').textContent).toBe('de')
+      expect(screen.getByTestId('menu-home').textContent).toBe('Startseite')
     })
 
-    it('loads stored language preference', () => {
+    it('loads stored language preference over system', () => {
       localStorage.setItem(STORAGE_KEY, 'ru')
 
       render(
@@ -63,8 +68,9 @@ describe('I18nContext', () => {
       expect(screen.getByTestId('languages-count').textContent).toBe('3')
     })
 
-    it('falls back to Russian for invalid stored language', () => {
+    it('falls back to system language for invalid stored language', () => {
       localStorage.setItem(STORAGE_KEY, 'invalid')
+      vi.stubGlobal('navigator', { language: 'ru-RU', languages: ['ru-RU'] })
 
       render(
         <I18nProvider>

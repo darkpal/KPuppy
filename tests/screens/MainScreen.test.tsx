@@ -8,6 +8,8 @@ import * as kinopub from '../../src/api/kinopub'
 vi.mock('../../src/api/kinopub', () => ({
   getItems: vi.fn(),
   getWatching: vi.fn(),
+  getPopularItems: vi.fn(),
+  getFreshItems: vi.fn(),
 }))
 
 function renderWithI18n(component: preact.ComponentChild) {
@@ -42,10 +44,13 @@ describe('MainScreen', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(kinopub.getWatching).mockResolvedValue([])
-    vi.mocked(kinopub.getItems).mockResolvedValue({
+    const empty = {
       items: [],
       pagination: { current: 1, total: 1, totalItems: 0, perpage: 10 }
-    })
+    }
+    vi.mocked(kinopub.getItems).mockResolvedValue(empty)
+    vi.mocked(kinopub.getPopularItems).mockResolvedValue(empty)
+    vi.mocked(kinopub.getFreshItems).mockResolvedValue(empty)
   })
 
   afterEach(() => {
@@ -56,6 +61,8 @@ describe('MainScreen', () => {
     it('shows loading spinner initially', async () => {
       vi.mocked(kinopub.getWatching).mockImplementation(() => new Promise(() => {}))
       vi.mocked(kinopub.getItems).mockImplementation(() => new Promise(() => {}))
+      vi.mocked(kinopub.getPopularItems).mockImplementation(() => new Promise(() => {}))
+      vi.mocked(kinopub.getFreshItems).mockImplementation(() => new Promise(() => {}))
 
       renderWithI18n(<MainScreen {...mockProps} />)
 
@@ -89,11 +96,12 @@ describe('MainScreen', () => {
       })
     })
 
-    it('fetches category items on mount', async () => {
+    it('fetches popular and fresh feeds on mount', async () => {
       renderWithI18n(<MainScreen {...mockProps} />)
 
       await waitFor(() => {
-        expect(kinopub.getItems).toHaveBeenCalled()
+        expect(kinopub.getPopularItems).toHaveBeenCalled()
+        expect(kinopub.getFreshItems).toHaveBeenCalled()
       })
     })
   })
@@ -102,6 +110,8 @@ describe('MainScreen', () => {
     it('handles API error gracefully', async () => {
       vi.mocked(kinopub.getWatching).mockRejectedValue(new Error('API Error'))
       vi.mocked(kinopub.getItems).mockRejectedValue(new Error('API Error'))
+      vi.mocked(kinopub.getPopularItems).mockRejectedValue(new Error('API Error'))
+      vi.mocked(kinopub.getFreshItems).mockRejectedValue(new Error('API Error'))
 
       renderWithI18n(<MainScreen {...mockProps} />)
 
