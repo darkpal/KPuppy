@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'preact/hooks'
+import type { JSX } from 'preact'
 import { Audio, Subtitle } from '../api/kinopub'
 import { KEY_CODES } from '../hooks'
 import { useI18n } from '../i18n'
@@ -56,8 +57,10 @@ interface ConvertedSubtitle {
 export function PlayerScreen({ url, title, audios = [], subtitles = [], startTime = 0, onBack, onTimeUpdate }: PlayerProps) {
   const { t } = useI18n()
   const videoRef = useRef<HTMLVideoElement>(null)
+  const progressBarRef = useRef<HTMLDivElement>(null)
   const controlsTimeoutRef = useRef<number>(0)
   const lastTimeRef = useRef<number>(0)
+  const isSeekingRef = useRef(false)
 
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
@@ -71,6 +74,15 @@ export function PlayerScreen({ url, title, audios = [], subtitles = [], startTim
     selectedSubtitleIndex: -1
   })
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+
+  const flushTime = useCallback((time?: number) => {
+    const video = videoRef.current
+    const value = Math.floor(time ?? video?.currentTime ?? 0)
+    if (value > 0) {
+      lastTimeRef.current = value
+      onTimeUpdate?.(value)
+    }
+  }, [onTimeUpdate])
 
   useEffect(() => {
     const blobUrls: string[] = []
@@ -122,7 +134,7 @@ export function PlayerScreen({ url, title, audios = [], subtitles = [], startTim
       clearTimeout(controlsTimeoutRef.current)
     }
     controlsTimeoutRef.current = window.setTimeout(() => {
-      if (isPlaying) {
+      if (isPlaying && !isSeekingRef.current) {
         setControls(prev => ({ ...prev, visible: false, activePanel: 'none' }))
       }
     }, 5000)
@@ -140,10 +152,61 @@ export function PlayerScreen({ url, title, audios = [], subtitles = [], startTim
 
   const seek = useCallback((delta: number) => {
     const video = videoRef.current
-    if (!video) return
+    if (!video || !Number.isFinite(video.duration)) return
     video.currentTime = Math.max(0, Math.min(video.duration, video.currentTime + delta))
+    setCurrentTime(video.currentTime)
     showControls()
   }, [showControls])
+
+  const seekToClientX = useCallback((clientX: number) => {
+    const video = videoRef.current
+    const bar = progressBarRef.current
+    if (!video || !bar || !Number.isFinite(video.duration) || video.duration <= 0) return
+
+    const rect = bar.getBoundingClientRect()
+    if (rect.width <= 0) return
+
+    const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
+    const nextTime = ratio * video.duration
+    video.currentTime = nextTime
+    setCurrentTime(nextTime)
+    flushTime(nextTime)
+    showControls()
+  }, [flushTime, showControls])
+
+  const handleProgressPointerDown = useCallback((event: JSX.TargetedPointerEvent<HTMLDivElement>) => {
+    event.preventDefault()
+    event.stopPropagation()
+    isSeekingRef.current = true
+    showControls()
+    seekToClientX(event.clientX)
+
+    const target = event.currentTarget
+    target.setPointerCapture?.(event.pointerId)
+
+    const handleMove = (moveEvent: PointerEvent) => {
+      seekToClientX(moveEvent.clientX)
+    }
+    const handleUp = (upEvent: PointerEvent) => {
+      isSeekingRef.current = false
+      seekToClientX(upEvent.clientX)
+      target.releasePointerCapture?.(upEvent.pointerId)
+      target.removeEventListener('pointermove', handleMove)
+      target.removeEventListener('pointerup', handleUp)
+      target.removeEventListener('pointercancel', handleUp)
+      showControls()
+    }
+
+    target.addEventListener('pointermove', handleMove)
+    target.addEventListener('pointerup', handleUp)
+    target.addEventListener('pointercancel', handleUp)
+  }, [seekToClientX, showControls])
+
+  const handleProgressClick = useCallback((event: JSX.TargetedMouseEvent<HTMLDivElement>) => {
+    // Fallback for remotes that only emit click / mouse events
+    if (isSeekingRef.current) return
+    seekToClientX(event.clientX)
+  }, [seekToClientX])
 
   const selectAudio = useCallback((index: number) => {
     const video = videoRef.current
@@ -174,7 +237,10 @@ export function PlayerScreen({ url, title, audios = [], subtitles = [], startTim
     if (!video) return
 
     const handlePlay = () => setIsPlaying(true)
-    const handlePause = () => setIsPlaying(false)
+    const handlePause = () => {
+      setIsPlaying(false)
+      flushTime(video.currentTime)
+    }
     const handleTimeUpdate = () => {
       setCurrentTime(video.currentTime)
       if (onTimeUpdate && Math.abs(video.currentTime - lastTimeRef.current) >= 10) {
@@ -191,6 +257,8 @@ export function PlayerScreen({ url, title, audios = [], subtitles = [], startTim
     const handleLoadedMetadata = () => {
       if (startTime > 0) {
         video.currentTime = startTime
+        setCurrentTime(startTime)
+        lastTimeRef.current = startTime
       }
       video.play()
     }
@@ -225,7 +293,7 @@ export function PlayerScreen({ url, title, audios = [], subtitles = [], startTim
       video.removeEventListener('progress', handleProgress)
       video.removeEventListener('loadedmetadata', handleLoadedMetadata)
     }
-  }, [startTime, onTimeUpdate])
+  }, [startTime, onTimeUpdate, flushTime])
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -285,6 +353,7 @@ export function PlayerScreen({ url, title, audios = [], subtitles = [], startTim
           e.preventDefault()
           break
         case KEY_CODES.BACK:
+          flushTime()
           onBack()
           e.preventDefault()
           break
@@ -305,7 +374,7 @@ export function PlayerScreen({ url, title, audios = [], subtitles = [], startTim
 
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [controls, audios, convertedSubs, togglePlay, seek, selectAudio, selectSubtitle, showControls, onBack])
+  }, [controls, audios, convertedSubs, togglePlay, seek, selectAudio, selectSubtitle, showControls, onBack, flushTime])
 
   useEffect(() => {
     showControls()
@@ -316,11 +385,17 @@ export function PlayerScreen({ url, title, audios = [], subtitles = [], startTim
     }
   }, [showControls])
 
+  useEffect(() => {
+    return () => {
+      flushTime()
+    }
+  }, [flushTime])
+
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0
   const bufferedProgress = duration > 0 ? (buffered / duration) * 100 : 0
 
   return (
-    <div class="player-screen">
+    <div class="player-screen" onMouseMove={showControls}>
       <video
         ref={videoRef}
         class="player-video"
@@ -354,9 +429,19 @@ export function PlayerScreen({ url, title, audios = [], subtitles = [], startTim
 
           <div class="player-bottom">
             <div class="player-progress-container">
-              <div class="player-progress-bar">
+              <div
+                ref={progressBarRef}
+                class="player-progress-bar"
+                role="slider"
+                aria-valuemin={0}
+                aria-valuemax={Math.floor(duration) || 0}
+                aria-valuenow={Math.floor(currentTime)}
+                onPointerDown={handleProgressPointerDown}
+                onClick={handleProgressClick}
+              >
                 <div class="player-progress-buffered" style={{ width: `${bufferedProgress}%` }} />
                 <div class="player-progress-current" style={{ width: `${progress}%` }} />
+                <div class="player-progress-thumb" style={{ left: `${progress}%` }} />
               </div>
               <div class="player-time">
                 <span>{formatTime(currentTime)}</span>

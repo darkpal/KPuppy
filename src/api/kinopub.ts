@@ -108,12 +108,20 @@ export interface Subtitle {
   url: string
 }
 
+export interface WatchingProgress {
+  status?: number
+  time?: number
+}
+
 export interface Video {
   number: number
   title: string
   files: VideoFile[]
   audios: Audio[]
   subtitles?: Subtitle[]
+  duration?: number
+  watched?: number
+  watching?: WatchingProgress
 }
 
 export interface Episode {
@@ -126,6 +134,7 @@ export interface Episode {
   audios: Audio[]
   subtitles?: Subtitle[]
   watched: number
+  watching?: WatchingProgress
 }
 
 export interface Season {
@@ -724,6 +733,40 @@ export async function markTime(params: MarkTimeParams): Promise<void> {
   invalidateCache('watching')
   invalidateCache('history')
   invalidateCache(createCacheKey('item', params.id))
+}
+
+export async function getWatchingProgress(
+  id: number,
+  video?: number,
+  season?: number
+): Promise<WatchingProgress | null> {
+  const searchParams = new URLSearchParams()
+  searchParams.set('id', id.toString())
+  if (video !== undefined) searchParams.set('video', video.toString())
+  if (season !== undefined) searchParams.set('season', season.toString())
+
+  const response = await authFetch(`${BASE_URL}/v1/watching?${searchParams}`)
+  if (!response.ok) return null
+
+  const data = await response.json()
+  const item = data?.item ?? data
+  if (!item) return null
+
+  if (item.watching && typeof item.watching === 'object') {
+    return {
+      status: item.watching.status as number | undefined,
+      time: item.watching.time as number | undefined
+    }
+  }
+
+  if (typeof item.time === 'number') {
+    return {
+      status: typeof item.status === 'number' ? item.status : undefined,
+      time: item.time
+    }
+  }
+
+  return null
 }
 
 export interface ToggleWatchedParams {

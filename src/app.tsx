@@ -18,10 +18,11 @@ import { ALL_MENU_ITEMS_COUNT, getMenuIdByIndex } from './components/SideMenu'
 import { KEY_CODES } from './hooks'
 import { ScreenManager } from './components/ScreenManager'
 import { isAuthenticated, clearTokens, getTokens, getLocalSettings, saveReturnTo, getReturnTo, clearReturnTo, getContentTypesCache, saveContentTypesCache, ReturnToState } from './storage'
-import { refreshAccessToken, getItem, setOnAuthError, getDeviceInfo, markTime, getContentTypes, registerDevice, Audio, Subtitle } from './api/kinopub'
+import { refreshAccessToken, getItem, setOnAuthError, getDeviceInfo, markTime, getWatchingProgress, getContentTypes, registerDevice, Audio, Subtitle } from './api/kinopub'
 import { saveTokens } from './storage'
 import { launchNativePlayer, getStreamUrl } from './webos/player'
 import { platformBack } from './webos/service'
+import { getResumeTime } from './utils/watching'
 import { useI18n } from './i18n'
 import { Translations } from './i18n/translations'
 import './styles/global.css'
@@ -40,6 +41,8 @@ interface PlayerState {
   audios: Audio[]
   subtitles: Subtitle[]
   itemId: number
+  /** Episode/video number for Kinopub marktime API */
+  video: number
   season?: number
   episode?: number
   startTime: number
@@ -216,21 +219,21 @@ export function App() {
     setState(prev => ({ ...prev, focusArea: 'menu' }))
   }, [])
 
-  const handleClosePlayer = useCallback(() => {
-    setState(prev => ({ ...prev, player: null }))
-  }, [])
-
   const handleTimeUpdate = useCallback((time: number) => {
     const player = stateRef.current.player
-    if (!player) return
+    if (!player || !player.itemId) return
     markTime({
       id: player.itemId,
       time: Math.floor(time),
-      video: player.episode,
+      video: player.video,
       season: player.season
     }).catch(err => {
       if (import.meta.env.DEV) console.error('markTime failed:', err)
     })
+  }, [])
+
+  const handleClosePlayer = useCallback(() => {
+    setState(prev => ({ ...prev, player: null }))
   }, [])
 
   const handlePlayTrailer = useCallback((url: string, title: string) => {
@@ -242,6 +245,7 @@ export function App() {
         audios: [],
         subtitles: [],
         itemId: 0,
+        video: 1,
         startTime: 0
       }
     }))
@@ -272,7 +276,8 @@ export function App() {
       let audios = item.videos?.[0]?.audios || []
       let subtitles = item.videos?.[0]?.subtitles || []
       let title = item.title
-      let startTime = 0
+      let videoNumber = item.videos?.[0]?.number || 1
+      let startTime = getResumeTime(item.videos?.[0]?.watching, item.videos?.[0]?.duration)
 
       if (season !== undefined && episode !== undefined && item.seasons) {
         const seasonData = item.seasons.find(s => s.number === season)
@@ -281,9 +286,18 @@ export function App() {
           files = episodeData.files
           audios = episodeData.audios || []
           subtitles = episodeData.subtitles || []
+          videoNumber = episodeData.number
           title = `${item.title} - S${season}E${episode}`
           if (episodeData.title) title += ` - ${episodeData.title}`
-          startTime = episodeData.watched || 0
+          startTime = getResumeTime(episodeData.watching, episodeData.duration)
+        }
+      }
+
+      if (startTime <= 0) {
+        try {
+          const progress = await getWatchingProgress(itemId, videoNumber, season)
+          startTime = getResumeTime(progress)
+        } catch {
         }
       }
 
@@ -309,6 +323,7 @@ export function App() {
             audios,
             subtitles,
             itemId,
+            video: videoNumber,
             season,
             episode,
             startTime
@@ -318,7 +333,8 @@ export function App() {
         await launchNativePlayer({
           fullPath: streamUrl,
           fileName: title,
-          thumbnail: item.posters?.medium
+          thumbnail: item.posters?.medium,
+          lastPlayPosition: startTime > 0 ? startTime : -1
         })
       }
     } catch {

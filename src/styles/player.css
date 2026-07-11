@@ -71,28 +71,56 @@
 
 .player-progress-bar {
   position: relative;
-  height: 6px;
+  height: 48px;
+  cursor: pointer;
+  touch-action: none;
+}
+
+.player-progress-bar::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 18px;
+  height: 12px;
   background: rgba(255, 255, 255, 0.3);
-  border-radius: 3px;
-  overflow: hidden;
+  border-radius: 6px;
+  pointer-events: none;
 }
 
 .player-progress-buffered {
   position: absolute;
-  top: 0;
+  top: 18px;
   left: 0;
-  height: 100%;
-  background: rgba(255, 255, 255, 0.4);
-  transition: width 0.3s ease;
+  height: 12px;
+  background: rgba(255, 255, 255, 0.45);
+  border-radius: 6px;
+  pointer-events: none;
+  z-index: 1;
 }
 
 .player-progress-current {
   position: absolute;
-  top: 0;
+  top: 18px;
   left: 0;
-  height: 100%;
+  height: 12px;
   background: #e50914;
-  transition: width 0.1s linear;
+  border-radius: 6px;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.player-progress-thumb {
+  position: absolute;
+  top: 15px;
+  width: 18px;
+  height: 18px;
+  margin-left: -9px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+  z-index: 3;
 }
 
 .player-time {
