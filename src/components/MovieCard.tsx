@@ -12,6 +12,7 @@ interface MovieCardProps {
   movie: MovieItem
   focused: boolean
   onSelect?: () => void
+  onHover?: () => void
   episodeInfo?: EpisodeInfo
   badge?: string
 }
@@ -27,14 +28,18 @@ function splitTitle(title: string): { primary: string; secondary?: string } {
   return { primary: title }
 }
 
-export function MovieCard({ movie, focused, onSelect, episodeInfo, badge }: MovieCardProps) {
+export function MovieCard({ movie, focused, onSelect, onHover, episodeInfo, badge }: MovieCardProps) {
   const { primary, secondary } = splitTitle(movie.title)
 
   const episodeBadge = badge || (episodeInfo ? `S${episodeInfo.season}E${episodeInfo.episode}` : null)
   const imageSrc = episodeInfo?.thumbnail || movie.posters?.medium || movie.posters?.big || movie.posters?.small
 
   return (
-    <div class={`movie-card ${focused ? 'focused' : ''}`} onClick={onSelect}>
+    <div
+      class={`movie-card ${focused ? 'focused' : ''}`}
+      onMouseEnter={onHover}
+      onClick={onSelect}
+    >
       <img
         src={imageSrc}
         alt={movie.title}

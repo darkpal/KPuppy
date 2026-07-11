@@ -237,6 +237,10 @@ export function SeasonsScreen({ itemId, onBack, onPlay, onNavigateToMenu, isActi
               onSelect={(colIndex) => {
                 setFocusedRow(rowIndex)
                 setFocusedCol(colIndex)
+                const episode = season.episodes[colIndex]
+                if (episode) {
+                  onPlay(itemId, season.number, episode.number)
+                }
               }}
             />
           </div>

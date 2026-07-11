@@ -221,10 +221,11 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
     }
   }, [itemId, watchingToggleLoading])
 
-  const handleToggleFolder = useCallback(async () => {
-    const folder = folders[folderFocusIndex]
+  const handleToggleFolder = useCallback(async (index: number = folderFocusIndex) => {
+    const folder = folders[index]
     if (!folder || watchlistLoading) return
     const isInFolder = itemFolderIds.includes(folder.id)
+    dispatch({ type: 'SET_FOLDER_FOCUS_INDEX', index })
     dispatch({ type: 'SET_WATCHLIST_LOADING', value: true })
     try {
       if (isInFolder) {
@@ -259,7 +260,7 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
         onBack: () => dispatch({ type: 'CLOSE_FOLDER_DIALOG' }),
         onUp: () => dispatch({ type: 'SET_FOLDER_FOCUS_INDEX', index: Math.max(0, folderFocusIndex - 1) }),
         onDown: () => dispatch({ type: 'SET_FOLDER_FOCUS_INDEX', index: Math.min(folders.length - 1, folderFocusIndex + 1) }),
-        onEnter: handleToggleFolder
+        onEnter: () => { void handleToggleFolder() }
       }
     }
 
@@ -433,7 +434,10 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
               <div class="item-actions">
                 {hasSeasons ? (
                   <button
+                    type="button"
                     class={`item-button item-button-primary ${focusArea === 'seasons' ? 'focused' : ''}`}
+                    onMouseEnter={() => dispatch({ type: 'SET_FOCUS_AREA', area: 'seasons' })}
+                    onClick={handlePlayOrSelect}
                   >
                     <span class="item-button-icon">≡</span>
                     {t.seasons} ({item.seasons!.length})
@@ -441,7 +445,10 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
                 ) : (
                   <div class="item-play-container">
                     <button
+                      type="button"
                       class={`item-button item-button-primary ${focusArea === 'play' || focusArea === 'qualitySelect' ? 'focused' : ''}`}
+                      onMouseEnter={() => dispatch({ type: 'SET_FOCUS_AREA', area: 'play' })}
+                      onClick={handlePlayOrSelect}
                     >
                       <span class="item-button-icon">▶</span>
                       {t.play}
@@ -449,7 +456,17 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
                         <span class="item-quality-badge">{selectedQuality}</span>
                       )}
                       {availableQualities.length > 1 && (
-                        <span class="item-quality-hint">▲</span>
+                        <span
+                          class="item-quality-hint"
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            const currentIdx = availableQualities.indexOf(selectedQuality || '')
+                            dispatch({ type: 'SET_DROPDOWN_FOCUS_INDEX', index: Math.max(0, currentIdx) })
+                            dispatch({ type: 'SET_FOCUS_AREA', area: 'qualitySelect' })
+                          }}
+                        >
+                          ▲
+                        </span>
                       )}
                     </button>
                     {focusArea === 'qualitySelect' && (
@@ -458,6 +475,11 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
                           <div
                             key={q}
                             class={`item-dropdown-option ${dropdownFocusIndex === idx ? 'focused' : ''} ${selectedQuality === q ? 'selected' : ''}`}
+                            onMouseEnter={() => dispatch({ type: 'SET_DROPDOWN_FOCUS_INDEX', index: idx })}
+                            onClick={() => {
+                              dispatch({ type: 'SET_SELECTED_QUALITY', quality: q })
+                              dispatch({ type: 'SET_FOCUS_AREA', area: 'play' })
+                            }}
                           >
                             {q}
                           </div>
@@ -468,23 +490,36 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
                 )}
                 {hasSeasons && (
                   <button
+                    type="button"
                     class={`item-button item-button-secondary ${focusArea === 'watching' ? 'focused' : ''}`}
                     disabled={watchingToggleLoading}
+                    onMouseEnter={() => dispatch({ type: 'SET_FOCUS_AREA', area: 'watching' })}
+                    onClick={handleToggleWatching}
                   >
                     <span class="item-button-icon">{isWatching ? '−' : '+'}</span>
                     {isWatching ? t.removeFromWatchlist : t.addToWatchlist}
                   </button>
                 )}
                 <button
+                  type="button"
                   class={`item-button item-button-secondary ${focusArea === 'watchlist' ? 'focused' : ''}`}
                   disabled={watchlistLoading}
+                  onMouseEnter={() => dispatch({ type: 'SET_FOCUS_AREA', area: 'watchlist' })}
+                  onClick={handleOpenFolderDialog}
                 >
                   <span class="item-button-icon">★</span>
                   {t.addToBookmarks}
                 </button>
                 {item?.trailer?.url && (
                   <button
+                    type="button"
                     class={`item-button item-button-secondary ${focusArea === 'trailer' ? 'focused' : ''}`}
+                    onMouseEnter={() => dispatch({ type: 'SET_FOCUS_AREA', area: 'trailer' })}
+                    onClick={() => {
+                      if (item.trailer?.url) {
+                        onPlayTrailer(item.trailer.url, `${item.title} - ${t.trailer}`)
+                      }
+                    }}
                   >
                     <span class="item-button-icon">▷</span>
                     {t.trailer}
@@ -505,6 +540,10 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
             items={similarItems}
             focusedIndex={similarFocusIndex}
             isFocused={focusArea === 'similar'}
+            onHoverItem={(index) => {
+              dispatch({ type: 'SET_FOCUS_AREA', area: 'similar' })
+              dispatch({ type: 'SET_SIMILAR_FOCUS_INDEX', index })
+            }}
             onSelectItem={onSelectItem}
           />
         </div>

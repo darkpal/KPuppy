@@ -131,22 +131,22 @@ export function SettingsScreen({ onNavigateToMenu, isActive }: SettingsScreenPro
     return []
   }
 
-  const handleSelectOption = useCallback(() => {
+  const handleSelectOption = useCallback((index: number = selectFocusIndex) => {
     if (!expandedSelect) return
     const options = getSelectOptions(expandedSelect)
-    const selectedOption = options[selectFocusIndex]
+    const selectedOption = options[index]
     if (selectedOption) {
       if (expandedSelect === 'language') {
-        const langId = languages[selectFocusIndex]?.id
+        const langId = languages[index]?.id
         if (langId) setLanguage(langId as Language)
       } else if (expandedSelect === 'quality') {
-        const newQuality = QUALITY_OPTIONS[selectFocusIndex]?.id
+        const newQuality = QUALITY_OPTIONS[index]?.id
         if (newQuality) {
           setQuality(newQuality)
           saveLocalSettings({ defaultQuality: newQuality })
         }
       } else if (expandedSelect === 'player') {
-        const newPlayer = PLAYER_OPTIONS[selectFocusIndex]?.id
+        const newPlayer = PLAYER_OPTIONS[index]?.id
         if (newPlayer) {
           setPlayerType(newPlayer)
           saveLocalSettings({ playerType: newPlayer })
@@ -163,31 +163,35 @@ export function SettingsScreen({ onNavigateToMenu, isActive }: SettingsScreenPro
     setExpandedSelect(null)
   }, [expandedSelect, selectFocusIndex, languages, settings, saveSettingChange, setLanguage])
 
-  const handleActivateItem = useCallback(() => {
-    const currentItem = columns[focusedCol]?.[focusedRow]
-    if (!currentItem) return
-    if (currentItem.type === 'toggle' && currentItem.id === 'showContinueWatching') {
+  const activateItem = useCallback((item: SettingItem) => {
+    if (item.type === 'toggle' && item.id === 'showContinueWatching') {
       const newValue = !showContinueWatching
       setShowContinueWatching(newValue)
       saveLocalSettings({ showContinueWatching: newValue })
-    } else if (currentItem.type === 'toggle' && settings && currentItem.key) {
-      const currentValue = settings[currentItem.key] as number
+    } else if (item.type === 'toggle' && settings && item.key) {
+      const currentValue = settings[item.key] as number
       const newValue = currentValue ? 0 : 1
-      setSettings({ ...settings, [currentItem.key]: newValue })
-      saveSettingChange(currentItem.key, newValue)
-    } else if (currentItem.type === 'select') {
-      const selectKey = currentItem.key || currentItem.id
+      setSettings({ ...settings, [item.key]: newValue })
+      saveSettingChange(item.key, newValue)
+    } else if (item.type === 'select') {
+      const selectKey = item.key || item.id
       const options = getSelectOptions(selectKey)
       const selectedIdx = options.findIndex(o => o.selected === 1)
       setSelectFocusIndex(Math.max(0, selectedIdx))
       setExpandedSelect(selectKey)
-    } else if (currentItem.type === 'language') {
+    } else if (item.type === 'language') {
       const options = getSelectOptions('language')
       const selectedIdx = options.findIndex(o => o.selected === 1)
       setSelectFocusIndex(Math.max(0, selectedIdx))
       setExpandedSelect('language')
     }
-  }, [columns, focusedCol, focusedRow, settings, saveSettingChange, showContinueWatching])
+  }, [settings, saveSettingChange, showContinueWatching])
+
+  const handleActivateItem = useCallback(() => {
+    const currentItem = columns[focusedCol]?.[focusedRow]
+    if (!currentItem) return
+    activateItem(currentItem)
+  }, [columns, focusedCol, focusedRow, activateItem])
 
   const handlers = useMemo(() => {
     if (expandedSelect) {
@@ -195,7 +199,7 @@ export function SettingsScreen({ onNavigateToMenu, isActive }: SettingsScreenPro
       return {
         onUp: () => setSelectFocusIndex(prev => Math.max(0, prev - 1)),
         onDown: () => setSelectFocusIndex(prev => Math.min(options.length - 1, prev + 1)),
-        onEnter: handleSelectOption,
+        onEnter: () => handleSelectOption(),
         onBack: () => setExpandedSelect(null)
       }
     }
@@ -241,6 +245,15 @@ export function SettingsScreen({ onNavigateToMenu, isActive }: SettingsScreenPro
       <div
         key={item.id}
         class={`settings-item ${isFocused ? 'focused' : ''}`}
+        onMouseEnter={() => {
+          setFocusedCol(col)
+          setFocusedRow(row)
+        }}
+        onClick={() => {
+          setFocusedCol(col)
+          setFocusedRow(row)
+          activateItem(item)
+        }}
       >
         <span class="settings-item-label">{t[item.labelKey]}</span>
         {item.type === 'toggle' && item.id === 'showContinueWatching' && (
@@ -322,6 +335,8 @@ export function SettingsScreen({ onNavigateToMenu, isActive }: SettingsScreenPro
               <div
                 key={option.id}
                 class={`settings-select-item ${selectFocusIndex === index ? 'focused' : ''} ${option.selected ? 'selected' : ''}`}
+                onMouseEnter={() => setSelectFocusIndex(index)}
+                onClick={() => handleSelectOption(index)}
               >
                 {option.label}
                 {option.selected === 1 && <span class="settings-select-check">✓</span>}

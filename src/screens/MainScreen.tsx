@@ -213,6 +213,12 @@ export function MainScreen({ onBack, onSelectItem, onNavigateToMenu, isActive, i
                 setFocusedRow(rowIndex)
                 setFocusedCol(colIndex)
               }}
+              onActivate={(colIndex) => {
+                setFocusedRow(rowIndex)
+                setFocusedCol(colIndex)
+                const movie = row.items[colIndex]
+                if (movie) onSelectItem(movie.id)
+              }}
             />
           </div>
         ))}

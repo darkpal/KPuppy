@@ -6,7 +6,7 @@ interface FolderDialogProps {
   bookmarkedFolderIds: number[]
   focusedIndex: number
   onSelect: (index: number) => void
-  onConfirm: () => void
+  onConfirm: (index?: number) => void
 }
 
 export function FolderDialog({ folders, bookmarkedFolderIds, focusedIndex, onSelect, onConfirm }: FolderDialogProps) {
@@ -21,10 +21,8 @@ export function FolderDialog({ folders, bookmarkedFolderIds, focusedIndex, onSel
             <div
               key={folder.id}
               class={`item-folder-option ${focusedIndex === idx ? 'focused' : ''}`}
-              onClick={() => {
-                onSelect(idx)
-                onConfirm()
-              }}
+              onMouseEnter={() => onSelect(idx)}
+              onClick={() => onConfirm(idx)}
             >
               <span class="item-folder-name">{folder.title}</span>
               {bookmarkedFolderIds.includes(folder.id) && (

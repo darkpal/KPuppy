@@ -20,9 +20,10 @@ interface MovieRowProps {
   loading?: boolean
   focusedIndex: number | null
   onSelect?: (index: number) => void
+  onActivate?: (index: number) => void
 }
 
-export function MovieRow({ title, movies, loading, focusedIndex, onSelect }: MovieRowProps) {
+export function MovieRow({ title, movies, loading, focusedIndex, onSelect, onActivate }: MovieRowProps) {
   const gridRef = useRef<HTMLDivElement>(null)
 
   useScrollToFocused({
@@ -57,7 +58,8 @@ export function MovieRow({ title, movies, loading, focusedIndex, onSelect }: Mov
             key={movie.id}
             movie={movie}
             focused={index === focusedIndex}
-            onSelect={() => onSelect?.(index)}
+            onHover={() => onSelect?.(index)}
+            onSelect={() => (onActivate || onSelect)?.(index)}
             episodeInfo={movie.episodeInfo}
           />
         ))}
