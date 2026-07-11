@@ -1,7 +1,7 @@
 import { useRef } from 'preact/hooks'
 import { MovieItem } from '../api/kinopub'
 import { MovieCard } from './MovieCard'
-import { useScrollToFocused } from '../hooks'
+import { useScrollToFocused, useWheelScroll } from '../hooks'
 
 interface EpisodeInfo {
   season: number
@@ -32,6 +32,11 @@ export function MovieRow({ title, movies, loading, focusedIndex, onSelect, onAct
     itemSelector: ':scope > *',
     direction: 'horizontal',
     itemCount: movies.length
+  })
+
+  useWheelScroll({
+    containerRef: gridRef,
+    direction: 'horizontal'
   })
 
   if (loading) {

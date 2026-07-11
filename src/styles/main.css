@@ -8,10 +8,12 @@
 
 .rows-container {
   flex: 1;
-  overflow-y: auto;
+  overflow-x: hidden;
+  overflow-y: hidden;
   padding-top: 30px;
   padding-bottom: 40px;
   scrollbar-width: none;
+  overscroll-behavior: none;
 }
 
 .rows-container::-webkit-scrollbar {
@@ -19,12 +21,12 @@
 }
 
 .movie-row {
-  padding: 0 60px;
-  margin-bottom: 40px;
+  padding: 0 48px;
+  margin-bottom: 36px;
 }
 
 .row-title {
-  font-size: 20px;
+  font-size: 24px;
   font-weight: 600;
   color: #ffffff;
   margin-bottom: 16px;
@@ -32,20 +34,22 @@
 
 .movie-grid {
   display: flex;
-  overflow-x: auto;
+  overflow-x: hidden;
+  overflow-y: hidden;
   padding: 16px;
   margin: -16px;
-  margin-right: -60px;
-  padding-right: 60px;
+  margin-right: -48px;
+  padding-right: 48px;
   scrollbar-width: none;
+  overscroll-behavior: none;
 }
 
-.movie-grid > div {
-  margin-right: 32px;
+.movie-grid > .movie-card {
+  margin-right: 28px;
   flex-shrink: 0;
 }
 
-.movie-grid > div:last-child {
+.movie-grid > .movie-card:last-child {
   margin-right: 0;
 }
 
@@ -53,45 +57,54 @@
   display: none;
 }
 
+/* ~6 posters visible on 1080p TV instead of ~8 */
 .movie-row .movie-card {
-  width: 200px;
+  width: 270px;
   height: auto;
 }
 
 .movie-row .movie-card-poster {
-  width: 200px;
+  width: 270px;
 }
 
 .movie-row .movie-card-title {
-  font-size: 20px;
+  font-size: 22px;
 }
 
 .movie-row .movie-card-title-secondary {
-  font-size: 15px;
+  font-size: 16px;
 }
 
 .movie-row .movie-card-year {
-  font-size: 14px;
+  font-size: 15px;
 }
 
 .movie-row .movie-card-badge {
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .movie-row .movie-card-ratings {
-  font-size: 12px;
-  padding: 3px 5px;
+  font-size: 18px;
+  padding: 6px 8px;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  gap: 6px;
+}
+
+.movie-row .movie-card-rating {
+  gap: 6px;
 }
 
 .movie-row .movie-card-rating-icon {
-  width: 12px;
-  height: 12px;
+  width: 24px;
+  height: 24px;
 }
 
 .row-loading {
   display: flex;
   align-items: center;
-  height: 360px;
+  height: 460px;
   padding-left: 20px;
 }
 

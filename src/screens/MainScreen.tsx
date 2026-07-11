@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'preact/hooks'
 import { getItems, getHotItems, getWatching, MovieItem, ItemsParams } from '../api/kinopub'
 import { getLocalSettings } from '../storage'
 import { MovieRow } from '../components/MovieRow'
-import { useKeyboardNavigation, useScrollToFocused } from '../hooks'
+import { useKeyboardNavigation, useScrollToFocused, useWheelScroll } from '../hooks'
 import { LoadingState } from '../components/LoadingSpinner'
 import { useI18n } from '../i18n'
 import { Translations } from '../i18n/translations'
@@ -199,6 +199,12 @@ export function MainScreen({ onBack, onSelectItem, onNavigateToMenu, isActive, i
     focusedIndex: focusedRow,
     itemSelector: '[data-row]',
     itemCount: allLoading ? 0 : rows.length
+  })
+
+  useWheelScroll({
+    containerRef: rowsContainerRef,
+    direction: 'vertical',
+    enabled: !allLoading
   })
 
   if (allLoading) {
