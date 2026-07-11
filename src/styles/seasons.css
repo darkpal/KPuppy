@@ -19,7 +19,7 @@
 }
 
 .seasons-subtitle {
-  font-size: 16px;
+  font-size: 22px;
   color: #808080;
 }
 
@@ -122,7 +122,7 @@
   right: 8px;
   background: rgba(0, 0, 0, 0.8);
   color: #ffffff;
-  font-size: 12px;
+  font-size: 18px;
   padding: 2px 6px;
   border-radius: 2px;
 }
@@ -133,7 +133,7 @@
   right: 8px;
   background: #46d369;
   color: #000;
-  font-size: 14px;
+  font-size: 18px;
   font-weight: 700;
   width: 24px;
   height: 24px;
@@ -153,17 +153,24 @@
 
 .episode-number {
   display: block;
-  font-size: 12px;
+  font-size: 18px;
   color: #808080;
   margin-bottom: 4px;
 }
 
 .episode-title {
   display: block;
-  font-size: 14px;
+  font-size: 22px;
   font-weight: 500;
   color: #ffffff;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.episode-row .row-title {
+  font-size: 26px;
+  font-weight: 600;
+  color: #ffffff;
+  margin-bottom: 16px;
 }

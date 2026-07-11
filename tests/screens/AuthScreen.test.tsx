@@ -86,7 +86,7 @@ describe('AuthScreen', () => {
 
       renderWithI18n(<AuthScreen onAuthenticated={mockOnAuthenticated} />)
 
-      expect(screen.getByText(/kino.pub\/device/)).toBeDefined()
+      expect(screen.getByText(/kino.watch\/device/)).toBeDefined()
     })
 
     it('shows waiting indicator while polling', () => {

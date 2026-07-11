@@ -237,7 +237,7 @@ const en: Translations = {
 
   authTitle: 'Sign In',
   authInstructions: 'To sign in, visit:',
-  authVisit: 'kino.pub/device',
+  authVisit: 'kino.watch/device',
   authEnterCode: 'Enter the code:',
   authWaiting: 'Waiting for authorization...',
 
@@ -368,7 +368,7 @@ const ru: Translations = {
 
   authTitle: 'Вход',
   authInstructions: 'Для входа перейдите на:',
-  authVisit: 'kino.pub/device',
+  authVisit: 'kino.watch/device',
   authEnterCode: 'Введите код:',
   authWaiting: 'Ожидание авторизации...',
 
@@ -499,7 +499,7 @@ const de: Translations = {
 
   authTitle: 'Anmelden',
   authInstructions: 'Zum Anmelden besuchen Sie:',
-  authVisit: 'kino.pub/device',
+  authVisit: 'kino.watch/device',
   authEnterCode: 'Code eingeben:',
   authWaiting: 'Warte auf Autorisierung...',
 

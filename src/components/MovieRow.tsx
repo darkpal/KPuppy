@@ -19,11 +19,21 @@ interface MovieRowProps {
   movies: MovieWithEpisode[]
   loading?: boolean
   focusedIndex: number | null
+  /** Auto-scroll row to focused card (keyboard/D-pad only; not pointer hover). */
+  scrollToFocused?: boolean
   onSelect?: (index: number) => void
   onActivate?: (index: number) => void
 }
 
-export function MovieRow({ title, movies, loading, focusedIndex, onSelect, onActivate }: MovieRowProps) {
+export function MovieRow({
+  title,
+  movies,
+  loading,
+  focusedIndex,
+  scrollToFocused = true,
+  onSelect,
+  onActivate
+}: MovieRowProps) {
   const gridRef = useRef<HTMLDivElement>(null)
 
   useScrollToFocused({
@@ -31,7 +41,8 @@ export function MovieRow({ title, movies, loading, focusedIndex, onSelect, onAct
     focusedIndex,
     itemSelector: ':scope > *',
     direction: 'horizontal',
-    itemCount: movies.length
+    itemCount: movies.length,
+    enabled: scrollToFocused
   })
 
   useWheelScroll({

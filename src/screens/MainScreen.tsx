@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'preact/hooks'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'preact/hooks'
 import { getItems, getHotItems, getWatching, MovieItem, ItemsParams } from '../api/kinopub'
 import { getLocalSettings } from '../storage'
 import { MovieRow } from '../components/MovieRow'
@@ -104,6 +104,8 @@ export function MainScreen({ onBack, onSelectItem, onNavigateToMenu, isActive, i
   )
   const [focusedRow, setFocusedRow] = useState(initialFocusRow)
   const [focusedCol, setFocusedCol] = useState(initialFocusCol)
+  /** Pointer hover must not auto-scroll (webOS edge cascade); keyboard/D-pad may. */
+  const [scrollWithFocus, setScrollWithFocus] = useState(true)
   const [error] = useState<string | null>(null)
   const rowsContainerRef = useRef<HTMLDivElement>(null)
   const onFocusChangeRef = useRef(onFocusChange)
@@ -147,6 +149,11 @@ export function MainScreen({ onBack, onSelectItem, onNavigateToMenu, isActive, i
     loadRowsSequentially()
   }, [rowConfigs])
 
+  const focusByKeyboard = useCallback((update: () => void) => {
+    setScrollWithFocus(true)
+    update()
+  }, [])
+
   const handlers = useMemo(() => {
     const currentRow = rows[focusedRow]
     const itemCount = currentRow?.items.length || 0
@@ -154,30 +161,34 @@ export function MainScreen({ onBack, onSelectItem, onNavigateToMenu, isActive, i
     return {
       onLeft: () => {
         if (focusedCol > 0) {
-          setFocusedCol(prev => prev - 1)
+          focusByKeyboard(() => setFocusedCol(prev => prev - 1))
         } else {
           onNavigateToMenu()
         }
       },
       onRight: () => {
         if (focusedCol < itemCount - 1) {
-          setFocusedCol(prev => prev + 1)
+          focusByKeyboard(() => setFocusedCol(prev => prev + 1))
         }
       },
       onUp: () => {
         if (focusedRow > 0) {
-          const newRow = focusedRow - 1
-          const newRowItemCount = rows[newRow]?.items.length || 0
-          setFocusedRow(newRow)
-          setFocusedCol(prev => Math.min(prev, newRowItemCount - 1))
+          focusByKeyboard(() => {
+            const newRow = focusedRow - 1
+            const newRowItemCount = rows[newRow]?.items.length || 0
+            setFocusedRow(newRow)
+            setFocusedCol(prev => Math.min(prev, newRowItemCount - 1))
+          })
         }
       },
       onDown: () => {
         if (focusedRow < rows.length - 1) {
-          const newRow = focusedRow + 1
-          const newRowItemCount = rows[newRow]?.items.length || 0
-          setFocusedRow(newRow)
-          setFocusedCol(prev => Math.min(prev, Math.max(0, newRowItemCount - 1)))
+          focusByKeyboard(() => {
+            const newRow = focusedRow + 1
+            const newRowItemCount = rows[newRow]?.items.length || 0
+            setFocusedRow(newRow)
+            setFocusedCol(prev => Math.min(prev, Math.max(0, newRowItemCount - 1)))
+          })
         }
       },
       onEnter: () => {
@@ -188,7 +199,7 @@ export function MainScreen({ onBack, onSelectItem, onNavigateToMenu, isActive, i
       },
       onBack
     }
-  }, [focusedRow, focusedCol, rows, onBack, onSelectItem, onNavigateToMenu])
+  }, [focusedRow, focusedCol, rows, onBack, onSelectItem, onNavigateToMenu, focusByKeyboard])
 
   useKeyboardNavigation(handlers, isActive)
 
@@ -198,7 +209,8 @@ export function MainScreen({ onBack, onSelectItem, onNavigateToMenu, isActive, i
     containerRef: rowsContainerRef,
     focusedIndex: focusedRow,
     itemSelector: '[data-row]',
-    itemCount: allLoading ? 0 : rows.length
+    itemCount: allLoading ? 0 : rows.length,
+    enabled: scrollWithFocus && !allLoading
   })
 
   useWheelScroll({
@@ -236,11 +248,14 @@ export function MainScreen({ onBack, onSelectItem, onNavigateToMenu, isActive, i
               movies={row.items}
               loading={row.loading}
               focusedIndex={rowIndex === focusedRow ? focusedCol : null}
+              scrollToFocused={scrollWithFocus && rowIndex === focusedRow}
               onSelect={(colIndex) => {
+                setScrollWithFocus(false)
                 setFocusedRow(rowIndex)
                 setFocusedCol(colIndex)
               }}
               onActivate={(colIndex) => {
+                setScrollWithFocus(false)
                 setFocusedRow(rowIndex)
                 setFocusedCol(colIndex)
                 const movie = row.items[colIndex]

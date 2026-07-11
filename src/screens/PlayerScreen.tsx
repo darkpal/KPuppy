@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'preact/hooks'
 import type { JSX } from 'preact'
 import { Audio, Subtitle } from '../api/kinopub'
 import { withHlsAudioIndex } from '../webos/player'
+import { saveAudioPreference } from '../storage'
 import { KEY_CODES } from '../hooks'
 import { useI18n } from '../i18n'
 import '../styles/player.css'
@@ -39,6 +40,8 @@ export interface PlayerProps {
   audios?: Audio[]
   subtitles?: Subtitle[]
   startTime?: number
+  initialAudioIndex?: number
+  itemId?: number
   onBack: () => void
   onTimeUpdate?: (time: number) => void
 }
@@ -55,7 +58,7 @@ interface ConvertedSubtitle {
   url: string
 }
 
-export function PlayerScreen({ url, title, audios = [], subtitles = [], startTime = 0, onBack, onTimeUpdate }: PlayerProps) {
+export function PlayerScreen({ url, title, audios = [], subtitles = [], startTime = 0, initialAudioIndex = 0, itemId = 0, onBack, onTimeUpdate }: PlayerProps) {
   const { t } = useI18n()
   const videoRef = useRef<HTMLVideoElement>(null)
   const progressBarRef = useRef<HTMLDivElement>(null)
@@ -71,7 +74,7 @@ export function PlayerScreen({ url, title, audios = [], subtitles = [], startTim
   const [controls, setControls] = useState<ControlsState>({
     visible: true,
     activePanel: 'none',
-    selectedAudioIndex: 0,
+    selectedAudioIndex: Math.max(0, Math.min(initialAudioIndex, Math.max(0, audios.length - 1))),
     selectedSubtitleIndex: -1
   })
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -253,6 +256,10 @@ export function PlayerScreen({ url, title, audios = [], subtitles = [], startTim
   const selectAudio = useCallback((listIndex: number) => {
     const video = videoRef.current
     setControls(prev => ({ ...prev, selectedAudioIndex: listIndex }))
+    const selected = audios[listIndex]
+    if (itemId > 0 && selected) {
+      saveAudioPreference(itemId, selected)
+    }
     if (!video || listIndex < 0) return
 
     // Kinopub classic HLS switches озвучка by playlist: master-v1a1, master-v1a2, …
@@ -286,7 +293,7 @@ export function PlayerScreen({ url, title, audios = [], subtitles = [], startTim
     for (let i = 0; i < audioTracks.length; i++) {
       audioTracks[i].enabled = i === trackIndex
     }
-  }, [url, flushTime])
+  }, [url, flushTime, audios, itemId])
 
   const selectSubtitle = useCallback((index: number) => {
     const video = videoRef.current

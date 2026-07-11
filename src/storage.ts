@@ -126,3 +126,71 @@ export function saveContentTypesCache(types: CachedContentType[]): void {
   }
   localStorage.setItem(CONTENT_TYPES_KEY, JSON.stringify(cached))
 }
+
+
+const AUDIO_PREF_PREFIX = 'kpuppy_audio_'
+
+export interface SavedAudioPreference {
+  id: number
+  name: string
+}
+
+/** Stable label for matching озвучка across episodes of the same title. */
+export function getAudioTrackName(audio: {
+  lang?: string
+  type?: { title?: string } | null
+  author?: { title?: string } | null
+}): string {
+  const typeTitle = audio.type?.title || ''
+  const authorTitle = audio.author?.title || ''
+  const lang = (audio.lang || '').toUpperCase()
+  const parts: string[] = []
+  if (typeTitle && authorTitle) {
+    parts.push(`${typeTitle}.`)
+  } else if (typeTitle) {
+    parts.push(typeTitle)
+  }
+  if (authorTitle) parts.push(authorTitle)
+  if (typeTitle || authorTitle) {
+    if (lang) parts.push(`(${lang})`)
+  } else if (lang) {
+    parts.push(lang)
+  }
+  return parts.join(' ').trim()
+}
+
+export function getSavedAudioPreference(itemId: number): SavedAudioPreference | null {
+  const data = localStorage.getItem(`${AUDIO_PREF_PREFIX}${itemId}`)
+  if (!data) return null
+  try {
+    const parsed = JSON.parse(data) as SavedAudioPreference
+    if (!parsed || typeof parsed.name !== 'string') return null
+    return parsed
+  } catch {
+    return null
+  }
+}
+
+export function saveAudioPreference(itemId: number, audio: {
+  id: number
+  lang?: string
+  type?: { title?: string } | null
+  author?: { title?: string } | null
+}): void {
+  const pref: SavedAudioPreference = {
+    id: audio.id,
+    name: getAudioTrackName(audio)
+  }
+  localStorage.setItem(`${AUDIO_PREF_PREFIX}${itemId}`, JSON.stringify(pref))
+}
+
+export function findAudioIndex(
+  audios: Array<{ id: number; lang?: string; type?: { title?: string } | null; author?: { title?: string } | null }>,
+  saved: SavedAudioPreference | null
+): number {
+  if (!saved || audios.length === 0) return 0
+  const byId = audios.findIndex(a => a.id === saved.id)
+  if (byId >= 0) return byId
+  const byName = audios.findIndex(a => getAudioTrackName(a) === saved.name)
+  return byName >= 0 ? byName : 0
+}

@@ -17,11 +17,11 @@ import { RemoteDebugOverlay } from './components/RemoteDebugOverlay'
 import { ALL_MENU_ITEMS_COUNT, getMenuIdByIndex } from './components/SideMenu'
 import { KEY_CODES } from './hooks'
 import { ScreenManager } from './components/ScreenManager'
-import { isAuthenticated, clearTokens, getTokens, getLocalSettings, saveReturnTo, getReturnTo, clearReturnTo, getContentTypesCache, saveContentTypesCache, ReturnToState } from './storage'
+import { isAuthenticated, clearTokens, getTokens, getLocalSettings, saveReturnTo, getReturnTo, clearReturnTo, getContentTypesCache, saveContentTypesCache, getSavedAudioPreference, findAudioIndex, ReturnToState } from './storage'
 import { refreshAccessToken, getItem, setOnAuthError, getDeviceInfo, markTime, getWatchingProgress, getContentTypes, registerDevice, Audio, Subtitle } from './api/kinopub'
 import { applyPreferredDeviceDefaultsOnce } from './preferredDefaults'
 import { saveTokens } from './storage'
-import { launchNativePlayer, getStreamUrl } from './webos/player'
+import { launchNativePlayer, getStreamUrl, withHlsAudioIndex } from './webos/player'
 import { platformBack } from './webos/service'
 import { getResumeTime } from './utils/watching'
 import { useI18n } from './i18n'
@@ -47,6 +47,7 @@ interface PlayerState {
   season?: number
   episode?: number
   startTime: number
+  initialAudioIndex: number
 }
 
 interface AppState {
@@ -292,7 +293,8 @@ export function App() {
         subtitles: [],
         itemId: 0,
         video: 1,
-        startTime: 0
+        startTime: 0,
+        initialAudioIndex: 0
       }
     }))
   }, [])
@@ -357,13 +359,19 @@ export function App() {
       } catch {
       }
 
-      const streamUrl = getStreamUrl(
+      let streamUrl = getStreamUrl(
         files || [],
         preferredQuality,
         streamingType,
         localSettings.playerType === 'builtin' ? { preferClassicHls: true } : undefined
       )
       if (!streamUrl) return
+
+      const savedAudio = getSavedAudioPreference(itemId)
+      const initialAudioIndex = findAudioIndex(audios, savedAudio)
+      if (localSettings.playerType === 'builtin' && initialAudioIndex > 0) {
+        streamUrl = withHlsAudioIndex(streamUrl, initialAudioIndex)
+      }
 
       if (localSettings.playerType === 'builtin') {
         setState(prev => ({
@@ -377,7 +385,8 @@ export function App() {
             video: videoNumber,
             season,
             episode,
-            startTime
+            startTime,
+            initialAudioIndex
           }
         }))
       } else {
@@ -513,6 +522,8 @@ export function App() {
         audios={state.player.audios}
         subtitles={state.player.subtitles}
         startTime={state.player.startTime}
+        initialAudioIndex={state.player.initialAudioIndex}
+        itemId={state.player.itemId}
         onBack={handleClosePlayer}
         onTimeUpdate={handleTimeUpdate}
       />

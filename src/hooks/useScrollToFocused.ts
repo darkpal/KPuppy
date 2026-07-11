@@ -8,6 +8,8 @@ interface UseScrollToFocusedOptions {
   direction?: 'vertical' | 'horizontal'
   center?: boolean
   itemCount?: number
+  /** When false, skip auto-scroll (e.g. Magic Remote hover must not edge-cascade). */
+  enabled?: boolean
 }
 
 export function useScrollToFocused({
@@ -16,9 +18,12 @@ export function useScrollToFocused({
   itemSelector,
   direction = 'vertical',
   center = true,
-  itemCount
+  itemCount,
+  enabled = true
 }: UseScrollToFocusedOptions): void {
   useEffect(() => {
+    if (!enabled) return
+
     const container = containerRef.current
     if (!container || focusedIndex === null) return
 
@@ -52,5 +57,5 @@ export function useScrollToFocused({
         container.scrollLeft = itemRight - container.clientWidth
       }
     }
-  }, [containerRef, focusedIndex, itemSelector, direction, center, itemCount])
+  }, [containerRef, focusedIndex, itemSelector, direction, center, itemCount, enabled])
 }

@@ -245,11 +245,11 @@ function mapToMovieItem(item: Record<string, unknown>): MovieItem {
     year: (item.year || 0) as number,
     plot: (item.plot || '') as string,
     posters: (item.posters || { small: '', medium: '', big: '' }) as Poster,
-    rating: (item.rating || 0) as number,
-    imdbRating: (item.imdb_rating || 0) as number,
-    kinopoiskRating: (item.kinopoisk_rating || 0) as number,
-    ratingPercentage: (item.rating_percentage || 0) as number,
-    views: (item.views || 0) as number
+    rating: Number(item.rating) || 0,
+    imdbRating: Number(item.imdb_rating) || 0,
+    kinopoiskRating: Number(item.kinopoisk_rating) || 0,
+    ratingPercentage: Number(item.rating_percentage) || 0,
+    views: Number(item.views) || 0
   }
 }
 
@@ -414,6 +414,22 @@ export interface WatchingResponse {
   items: WatchingItem[]
 }
 
+async function fetchItemRatings(id: number): Promise<Pick<MovieItem, 'imdbRating' | 'kinopoiskRating' | 'ratingPercentage'> | null> {
+  try {
+    const response = await authFetch(`${BASE_URL}/v1/items/${id}`)
+    if (!response.ok) return null
+    const data = await response.json()
+    const item = (data.item || data) as Record<string, unknown>
+    return {
+      imdbRating: Number(item.imdb_rating) || 0,
+      kinopoiskRating: Number(item.kinopoisk_rating) || 0,
+      ratingPercentage: Number(item.rating_percentage) || 0
+    }
+  } catch {
+    return null
+  }
+}
+
 export async function getWatching(): Promise<MovieItem[]> {
   const cacheKey = 'watching'
   const cached = getCached<MovieItem[]>(cacheKey)
@@ -429,7 +445,24 @@ export async function getWatching(): Promise<MovieItem[]> {
 
   const allItems = [...(moviesData.items || []), ...(serialsData.items || [])]
 
-  const result: MovieItem[] = allItems.map(mapToMovieItem)
+  let result: MovieItem[] = allItems.map(mapToMovieItem)
+
+  // Watching list often omits ratings — enrich from item details (list is usually small).
+  const missing = result.filter(item => item.imdbRating <= 0 && item.kinopoiskRating <= 0 && item.ratingPercentage <= 0)
+  if (missing.length > 0) {
+    const ratings = await Promise.all(missing.map(item => fetchItemRatings(item.id)))
+    const byId = new Map<number, Pick<MovieItem, 'imdbRating' | 'kinopoiskRating' | 'ratingPercentage'>>()
+    missing.forEach((item, index) => {
+      const rating = ratings[index]
+      if (rating) byId.set(item.id, rating)
+    })
+    if (byId.size > 0) {
+      result = result.map(item => {
+        const rating = byId.get(item.id)
+        return rating ? { ...item, ...rating } : item
+      })
+    }
+  }
 
   setCache(cacheKey, result)
   return result
