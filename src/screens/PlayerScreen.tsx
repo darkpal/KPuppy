@@ -249,29 +249,85 @@ export function PlayerScreen({ url, title, audios = [], subtitles = [], startTim
     togglePlay()
   }, [togglePlay])
 
-  const selectAudio = useCallback((index: number) => {
+  const selectAudio = useCallback((listIndex: number) => {
     const video = videoRef.current
+    setControls(prev => ({ ...prev, selectedAudioIndex: listIndex }))
     if (!video) return
 
-    const audioTracks = (video as unknown as { audioTracks?: { length: number; [i: number]: { enabled: boolean } } }).audioTracks
-    if (!audioTracks) return
+    // HTML5 AudioTrackList is 0..N-1. Kinopub audios[] can be longer / use
+    // non-sequential MPEG indices (1,2,3,10…) — never use those as array indexes.
+    const audioTracks = (video as unknown as {
+      audioTracks?: { length: number; [i: number]: { enabled: boolean; language?: string } }
+    }).audioTracks
+    if (!audioTracks || audioTracks.length === 0) return
+
+    let trackIndex = listIndex
+    if (trackIndex < 0 || trackIndex >= audioTracks.length) {
+      const audio = audios[listIndex]
+      const lang = audio?.lang?.toLowerCase().slice(0, 2)
+      if (lang) {
+        const sameLangList = audios
+          .map((a, i) => ({ a, i }))
+          .filter(({ a }) => a.lang?.toLowerCase().startsWith(lang))
+        const ordinal = sameLangList.findIndex(({ i }) => i === listIndex)
+        const matched: number[] = []
+        for (let t = 0; t < audioTracks.length; t++) {
+          const trackLang = (audioTracks[t].language || '').toLowerCase()
+          if (trackLang.startsWith(lang)) matched.push(t)
+        }
+        if (ordinal >= 0 && ordinal < matched.length) {
+          trackIndex = matched[ordinal]
+        } else if (matched.length === 1) {
+          trackIndex = matched[0]
+        } else {
+          trackIndex = Math.min(listIndex, audioTracks.length - 1)
+        }
+      } else {
+        trackIndex = Math.min(listIndex, audioTracks.length - 1)
+      }
+    }
+
+    trackIndex = Math.max(0, Math.min(trackIndex, audioTracks.length - 1))
 
     for (let i = 0; i < audioTracks.length; i++) {
-      audioTracks[i].enabled = i === index
+      audioTracks[i].enabled = i === trackIndex
     }
-    setControls(prev => ({ ...prev, selectedAudioIndex: index }))
-  }, [])
+
+    // Some webOS builds leave all tracks off → total silence
+    let anyEnabled = false
+    for (let i = 0; i < audioTracks.length; i++) {
+      if (audioTracks[i].enabled) {
+        anyEnabled = true
+        break
+      }
+    }
+    if (!anyEnabled) {
+      audioTracks[0].enabled = true
+    }
+  }, [audios])
 
   const selectSubtitle = useCallback((index: number) => {
     const video = videoRef.current
+    setControls(prev => ({ ...prev, selectedSubtitleIndex: index }))
     if (!video) return
 
     const tracks = video.textTracks
     for (let i = 0; i < tracks.length; i++) {
       tracks[i].mode = i === index ? 'showing' : 'hidden'
     }
-    setControls(prev => ({ ...prev, selectedSubtitleIndex: index }))
   }, [])
+
+  const openAudioPanel = useCallback(() => {
+    if (audios.length === 0) return
+    setControls(prev => ({ ...prev, visible: true, activePanel: 'audio' }))
+    showControls()
+  }, [audios.length, showControls])
+
+  const openSubtitlesPanel = useCallback(() => {
+    if (convertedSubs.length === 0) return
+    setControls(prev => ({ ...prev, visible: true, activePanel: 'subtitles' }))
+    showControls()
+  }, [convertedSubs.length, showControls])
 
   useEffect(() => {
     const video = videoRef.current
@@ -428,15 +484,11 @@ export function PlayerScreen({ url, title, audios = [], subtitles = [], startTim
           e.preventDefault()
           break
         case KEY_CODES.RED:
-          if (audios.length > 0) {
-            setControls(prev => ({ ...prev, activePanel: 'audio' }))
-          }
+          openAudioPanel()
           e.preventDefault()
           break
         case KEY_CODES.GREEN:
-          if (convertedSubs.length > 0) {
-            setControls(prev => ({ ...prev, activePanel: 'subtitles' }))
-          }
+          openSubtitlesPanel()
           e.preventDefault()
           break
       }
@@ -444,7 +496,7 @@ export function PlayerScreen({ url, title, audios = [], subtitles = [], startTim
 
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [controls, audios, convertedSubs, togglePlay, seek, selectAudio, selectSubtitle, showControls, onBack, flushTime])
+  }, [controls, audios, convertedSubs, togglePlay, seek, selectAudio, selectSubtitle, showControls, onBack, flushTime, openAudioPanel, openSubtitlesPanel])
 
   useEffect(() => {
     showControls()
@@ -543,51 +595,83 @@ export function PlayerScreen({ url, title, audios = [], subtitles = [], startTim
               </button>
               <div class="player-hints">
                 {audios.length > 0 && (
-                  <span class="player-hint">
+                  <button
+                    type="button"
+                    class="player-hint player-hint-button"
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      openAudioPanel()
+                    }}
+                  >
                     <span class="player-hint-key red">●</span> {t.audio}
-                  </span>
+                  </button>
                 )}
                 {convertedSubs.length > 0 && (
-                  <span class="player-hint">
+                  <button
+                    type="button"
+                    class="player-hint player-hint-button"
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      openSubtitlesPanel()
+                    }}
+                  >
                     <span class="player-hint-key green">●</span> {t.subtitles}
-                  </span>
+                  </button>
                 )}
               </div>
             </div>
           </div>
 
           {controls.activePanel === 'audio' && (
-            <div class="player-panel">
+            <div class="player-panel" onClick={(event) => event.stopPropagation()}>
               <h2 class="player-panel-title">{t.audio}</h2>
               <div class="player-panel-list">
                 {audios.map((audio, idx) => (
-                  <div
+                  <button
+                    type="button"
                     key={audio.id}
                     class={`player-panel-item ${idx === controls.selectedAudioIndex ? 'selected' : ''}`}
+                    onMouseEnter={() => showControls()}
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      selectAudio(idx)
+                    }}
                   >
                     {audio.author?.title || audio.type?.title || audio.lang}
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>
           )}
 
           {controls.activePanel === 'subtitles' && (
-            <div class="player-panel">
+            <div class="player-panel" onClick={(event) => event.stopPropagation()}>
               <h2 class="player-panel-title">{t.subtitles}</h2>
               <div class="player-panel-list">
-                <div
+                <button
+                  type="button"
                   class={`player-panel-item ${controls.selectedSubtitleIndex === -1 ? 'selected' : ''}`}
+                  onMouseEnter={() => showControls()}
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    selectSubtitle(-1)
+                  }}
                 >
                   {t.subtitlesOff}
-                </div>
+                </button>
                 {convertedSubs.map((sub, idx) => (
-                  <div
+                  <button
+                    type="button"
                     key={sub.lang}
                     class={`player-panel-item ${idx === controls.selectedSubtitleIndex ? 'selected' : ''}`}
+                    onMouseEnter={() => showControls()}
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      selectSubtitle(idx)
+                    }}
                   >
                     {sub.lang.toUpperCase()}
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>

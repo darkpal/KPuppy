@@ -34,38 +34,52 @@ interface RowConfig {
   isWatching?: boolean
 }
 
-function getLastMonthUnix(): number {
-  const date = new Date()
-  date.setMonth(date.getMonth() - 1)
-  return Math.floor(date.getTime() / 1000)
-}
-
 function createHomeRowConfigs(): RowConfig[] {
-  const lastMonth = getLastMonthUnix()
-
+  // Match Kinopub website index links:
+  // /movie?order=views&period=month, /movie?order=added&period=all, etc.
+  // API: sort views-/created-/watchers- + period
   return [
     { id: 'watching', titleKey: 'categoryContinueWatching', isWatching: true },
     {
       id: 'popular-movies',
       titleKey: 'popularMovies',
-      params: {
-        type: 'movie',
-        sort: 'views-',
-        perpage: 20,
-        conditions: [`created>=${lastMonth}`]
-      }
+      params: { type: 'movie', sort: 'views-', period: 'month', page: 0, perpage: 20 }
     },
-    { id: 'new-movies', titleKey: 'newMovies', params: { type: 'movie', sort: 'created-', perpage: 20 } },
+    {
+      id: 'new-movies',
+      titleKey: 'newMovies',
+      params: { type: 'movie', sort: 'created-', period: 'all', page: 0, perpage: 20 }
+    },
     {
       id: 'popular-series',
       titleKey: 'popularSeries',
-      params: { type: 'serial', sort: 'watchers-', perpage: 20 }
+      params: { type: 'serial', sort: 'watchers-', period: 'all', page: 0, perpage: 20 }
     },
-    { id: 'new-series', titleKey: 'newSeries', params: { type: 'serial', sort: 'created-', perpage: 20 } },
-    { id: 'new-concerts', titleKey: 'newConcerts', params: { type: 'concert', sort: 'created-', perpage: 20 } },
-    { id: 'new-docs', titleKey: 'newDocs', params: { type: 'documovie', sort: 'created-', perpage: 20 } },
-    { id: 'new-docuseries', titleKey: 'newDocuseries', params: { type: 'docuserial', sort: 'created-', perpage: 20 } },
-    { id: 'new-tvshows', titleKey: 'newTvShows', params: { type: 'tvshow', sort: 'created-', perpage: 20 } },
+    {
+      id: 'new-series',
+      titleKey: 'newSeries',
+      params: { type: 'serial', sort: 'created-', period: 'all', page: 0, perpage: 20 }
+    },
+    {
+      id: 'new-concerts',
+      titleKey: 'newConcerts',
+      params: { type: 'concert', sort: 'created-', period: 'all', page: 0, perpage: 20 }
+    },
+    {
+      id: 'new-docs',
+      titleKey: 'newDocs',
+      params: { type: 'documovie', sort: 'created-', period: 'all', page: 0, perpage: 20 }
+    },
+    {
+      id: 'new-docuseries',
+      titleKey: 'newDocuseries',
+      params: { type: 'docuserial', sort: 'created-', period: 'all', page: 0, perpage: 20 }
+    },
+    {
+      id: 'new-tvshows',
+      titleKey: 'newTvShows',
+      params: { type: 'tvshow', sort: 'created-', period: 'all', page: 0, perpage: 20 }
+    },
   ]
 }
 

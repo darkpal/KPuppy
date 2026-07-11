@@ -185,13 +185,15 @@ export interface ItemsParams {
     | 'year-'
     | 'title'
     | 'title-'
+  /** Kinopub web: period=month|week|day|all (e.g. /movie?order=views&period=month) */
+  period?: 'day' | 'week' | 'month' | 'year' | 'all'
   page?: number
   perpage?: number
   genre?: number
   country?: number
   year?: string
   quality?: '4k'
-  /** e.g. ["created>=1710000000"] — same as Kinopub web/home */
+  /** e.g. ["created>=1710000000"] */
   conditions?: string[]
 }
 
@@ -437,6 +439,7 @@ export async function getItems(params: ItemsParams = {}): Promise<ItemsResponse>
     'items',
     params.type,
     params.sort,
+    params.period,
     params.page,
     params.perpage,
     params.genre,
@@ -449,14 +452,15 @@ export async function getItems(params: ItemsParams = {}): Promise<ItemsResponse>
   const searchParams = new URLSearchParams()
   if (params.type) searchParams.set('type', params.type)
   if (params.sort) searchParams.set('sort', params.sort)
-  if (params.page) searchParams.set('page', params.page.toString())
+  if (params.period) searchParams.set('period', params.period)
+  if (params.page !== undefined) searchParams.set('page', params.page.toString())
   if (params.perpage) searchParams.set('perpage', params.perpage.toString())
   if (params.genre) searchParams.set('genre', params.genre.toString())
   if (params.country) searchParams.set('country', params.country.toString())
   if (params.year) searchParams.set('year', params.year)
   if (params.conditions) {
     params.conditions.forEach((condition, index) => {
-      searchParams.set(`conditions[${index}]`, condition)
+      searchParams.append(`conditions[${index}]`, condition)
     })
   }
 
@@ -480,6 +484,56 @@ export async function getItems(params: ItemsParams = {}): Promise<ItemsResponse>
 
   setCache(cacheKey, result)
   return result
+}
+
+async function getItemsShortcut(
+  path: 'popular' | 'fresh' | 'hot',
+  type?: ItemsParams['type'],
+  page: number = 0,
+  perpage: number = 20
+): Promise<ItemsResponse> {
+  const cacheKey = createCacheKey('items', path, type, page, perpage)
+  const cached = getCached<ItemsResponse>(cacheKey)
+  if (cached) return cached
+
+  const searchParams = new URLSearchParams()
+  if (type) searchParams.set('type', type)
+  searchParams.set('page', page.toString())
+  searchParams.set('perpage', perpage.toString())
+
+  const response = await authFetch(`${BASE_URL}/v1/items/${path}?${searchParams}`)
+
+  if (!response.ok) {
+    throw new ApiError(`Failed to fetch ${path} items`, response.status)
+  }
+
+  const data = await response.json()
+  const result: ItemsResponse = {
+    items: (data.items || []).map(mapToMovieItem),
+    pagination: {
+      current: data.pagination?.current ?? 0,
+      total: data.pagination?.total ?? 0,
+      totalItems: data.pagination?.total_items ?? 0,
+      perpage: data.pagination?.perpage ?? perpage
+    }
+  }
+
+  setCache(cacheKey, result)
+  return result
+}
+
+/** Shortcut used by Kinopub web for "Популярные ..." */
+export function getPopularItems(type?: ItemsParams['type'], perpage = 20): Promise<ItemsResponse> {
+  return getItemsShortcut('popular', type, 0, perpage)
+}
+
+/** Shortcut used by Kinopub web for "Новые/свежие ..." */
+export function getFreshItems(type?: ItemsParams['type'], perpage = 20): Promise<ItemsResponse> {
+  return getItemsShortcut('fresh', type, 0, perpage)
+}
+
+export function getHotItems(type?: ItemsParams['type'], perpage = 20): Promise<ItemsResponse> {
+  return getItemsShortcut('hot', type, 0, perpage)
 }
 
 export interface SearchParams {
