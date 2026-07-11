@@ -11,6 +11,8 @@ interface I18nContextValue {
 
 const STORAGE_KEY = 'kpuppy_language'
 
+const DEFAULT_LANGUAGE: Language = 'ru'
+
 function getStoredLanguage(): Language {
   try {
     const stored = localStorage.getItem(STORAGE_KEY)
@@ -20,7 +22,7 @@ function getStoredLanguage(): Language {
   } catch (err) {
     if (import.meta.env.DEV) console.warn('Failed to read stored language:', err)
   }
-  return 'en'
+  return DEFAULT_LANGUAGE
 }
 
 function storeLanguage(lang: Language): void {

@@ -23,20 +23,21 @@ function TestComponent() {
 
 describe('I18nContext', () => {
   beforeEach(() => {
-    localStorage.clear()
+    localStorage.removeItem('kpuppy_language')
+    localStorage.removeItem('kpuppy_device_defaults_applied')
   })
 
   describe('I18nProvider', () => {
-    it('provides default English language when no stored preference', () => {
+    it('provides default Russian language when no stored preference', () => {
       render(
         <I18nProvider>
           <TestComponent />
         </I18nProvider>
       )
 
-      expect(screen.getByTestId('language').textContent).toBe('en')
+      expect(screen.getByTestId('language').textContent).toBe('ru')
       expect(screen.getByTestId('app-name').textContent).toBe('KPuppy')
-      expect(screen.getByTestId('menu-home').textContent).toBe('Home')
+      expect(screen.getByTestId('menu-home').textContent).toBe('Главная')
     })
 
     it('loads stored language preference', () => {
@@ -62,7 +63,7 @@ describe('I18nContext', () => {
       expect(screen.getByTestId('languages-count').textContent).toBe('3')
     })
 
-    it('falls back to English for invalid stored language', () => {
+    it('falls back to Russian for invalid stored language', () => {
       localStorage.setItem(STORAGE_KEY, 'invalid')
 
       render(
@@ -71,7 +72,7 @@ describe('I18nContext', () => {
         </I18nProvider>
       )
 
-      expect(screen.getByTestId('language').textContent).toBe('en')
+      expect(screen.getByTestId('language').textContent).toBe('ru')
     })
   })
 

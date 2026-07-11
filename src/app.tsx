@@ -19,6 +19,7 @@ import { KEY_CODES } from './hooks'
 import { ScreenManager } from './components/ScreenManager'
 import { isAuthenticated, clearTokens, getTokens, getLocalSettings, saveReturnTo, getReturnTo, clearReturnTo, getContentTypesCache, saveContentTypesCache, ReturnToState } from './storage'
 import { refreshAccessToken, getItem, setOnAuthError, getDeviceInfo, markTime, getWatchingProgress, getContentTypes, registerDevice, Audio, Subtitle } from './api/kinopub'
+import { applyPreferredDeviceDefaultsOnce } from './preferredDefaults'
 import { saveTokens } from './storage'
 import { launchNativePlayer, getStreamUrl } from './webos/player'
 import { platformBack } from './webos/service'
@@ -147,9 +148,14 @@ export function App() {
   useEffect(() => {
     if (!state.authenticated) return
 
-    registerDevice().catch(err => {
-      if (import.meta.env.DEV) console.error('registerDevice failed:', err)
-    })
+    registerDevice()
+      .catch(err => {
+        if (import.meta.env.DEV) console.error('registerDevice failed:', err)
+      })
+      .then(() => applyPreferredDeviceDefaultsOnce())
+      .catch(err => {
+        if (import.meta.env.DEV) console.error('applyPreferredDeviceDefaultsOnce failed:', err)
+      })
   }, [state.authenticated])
 
   useEffect(() => {

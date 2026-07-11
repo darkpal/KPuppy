@@ -3,7 +3,19 @@ import { saveTokens, getTokens, clearTokens, isAuthenticated, Tokens } from '../
 
 describe('storage', () => {
   beforeEach(() => {
-    localStorage.clear()
+    localStorage.removeItem('kpuppy_tokens')
+    localStorage.removeItem('kpuppy_settings')
+  })
+
+  describe('getLocalSettings defaults', () => {
+    it('defaults to builtin player, auto quality, continue watching on', async () => {
+      const { getLocalSettings } = await import('../src/storage')
+      expect(getLocalSettings()).toEqual({
+        defaultQuality: 'auto',
+        playerType: 'builtin',
+        showContinueWatching: true
+      })
+    })
   })
 
   describe('saveTokens', () => {

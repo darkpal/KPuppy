@@ -20,7 +20,7 @@ export interface LocalSettings {
 
 const DEFAULT_SETTINGS: LocalSettings = {
   defaultQuality: 'auto',
-  playerType: 'native',
+  playerType: 'builtin',
   showContinueWatching: true
 }
 
