@@ -338,7 +338,10 @@ export function PlayerScreen({ url, title, audios = [], subtitles = [], startTim
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      showControls()
+      const isDownKey = e.keyCode === KEY_CODES.DOWN
+      if (!isDownKey) {
+        showControls()
+      }
 
       const mediaKey = e.key
       if (
@@ -409,11 +412,14 @@ export function PlayerScreen({ url, title, audios = [], subtitles = [], startTim
           e.preventDefault()
           break
         case KEY_CODES.UP:
-          seek(60)
+          showControls()
           e.preventDefault()
           break
         case KEY_CODES.DOWN:
-          seek(-60)
+          if (controlsTimeoutRef.current) {
+            clearTimeout(controlsTimeoutRef.current)
+          }
+          setControls(prev => ({ ...prev, visible: false, activePanel: 'none' }))
           e.preventDefault()
           break
         case KEY_CODES.BACK:
