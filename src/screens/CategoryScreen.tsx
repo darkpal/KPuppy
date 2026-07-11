@@ -15,6 +15,7 @@ interface CategoryScreenProps {
   isActive: boolean
   initialFocusIndex?: number
   onFocusChange?: (index: number) => void
+  initialGenreId?: number | null
 }
 
 const CATEGORY_PARAMS: Record<string, ItemsParams> = {
@@ -30,7 +31,7 @@ const ITEMS_PER_PAGE = 48
 
 type FocusArea = 'filter' | 'grid'
 
-export function CategoryScreen({ categoryId, title, onSelectItem, onNavigateToMenu, isActive, initialFocusIndex = 0, onFocusChange }: CategoryScreenProps) {
+export function CategoryScreen({ categoryId, title, onSelectItem, onNavigateToMenu, isActive, initialFocusIndex = 0, onFocusChange, initialGenreId = null }: CategoryScreenProps) {
   const { t } = useI18n()
   const [items, setItems] = useState<MovieItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -46,7 +47,7 @@ export function CategoryScreen({ categoryId, title, onSelectItem, onNavigateToMe
 
   const [genres, setGenres] = useState<Genre[]>([])
   const [countries, setCountries] = useState<Country[]>([])
-  const [selectedGenre, setSelectedGenre] = useState<number | null>(null)
+  const [selectedGenre, setSelectedGenre] = useState<number | null>(initialGenreId)
   const [selectedCountry, setSelectedCountry] = useState<number | null>(null)
   const [focusArea, setFocusArea] = useState<FocusArea>('grid')
   const [filterFocusIndex, setFilterFocusIndex] = useState(0)
@@ -132,7 +133,7 @@ export function CategoryScreen({ categoryId, title, onSelectItem, onNavigateToMe
     setCurrentPage(1)
     if (categoryChanged) {
       setFocusedIndex(0)
-      setSelectedGenre(null)
+      setSelectedGenre(initialGenreId ?? null)
       setSelectedCountry(null)
       setFocusArea('grid')
     } else {
@@ -141,7 +142,7 @@ export function CategoryScreen({ categoryId, title, onSelectItem, onNavigateToMe
     }
     setHasMore(true)
     loadItems(1, false)
-  }, [categoryId, selectedGenre, selectedCountry, loadItems])
+  }, [categoryId, selectedGenre, selectedCountry, loadItems, initialGenreId])
 
   const loadMore = useCallback(() => {
     if (!loadingMore && hasMore) {

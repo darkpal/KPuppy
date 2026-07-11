@@ -69,6 +69,7 @@ export function NewEpisodesScreen({ onSelectItem, onNavigateToMenu, isActive }: 
           rating: 0,
           imdbRating: 0,
           kinopoiskRating: 0,
+          ratingPercentage: 0,
           views: 0
         }}
         focused={focused}

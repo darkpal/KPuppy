@@ -20,11 +20,13 @@ interface ItemScreenProps {
   onPlayTrailer: (url: string, title: string) => void
   onSelectSeries: (seriesId: number) => void
   onSelectItem: (itemId: number) => void
+  onSelectGenre?: (genreId: number, itemType: string) => void
+  onSelectActor?: (name: string) => void
   onNavigateToMenu: () => void
   isActive: boolean
 }
 
-type FocusArea = 'play' | 'watching' | 'watchlist' | 'trailer' | 'seasons' | 'qualitySelect' | 'similar'
+type FocusArea = 'play' | 'watching' | 'watchlist' | 'trailer' | 'seasons' | 'qualitySelect' | 'genres' | 'cast' | 'similar'
 
 const QUALITY_ORDER = ['2160p', '1080p', '720p', '480p']
 
@@ -42,6 +44,7 @@ interface ItemScreenState {
   dropdownFocusIndex: number
   similarItems: MovieItem[]
   similarFocusIndex: number
+  metaFocusIndex: number
   watchlistLoading: boolean
   showFolderDialog: boolean
   folders: BookmarkFolder[]
@@ -61,6 +64,7 @@ type ItemScreenAction =
   | { type: 'SET_SELECTED_QUALITY'; quality: string }
   | { type: 'SET_DROPDOWN_FOCUS_INDEX'; index: number }
   | { type: 'SET_SIMILAR_FOCUS_INDEX'; index: number }
+  | { type: 'SET_META_FOCUS_INDEX'; index: number }
   | { type: 'SET_FOLDER_FOCUS_INDEX'; index: number }
   | { type: 'OPEN_FOLDER_DIALOG'; folders: BookmarkFolder[]; itemFolderIds: number[] }
   | { type: 'SET_FOLDER_STATE'; folders: BookmarkFolder[]; itemFolderIds: number[] }
@@ -78,6 +82,7 @@ const initialState: ItemScreenState = {
   dropdownFocusIndex: 0,
   similarItems: [],
   similarFocusIndex: 0,
+  metaFocusIndex: 0,
   watchlistLoading: false,
   showFolderDialog: false,
   folders: [],
@@ -107,6 +112,8 @@ function itemScreenReducer(state: ItemScreenState, action: ItemScreenAction): It
       return { ...state, dropdownFocusIndex: action.index }
     case 'SET_SIMILAR_FOCUS_INDEX':
       return { ...state, similarFocusIndex: action.index }
+    case 'SET_META_FOCUS_INDEX':
+      return { ...state, metaFocusIndex: action.index }
     case 'SET_FOLDER_FOCUS_INDEX':
       return { ...state, folderFocusIndex: action.index }
     case 'OPEN_FOLDER_DIALOG':
@@ -126,10 +133,10 @@ function itemScreenReducer(state: ItemScreenState, action: ItemScreenAction): It
   }
 }
 
-export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeries, onSelectItem, onNavigateToMenu, isActive }: ItemScreenProps) {
+export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeries, onSelectItem, onSelectGenre, onSelectActor, onNavigateToMenu, isActive }: ItemScreenProps) {
   const { t } = useI18n()
   const [state, dispatch] = useReducer(itemScreenReducer, initialState)
-  const { item, loading, error, focusArea, selectedQuality, dropdownFocusIndex, similarItems, similarFocusIndex, watchlistLoading, showFolderDialog, folders, itemFolderIds, folderFocusIndex, isWatching, watchingToggleLoading } = state
+  const { item, loading, error, focusArea, selectedQuality, dropdownFocusIndex, similarItems, similarFocusIndex, metaFocusIndex, watchlistLoading, showFolderDialog, folders, itemFolderIds, folderFocusIndex, isWatching, watchingToggleLoading } = state
 
   useEffect(() => {
     async function loadItem() {
@@ -249,11 +256,22 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
     }
   }, [folders, folderFocusIndex, itemFolderIds, itemId, watchlistLoading])
 
+  const genres = item?.genres?.slice(0, 8) || []
+  const cast = item?.actors?.slice(0, 8) || []
+
   const handlers = useMemo(() => {
     const hasSeries = item?.seasons && item.seasons.length > 0
     const hasSimilar = similarItems.length > 0
     const hasTrailer = !!item?.trailer?.url
+    const hasGenres = genres.length > 0
+    const hasCast = cast.length > 0
     const primaryButton: FocusArea = hasSeries ? 'seasons' : 'play'
+
+    const focusBelowActions = (): FocusArea => {
+      if (hasGenres) return 'genres'
+      if (hasCast) return 'cast'
+      return 'similar'
+    }
 
     if (showFolderDialog) {
       return {
@@ -277,6 +295,66 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
       }
     }
 
+    if (focusArea === 'genres') {
+      return {
+        onBack,
+        onLeft: () => {
+          if (metaFocusIndex > 0) {
+            dispatch({ type: 'SET_META_FOCUS_INDEX', index: metaFocusIndex - 1 })
+          } else {
+            onNavigateToMenu()
+          }
+        },
+        onRight: () => dispatch({ type: 'SET_META_FOCUS_INDEX', index: Math.min(genres.length - 1, metaFocusIndex + 1) }),
+        onUp: () => dispatch({ type: 'SET_FOCUS_AREA', area: primaryButton }),
+        onDown: () => {
+          if (hasCast) {
+            dispatch({ type: 'SET_FOCUS_AREA', area: 'cast' })
+            dispatch({ type: 'SET_META_FOCUS_INDEX', index: 0 })
+          } else if (hasSimilar) {
+            dispatch({ type: 'SET_FOCUS_AREA', area: 'similar' })
+            dispatch({ type: 'SET_SIMILAR_FOCUS_INDEX', index: 0 })
+          }
+        },
+        onEnter: () => {
+          const genre = genres[metaFocusIndex]
+          if (genre && item) onSelectGenre?.(genre.id, item.type)
+        }
+      }
+    }
+
+    if (focusArea === 'cast') {
+      return {
+        onBack,
+        onLeft: () => {
+          if (metaFocusIndex > 0) {
+            dispatch({ type: 'SET_META_FOCUS_INDEX', index: metaFocusIndex - 1 })
+          } else {
+            onNavigateToMenu()
+          }
+        },
+        onRight: () => dispatch({ type: 'SET_META_FOCUS_INDEX', index: Math.min(cast.length - 1, metaFocusIndex + 1) }),
+        onUp: () => {
+          if (hasGenres) {
+            dispatch({ type: 'SET_FOCUS_AREA', area: 'genres' })
+            dispatch({ type: 'SET_META_FOCUS_INDEX', index: 0 })
+          } else {
+            dispatch({ type: 'SET_FOCUS_AREA', area: primaryButton })
+          }
+        },
+        onDown: () => {
+          if (hasSimilar) {
+            dispatch({ type: 'SET_FOCUS_AREA', area: 'similar' })
+            dispatch({ type: 'SET_SIMILAR_FOCUS_INDEX', index: 0 })
+          }
+        },
+        onEnter: () => {
+          const actor = cast[metaFocusIndex]
+          if (actor) onSelectActor?.(actor.name)
+        }
+      }
+    }
+
     if (focusArea === 'similar') {
       return {
         onBack,
@@ -288,7 +366,17 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
           }
         },
         onRight: () => dispatch({ type: 'SET_SIMILAR_FOCUS_INDEX', index: Math.min(similarItems.length - 1, similarFocusIndex + 1) }),
-        onUp: () => dispatch({ type: 'SET_FOCUS_AREA', area: primaryButton }),
+        onUp: () => {
+          if (hasCast) {
+            dispatch({ type: 'SET_FOCUS_AREA', area: 'cast' })
+            dispatch({ type: 'SET_META_FOCUS_INDEX', index: 0 })
+          } else if (hasGenres) {
+            dispatch({ type: 'SET_FOCUS_AREA', area: 'genres' })
+            dispatch({ type: 'SET_META_FOCUS_INDEX', index: 0 })
+          } else {
+            dispatch({ type: 'SET_FOCUS_AREA', area: primaryButton })
+          }
+        },
         onEnter: () => {
           const selectedItem = similarItems[similarFocusIndex]
           if (selectedItem) {
@@ -308,9 +396,14 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
         }
       },
       onDown: () => {
-        if (hasSimilar) {
-          dispatch({ type: 'SET_FOCUS_AREA', area: 'similar' })
-          dispatch({ type: 'SET_SIMILAR_FOCUS_INDEX', index: 0 })
+        if (hasGenres || hasCast || hasSimilar) {
+          const next = focusBelowActions()
+          dispatch({ type: 'SET_FOCUS_AREA', area: next })
+          if (next === 'similar') {
+            dispatch({ type: 'SET_SIMILAR_FOCUS_INDEX', index: 0 })
+          } else {
+            dispatch({ type: 'SET_META_FOCUS_INDEX', index: 0 })
+          }
         }
       },
       onLeft: () => {
@@ -348,7 +441,7 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
       },
       onYellow: handleOpenFolderDialog
     }
-  }, [item, focusArea, availableQualities, dropdownFocusIndex, selectedQuality, onBack, onNavigateToMenu, handlePlayOrSelect, handleOpenFolderDialog, handleToggleFolder, handleToggleWatching, similarItems, similarFocusIndex, onSelectItem, showFolderDialog, folders, folderFocusIndex, onPlayTrailer, t, itemId])
+  }, [item, focusArea, availableQualities, dropdownFocusIndex, selectedQuality, onBack, onNavigateToMenu, handlePlayOrSelect, handleOpenFolderDialog, handleToggleFolder, handleToggleWatching, similarItems, similarFocusIndex, metaFocusIndex, genres, cast, onSelectItem, onSelectGenre, onSelectActor, showFolderDialog, folders, folderFocusIndex, onPlayTrailer, t, itemId])
 
   useKeyboardNavigation(handlers, isActive && !!item)
 
@@ -386,7 +479,6 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
   const kpRating = item.kinopoiskRating
   const imdbRating = item.imdbRating
   const directors = item.directors?.slice(0, 3).map(d => d.name).join(', ')
-  const actors = item.actors?.slice(0, 6).map(a => a.name).join(', ')
   const countries = item.countries?.slice(0, 3).map(c => c.title).join(', ')
 
   return (
@@ -419,10 +511,21 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
             <span class="item-type">{item.type}</span>
           </div>
 
-          {item.genres && item.genres.length > 0 && (
+          {genres.length > 0 && (
             <div class="item-genres">
-              {item.genres.slice(0, 5).map(genre => (
-                <span key={genre.id} class="item-genre">{genre.title}</span>
+              {genres.map((genre, index) => (
+                <button
+                  key={genre.id}
+                  type="button"
+                  class={`item-chip ${focusArea === 'genres' && metaFocusIndex === index ? 'focused' : ''}`}
+                  onMouseEnter={() => {
+                    dispatch({ type: 'SET_FOCUS_AREA', area: 'genres' })
+                    dispatch({ type: 'SET_META_FOCUS_INDEX', index })
+                  }}
+                  onClick={() => onSelectGenre?.(genre.id, item.type)}
+                >
+                  {genre.title}
+                </button>
               ))}
             </div>
           )}
@@ -530,9 +633,15 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
             <ItemDetails
               countries={countries}
               directors={directors}
-              actors={actors}
+              actors={cast}
               audios={audios}
               subtitles={subtitles}
+              focusedActorIndex={focusArea === 'cast' ? metaFocusIndex : null}
+              onHoverActor={(index) => {
+                dispatch({ type: 'SET_FOCUS_AREA', area: 'cast' })
+                dispatch({ type: 'SET_META_FOCUS_INDEX', index })
+              }}
+              onSelectActor={onSelectActor}
             />
           </div>
 

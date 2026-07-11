@@ -48,6 +48,7 @@ export interface MovieItem {
   rating: number
   imdbRating: number
   kinopoiskRating: number
+  ratingPercentage: number
   views: number
 }
 
@@ -247,6 +248,7 @@ function mapToMovieItem(item: Record<string, unknown>): MovieItem {
     rating: (item.rating || 0) as number,
     imdbRating: (item.imdb_rating || 0) as number,
     kinopoiskRating: (item.kinopoisk_rating || 0) as number,
+    ratingPercentage: (item.rating_percentage || 0) as number,
     views: (item.views || 0) as number
   }
 }
@@ -797,6 +799,7 @@ export async function getItem(id: number): Promise<ItemDetails> {
     rating: item.rating,
     imdbRating: item.imdb_rating,
     kinopoiskRating: item.kinopoisk_rating,
+    ratingPercentage: item.rating_percentage || 0,
     views: item.views,
     directors,
     actors,

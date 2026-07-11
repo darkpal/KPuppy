@@ -28,6 +28,7 @@ const mockHistoryItem = {
   rating: 8,
   imdbRating: 7.5,
   kinopoiskRating: 8.2,
+  ratingPercentage: 0,
   views: 1000,
   watchedAt: 1700000000,
 }

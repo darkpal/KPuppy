@@ -105,18 +105,45 @@
 .item-genres {
   display: flex;
   flex-wrap: wrap;
+  gap: 10px;
   margin-bottom: 16px;
 }
 
-.item-genre {
-  font-size: 22px;
-  color: #b3b3b3;
+.item-chip {
+  appearance: none;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  background: transparent;
+  color: #e8e8e8;
+  font-size: 20px;
+  line-height: 1.2;
+  padding: 8px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-family: inherit;
 }
 
-.item-genre:not(:last-child)::after {
-  content: '•';
-  margin-left: 8px;
-  margin-right: 8px;
+.item-chip.focused,
+.item-chip:hover {
+  border-color: #ff2d95;
+  background: #ff2d95;
+  color: #ffffff;
+}
+
+.item-detail-cast {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.item-cast-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.item-cast-list .item-chip {
+  font-size: 18px;
+  padding: 6px 12px;
 }
 
 .item-two-columns {

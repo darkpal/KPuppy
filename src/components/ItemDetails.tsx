@@ -1,12 +1,15 @@
-import { Audio, Subtitle } from '../api/kinopub'
+import { Audio, Subtitle, Person } from '../api/kinopub'
 import { useI18n } from '../i18n'
 
 interface ItemDetailsProps {
   countries?: string
   directors?: string
-  actors?: string
+  actors?: Person[]
   audios: Audio[]
   subtitles: Subtitle[]
+  focusedActorIndex?: number | null
+  onHoverActor?: (index: number) => void
+  onSelectActor?: (name: string) => void
 }
 
 function formatAudioLabel(audio: Audio): string {
@@ -36,8 +39,18 @@ function formatSubtitleLabel(sub: Subtitle): string {
   return langNames[sub.lang] || sub.lang.toUpperCase()
 }
 
-export function ItemDetails({ countries, directors, actors, audios, subtitles }: ItemDetailsProps) {
+export function ItemDetails({
+  countries,
+  directors,
+  actors,
+  audios,
+  subtitles,
+  focusedActorIndex = null,
+  onHoverActor,
+  onSelectActor
+}: ItemDetailsProps) {
   const { t } = useI18n()
+  const visibleActors = actors?.slice(0, 8) || []
 
   return (
     <div class="item-column-right">
@@ -53,11 +66,23 @@ export function ItemDetails({ countries, directors, actors, audios, subtitles }:
           <span class="item-detail-value">{directors}</span>
         </p>
       )}
-      {actors && (
-        <p class="item-detail">
+      {visibleActors.length > 0 && (
+        <div class="item-detail item-detail-cast">
           <span class="item-detail-label">{t.cast}:</span>
-          <span class="item-detail-value">{actors}</span>
-        </p>
+          <div class="item-cast-list">
+            {visibleActors.map((actor, index) => (
+              <button
+                key={`${actor.id}-${actor.name}`}
+                type="button"
+                class={`item-chip ${focusedActorIndex === index ? 'focused' : ''}`}
+                onMouseEnter={() => onHoverActor?.(index)}
+                onClick={() => onSelectActor?.(actor.name)}
+              >
+                {actor.name}
+              </button>
+            ))}
+          </div>
+        </div>
       )}
       {audios.length > 0 && (
         <p class="item-detail">

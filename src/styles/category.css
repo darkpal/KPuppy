@@ -31,7 +31,19 @@
 
 .category-grid .movie-card {
   width: var(--card-width, 300px);
-  height: calc(var(--card-width, 300px) * 1.5);
+  height: auto;
+}
+
+.category-grid .movie-card-poster {
+  width: 100%;
+}
+
+.category-grid .movie-card-title {
+  font-size: 20px;
+}
+
+.category-grid .movie-card-title-secondary {
+  font-size: 15px;
 }
 
 .history-section-title {
@@ -43,20 +55,16 @@
 
 .history-series-grid .movie-card {
   width: var(--card-width, 280px);
-  height: calc(var(--card-width, 280px) * 0.5625);
+  height: auto;
 }
 
-.history-series-grid .movie-card-overlay {
-  padding-top: 24px;
+.history-series-grid .movie-card-poster {
+  aspect-ratio: 16 / 9;
 }
 
-.history-series-grid .movie-card-title {
-  font-size: 16px;
-}
 
-.history-series-grid .movie-card-title-secondary {
-  display: none;
-}
+
+
 
 .history-series-grid .movie-card-year {
   display: none;

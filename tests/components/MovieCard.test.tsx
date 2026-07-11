@@ -19,6 +19,7 @@ function createMockMovie(overrides?: Partial<MovieItem>): MovieItem {
     rating: 8,
     imdbRating: 7.5,
     kinopoiskRating: 8,
+    ratingPercentage: 82,
     views: 1000,
     ...overrides
   }
@@ -53,7 +54,7 @@ describe('MovieCard', () => {
 
       render(<MovieCard movie={movie} focused={false} />)
 
-      const img = screen.getByRole('img')
+      const img = screen.getByAltText(movie.title)
       expect(img.getAttribute('src')).toBe('medium.jpg')
     })
 
@@ -67,7 +68,7 @@ describe('MovieCard', () => {
 
       render(<MovieCard movie={movie} focused={false} />)
 
-      const img = screen.getByRole('img')
+      const img = screen.getByAltText(movie.title)
       expect(img.getAttribute('src')).toBe('big.jpg')
     })
 
@@ -80,8 +81,28 @@ describe('MovieCard', () => {
 
       render(<MovieCard movie={movie} focused={false} />)
 
-      const img = screen.getByRole('img')
+      const img = screen.getByAltText(movie.title)
       expect(img.getAttribute('src')).toBe('small.jpg')
+    })
+  })
+
+  describe('ratings', () => {
+    it('renders IMDb rating when present', () => {
+      const movie = createMockMovie({ imdbRating: 8.0, kinopoiskRating: 7.3, ratingPercentage: 82 })
+
+      render(<MovieCard movie={movie} focused={false} />)
+
+      expect(screen.getByText('8.0')).toBeDefined()
+      expect(screen.getByText('7.3')).toBeDefined()
+      expect(screen.getByText('82%')).toBeDefined()
+    })
+
+    it('hides ratings bar when all ratings are zero', () => {
+      const movie = createMockMovie({ imdbRating: 0, kinopoiskRating: 0, ratingPercentage: 0 })
+
+      const { container } = render(<MovieCard movie={movie} focused={false} />)
+
+      expect(container.querySelector('.movie-card-ratings')).toBeNull()
     })
   })
 
@@ -150,7 +171,7 @@ describe('MovieCard', () => {
 
       render(<MovieCard movie={movie} focused={false} onSelect={onSelect} />)
 
-      fireEvent.click(screen.getByRole('img').parentElement!)
+      fireEvent.click(screen.getByText('Test Movie').closest('.movie-card')!)
 
       expect(onSelect).toHaveBeenCalledTimes(1)
     })
@@ -161,7 +182,7 @@ describe('MovieCard', () => {
       render(<MovieCard movie={movie} focused={false} />)
 
       expect(() => {
-        fireEvent.click(screen.getByRole('img').parentElement!)
+        fireEvent.click(screen.getByText('Test Movie').closest('.movie-card')!)
       }).not.toThrow()
     })
   })

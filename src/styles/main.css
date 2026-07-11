@@ -55,15 +55,19 @@
 
 .movie-row .movie-card {
   width: 200px;
-  height: 300px;
+  height: auto;
+}
+
+.movie-row .movie-card-poster {
+  width: 200px;
 }
 
 .movie-row .movie-card-title {
-  font-size: 16px;
+  font-size: 20px;
 }
 
 .movie-row .movie-card-title-secondary {
-  font-size: 13px;
+  font-size: 15px;
 }
 
 .movie-row .movie-card-year {
@@ -74,10 +78,20 @@
   font-size: 13px;
 }
 
+.movie-row .movie-card-ratings {
+  font-size: 12px;
+  padding: 3px 5px;
+}
+
+.movie-row .movie-card-rating-icon {
+  width: 12px;
+  height: 12px;
+}
+
 .row-loading {
   display: flex;
   align-items: center;
-  height: 270px;
+  height: 360px;
   padding-left: 20px;
 }
 

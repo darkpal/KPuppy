@@ -13,17 +13,20 @@ interface SearchScreenProps {
   onSelectItem: (itemId: number) => void
   onNavigateToMenu: () => void
   isActive: boolean
+  initialQuery?: string
+  initialField?: 'title' | 'director' | 'actor'
 }
 
 type FocusArea = 'keyboard' | 'filter' | 'results'
 
 
-export function SearchScreen({ onBack, onSelectItem, onNavigateToMenu, isActive }: SearchScreenProps) {
+export function SearchScreen({ onBack, onSelectItem, onNavigateToMenu, isActive, initialQuery = '', initialField }: SearchScreenProps) {
   const { t } = useI18n()
-  const [query, setQuery] = useState('')
+  const [query, setQuery] = useState(initialQuery)
+  const [searchField, setSearchField] = useState<'title' | 'director' | 'actor' | undefined>(initialField)
   const [results, setResults] = useState<MovieItem[]>([])
   const [loading, setLoading] = useState(false)
-  const [focusArea, setFocusArea] = useState<FocusArea>('keyboard')
+  const [focusArea, setFocusArea] = useState<FocusArea>(initialQuery.trim().length >= 2 ? 'results' : 'keyboard')
   const [keyboardRow, setKeyboardRow] = useState(0)
   const [keyboardCol, setKeyboardCol] = useState(0)
   const [resultIndex, setResultIndex] = useState(0)
@@ -86,7 +89,8 @@ export function SearchScreen({ onBack, onSelectItem, onNavigateToMenu, isActive 
       const response = await searchItems({
         q: searchQuery,
         perpage: 48,
-        type: type || undefined
+        type: type || undefined,
+        field: searchField
       })
       setResults(response.items)
     } catch (err) {
@@ -95,7 +99,7 @@ export function SearchScreen({ onBack, onSelectItem, onNavigateToMenu, isActive 
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [searchField])
 
   useEffect(() => {
     if (searchTimeoutRef.current) {
@@ -134,6 +138,7 @@ export function SearchScreen({ onBack, onSelectItem, onNavigateToMenu, isActive 
       if (result.text === '') {
         setResults([])
         setHasSearched(false)
+        setSearchField(undefined)
       }
     }
   }, [query, results.length])
@@ -255,6 +260,7 @@ export function SearchScreen({ onBack, onSelectItem, onNavigateToMenu, isActive 
       <div class="search-header">
         <div class="search-icon">🔍</div>
         <div class="search-input-container">
+          {searchField === 'actor' && <span class="search-field-badge">👤</span>}
           <span class="search-query">{query}</span>
           <span class="search-cursor" />
         </div>

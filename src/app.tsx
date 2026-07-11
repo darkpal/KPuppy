@@ -60,6 +60,17 @@ interface AppState {
   returnToItemId: number | null
   returnToSeriesId: number | null
   player: PlayerState | null
+  searchPreset: { q: string; field: 'actor' | 'director' | 'title' } | null
+  categoryGenreId: number | null
+}
+
+const ITEM_TYPE_TO_CATEGORY: Record<string, string> = {
+  movie: 'movies',
+  serial: 'series',
+  concert: 'concerts',
+  '3D': '3d',
+  documovie: 'docs',
+  tvshow: 'tvshows',
 }
 
 const CATEGORY_TITLE_KEYS: Record<string, keyof Translations> = {
@@ -99,7 +110,9 @@ export function App() {
       screenFocus: {},
       returnToItemId: null,
       returnToSeriesId: null,
-      player: null
+      player: null,
+      searchPreset: null,
+      categoryGenreId: null
     }
 
     const savedReturnTo = getReturnTo()
@@ -217,7 +230,34 @@ export function App() {
       selectedMenuId: menuId,
       focusArea: 'content',
       itemId: null,
-      seriesId: null
+      seriesId: null,
+      searchPreset: null,
+      categoryGenreId: null
+    }))
+  }, [])
+
+  const handleSelectGenre = useCallback((genreId: number, itemType: string) => {
+    const categoryId = ITEM_TYPE_TO_CATEGORY[itemType] || 'movies'
+    setState(prev => ({
+      ...prev,
+      itemId: null,
+      seriesId: null,
+      selectedMenuId: categoryId,
+      categoryGenreId: genreId,
+      searchPreset: null,
+      focusArea: 'content'
+    }))
+  }, [])
+
+  const handleSelectActor = useCallback((name: string) => {
+    setState(prev => ({
+      ...prev,
+      itemId: null,
+      seriesId: null,
+      selectedMenuId: 'search',
+      searchPreset: { q: name, field: 'actor' },
+      categoryGenreId: null,
+      focusArea: 'content'
     }))
   }, [])
 
@@ -504,6 +544,8 @@ export function App() {
           onPlayTrailer={handlePlayTrailer}
           onSelectSeries={handleSelectSeries}
           onSelectItem={handleSelectItem}
+          onSelectGenre={handleSelectGenre}
+          onSelectActor={handleSelectActor}
           onNavigateToMenu={handleNavigateToMenu}
           isActive={isContentActive}
         />
@@ -528,10 +570,13 @@ export function App() {
       case 'search':
         return (
           <SearchScreen
+            key={state.searchPreset ? `actor-${state.searchPreset.q}` : 'search'}
             onBack={() => handleMenuSelect('home')}
             onSelectItem={handleSelectItem}
             onNavigateToMenu={handleNavigateToMenu}
             isActive={isContentActive}
+            initialQuery={state.searchPreset?.q}
+            initialField={state.searchPreset?.field}
           />
         )
       case 'settings':
@@ -599,6 +644,7 @@ export function App() {
         const categoryFocus = state.screenFocus[state.selectedMenuId] || { row: 0, col: 0 }
         return (
           <CategoryScreen
+            key={`${state.selectedMenuId}-${state.categoryGenreId ?? 'all'}`}
             categoryId={state.selectedMenuId}
             title={title}
             onSelectItem={handleSelectItem}
@@ -606,6 +652,7 @@ export function App() {
             isActive={isContentActive}
             initialFocusIndex={categoryFocus.row}
             onFocusChange={(index) => handleFocusChange(state.selectedMenuId, index, 0)}
+            initialGenreId={state.categoryGenreId}
           />
         )
       }
