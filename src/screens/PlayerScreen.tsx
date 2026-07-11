@@ -74,6 +74,7 @@ export function PlayerScreen({ url, title, audios = [], subtitles = [], startTim
     selectedSubtitleIndex: -1
   })
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [hoverPreview, setHoverPreview] = useState<{ percent: number; time: number } | null>(null)
 
   const flushTime = useCallback((time?: number) => {
     const video = videoRef.current
@@ -83,6 +84,14 @@ export function PlayerScreen({ url, title, audios = [], subtitles = [], startTim
       onTimeUpdate?.(value)
     }
   }, [onTimeUpdate])
+
+  const getRatioFromClientX = useCallback((clientX: number) => {
+    const bar = progressBarRef.current
+    if (!bar) return null
+    const rect = bar.getBoundingClientRect()
+    if (rect.width <= 0) return null
+    return Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
+  }, [])
 
   useEffect(() => {
     const blobUrls: string[] = []
@@ -144,11 +153,12 @@ export function PlayerScreen({ url, title, audios = [], subtitles = [], startTim
     const video = videoRef.current
     if (!video) return
     if (video.paused) {
-      video.play()
+      void video.play()
     } else {
       video.pause()
     }
-  }, [])
+    showControls()
+  }, [showControls])
 
   const seek = useCallback((delta: number) => {
     const video = videoRef.current
@@ -160,19 +170,28 @@ export function PlayerScreen({ url, title, audios = [], subtitles = [], startTim
 
   const seekToClientX = useCallback((clientX: number) => {
     const video = videoRef.current
-    const bar = progressBarRef.current
-    if (!video || !bar || !Number.isFinite(video.duration) || video.duration <= 0) return
+    const ratio = getRatioFromClientX(clientX)
+    if (!video || ratio === null || !Number.isFinite(video.duration) || video.duration <= 0) return
 
-    const rect = bar.getBoundingClientRect()
-    if (rect.width <= 0) return
-
-    const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
     const nextTime = ratio * video.duration
     video.currentTime = nextTime
     setCurrentTime(nextTime)
     flushTime(nextTime)
     showControls()
-  }, [flushTime, showControls])
+  }, [flushTime, getRatioFromClientX, showControls])
+
+  const updateHoverPreview = useCallback((clientX: number) => {
+    const video = videoRef.current
+    const ratio = getRatioFromClientX(clientX)
+    if (!video || ratio === null || !Number.isFinite(video.duration) || video.duration <= 0) {
+      setHoverPreview(null)
+      return
+    }
+    setHoverPreview({
+      percent: ratio * 100,
+      time: ratio * video.duration
+    })
+  }, [getRatioFromClientX])
 
   const handleProgressPointerDown = useCallback((event: JSX.TargetedPointerEvent<HTMLDivElement>) => {
     event.preventDefault()
@@ -180,12 +199,14 @@ export function PlayerScreen({ url, title, audios = [], subtitles = [], startTim
     isSeekingRef.current = true
     showControls()
     seekToClientX(event.clientX)
+    updateHoverPreview(event.clientX)
 
     const target = event.currentTarget
     target.setPointerCapture?.(event.pointerId)
 
     const handleMove = (moveEvent: PointerEvent) => {
       seekToClientX(moveEvent.clientX)
+      updateHoverPreview(moveEvent.clientX)
     }
     const handleUp = (upEvent: PointerEvent) => {
       isSeekingRef.current = false
@@ -200,13 +221,33 @@ export function PlayerScreen({ url, title, audios = [], subtitles = [], startTim
     target.addEventListener('pointermove', handleMove)
     target.addEventListener('pointerup', handleUp)
     target.addEventListener('pointercancel', handleUp)
-  }, [seekToClientX, showControls])
+  }, [seekToClientX, showControls, updateHoverPreview])
 
   const handleProgressClick = useCallback((event: JSX.TargetedMouseEvent<HTMLDivElement>) => {
-    // Fallback for remotes that only emit click / mouse events
+    event.stopPropagation()
     if (isSeekingRef.current) return
     seekToClientX(event.clientX)
   }, [seekToClientX])
+
+  const handleProgressMouseMove = useCallback((event: JSX.TargetedMouseEvent<HTMLDivElement>) => {
+    showControls()
+    updateHoverPreview(event.clientX)
+  }, [showControls, updateHoverPreview])
+
+  const handleProgressMouseLeave = useCallback(() => {
+    if (!isSeekingRef.current) {
+      setHoverPreview(null)
+    }
+  }, [])
+
+  const handleSurfaceClick = useCallback((event: JSX.TargetedMouseEvent<HTMLDivElement>) => {
+    const target = event.target as HTMLElement | null
+    if (!target) return
+    if (target.closest('.player-progress-bar, .player-panel, .player-state-button, .player-hints')) {
+      return
+    }
+    togglePlay()
+  }, [togglePlay])
 
   const selectAudio = useCallback((index: number) => {
     const video = videoRef.current
@@ -260,7 +301,7 @@ export function PlayerScreen({ url, title, audios = [], subtitles = [], startTim
         setCurrentTime(startTime)
         lastTimeRef.current = startTime
       }
-      video.play()
+      void video.play()
     }
 
     const handleError = () => {
@@ -299,6 +340,26 @@ export function PlayerScreen({ url, title, audios = [], subtitles = [], startTim
     const handleKeyDown = (e: KeyboardEvent) => {
       showControls()
 
+      const mediaKey = e.key
+      if (
+        mediaKey === 'MediaPlayPause' ||
+        mediaKey === 'MediaPlay' ||
+        mediaKey === 'MediaPause' ||
+        e.keyCode === KEY_CODES.PLAY_PAUSE ||
+        e.keyCode === KEY_CODES.PLAY ||
+        e.keyCode === KEY_CODES.PAUSE
+      ) {
+        if (mediaKey === 'MediaPlay' || e.keyCode === KEY_CODES.PLAY) {
+          void videoRef.current?.play()
+        } else if (mediaKey === 'MediaPause' || e.keyCode === KEY_CODES.PAUSE) {
+          videoRef.current?.pause()
+        } else {
+          togglePlay()
+        }
+        e.preventDefault()
+        return
+      }
+
       if (controls.activePanel !== 'none') {
         const items = controls.activePanel === 'audio' ? audios : convertedSubs
         const currentIndex = controls.activePanel === 'audio'
@@ -333,14 +394,17 @@ export function PlayerScreen({ url, title, audios = [], subtitles = [], startTim
 
       switch (e.keyCode) {
         case KEY_CODES.ENTER:
+        case 32: // Space
           togglePlay()
           e.preventDefault()
           break
         case KEY_CODES.LEFT:
+        case KEY_CODES.REWIND:
           seek(-10)
           e.preventDefault()
           break
         case KEY_CODES.RIGHT:
+        case KEY_CODES.FAST_FORWARD:
           seek(10)
           e.preventDefault()
           break
@@ -395,7 +459,7 @@ export function PlayerScreen({ url, title, audios = [], subtitles = [], startTim
   const bufferedProgress = duration > 0 ? (buffered / duration) * 100 : 0
 
   return (
-    <div class="player-screen" onMouseMove={showControls}>
+    <div class="player-screen" onMouseMove={showControls} onClick={handleSurfaceClick}>
       <video
         ref={videoRef}
         class="player-video"
@@ -438,10 +502,20 @@ export function PlayerScreen({ url, title, audios = [], subtitles = [], startTim
                 aria-valuenow={Math.floor(currentTime)}
                 onPointerDown={handleProgressPointerDown}
                 onClick={handleProgressClick}
+                onMouseMove={handleProgressMouseMove}
+                onMouseLeave={handleProgressMouseLeave}
               >
                 <div class="player-progress-buffered" style={{ width: `${bufferedProgress}%` }} />
                 <div class="player-progress-current" style={{ width: `${progress}%` }} />
                 <div class="player-progress-thumb" style={{ left: `${progress}%` }} />
+                {hoverPreview && (
+                  <div
+                    class="player-progress-preview"
+                    style={{ left: `${hoverPreview.percent}%` }}
+                  >
+                    {formatTime(hoverPreview.time)}
+                  </div>
+                )}
               </div>
               <div class="player-time">
                 <span>{formatTime(currentTime)}</span>
@@ -450,9 +524,17 @@ export function PlayerScreen({ url, title, audios = [], subtitles = [], startTim
             </div>
 
             <div class="player-controls-row">
-              <div class="player-state">
-                {isPlaying ? <span class="icon-play" /> : <span class="icon-pause" />}
-              </div>
+              <button
+                type="button"
+                class="player-state-button"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  togglePlay()
+                }}
+                aria-label={isPlaying ? 'Pause' : 'Play'}
+              >
+                {isPlaying ? <span class="icon-pause" /> : <span class="icon-play" />}
+              </button>
               <div class="player-hints">
                 {audios.length > 0 && (
                   <span class="player-hint">

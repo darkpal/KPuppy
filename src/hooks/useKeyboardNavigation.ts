@@ -14,6 +14,13 @@ export const KEY_CODES = {
   GREEN: 404,
   YELLOW: 405,
   BLUE: 406,
+  /** LG Magic Remote / media keys */
+  PAUSE: 19,
+  PLAY: 415,
+  STOP: 413,
+  PLAY_PAUSE: 463,
+  REWIND: 412,
+  FAST_FORWARD: 417,
 } as const
 
 export interface KeyboardHandlers {
