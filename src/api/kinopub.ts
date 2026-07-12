@@ -420,7 +420,7 @@ export interface WatchingResponse {
 
 type ItemCardMeta = Pick<MovieItem, 'imdbRating' | 'kinopoiskRating' | 'ratingPercentage' | 'quality' | 'year'>
 
-async function fetchItemCardMeta(id: number): Promise<ItemCardMeta | null> {
+export async function fetchItemCardMeta(id: number): Promise<ItemCardMeta | null> {
   try {
     const response = await authFetch(`${BASE_URL}/v1/items/${id}`)
     if (!response.ok) return null
@@ -438,6 +438,34 @@ async function fetchItemCardMeta(id: number): Promise<ItemCardMeta | null> {
   }
 }
 
+export async function enrichMovieItemsMeta(items: MovieItem[]): Promise<MovieItem[]> {
+  const missing = items.filter(item =>
+    item.quality <= 0 || item.year <= 0 || (item.imdbRating <= 0 && item.kinopoiskRating <= 0 && item.ratingPercentage <= 0)
+  )
+  if (missing.length === 0) return items
+
+  const metas = await Promise.all(missing.map(item => fetchItemCardMeta(item.id)))
+  const byId = new Map<number, ItemCardMeta>()
+  missing.forEach((item, index) => {
+    const meta = metas[index]
+    if (meta) byId.set(item.id, meta)
+  })
+  if (byId.size === 0) return items
+
+  return items.map(item => {
+    const meta = byId.get(item.id)
+    if (!meta) return item
+    return {
+      ...item,
+      imdbRating: item.imdbRating > 0 ? item.imdbRating : meta.imdbRating,
+      kinopoiskRating: item.kinopoiskRating > 0 ? item.kinopoiskRating : meta.kinopoiskRating,
+      ratingPercentage: item.ratingPercentage > 0 ? item.ratingPercentage : meta.ratingPercentage,
+      quality: item.quality > 0 ? item.quality : meta.quality,
+      year: item.year > 0 ? item.year : meta.year
+    }
+  })
+}
+
 export async function getWatching(): Promise<MovieItem[]> {
   const cacheKey = 'watching_v2'
   const cached = getCached<MovieItem[]>(cacheKey)
@@ -453,35 +481,7 @@ export async function getWatching(): Promise<MovieItem[]> {
 
   const allItems = [...(moviesData.items || []), ...(serialsData.items || [])]
 
-  let result: MovieItem[] = allItems.map(mapToMovieItem)
-
-  // Watching list often omits quality/year/ratings — enrich from item details.
-  const missing = result.filter(item =>
-    item.quality <= 0 || item.year <= 0 || (item.imdbRating <= 0 && item.kinopoiskRating <= 0 && item.ratingPercentage <= 0)
-  )
-  if (missing.length > 0) {
-    const metas = await Promise.all(missing.map(item => fetchItemCardMeta(item.id)))
-    const byId = new Map<number, ItemCardMeta>()
-    missing.forEach((item, index) => {
-      const meta = metas[index]
-      if (meta) byId.set(item.id, meta)
-    })
-    if (byId.size > 0) {
-      result = result.map(item => {
-        const meta = byId.get(item.id)
-        if (!meta) return item
-        return {
-          ...item,
-          imdbRating: item.imdbRating > 0 ? item.imdbRating : meta.imdbRating,
-          kinopoiskRating: item.kinopoiskRating > 0 ? item.kinopoiskRating : meta.kinopoiskRating,
-          ratingPercentage: item.ratingPercentage > 0 ? item.ratingPercentage : meta.ratingPercentage,
-          quality: item.quality > 0 ? item.quality : meta.quality,
-          year: item.year > 0 ? item.year : meta.year
-        }
-      })
-    }
-  }
-
+  const result = await enrichMovieItemsMeta(allItems.map(mapToMovieItem))
   setCache(cacheKey, result)
   return result
 }
@@ -1279,8 +1279,16 @@ export async function toggleWatchlist(itemId: number): Promise<void> {
 
 export async function isItemInWatchlist(itemId: number): Promise<boolean> {
   try {
-    const serials = await getWatchingSerials()
-    return serials.some(s => s.id === itemId)
+    const [moviesRes, serialsRes] = await Promise.all([
+      authFetch(`${BASE_URL}/v1/watching/movies?subscribed=1`),
+      authFetch(`${BASE_URL}/v1/watching/serials?subscribed=1`)
+    ])
+    const moviesData = moviesRes.ok ? await moviesRes.json() : { items: [] }
+    const serialsData = serialsRes.ok ? await serialsRes.json() : { items: [] }
+    const ids = [...(moviesData.items || []), ...(serialsData.items || [])].map(
+      (item: { id?: number }) => Number(item.id)
+    )
+    return ids.includes(itemId)
   } catch (err) {
     if (import.meta.env.DEV) console.error('isItemInWatchlist failed:', err)
     return false

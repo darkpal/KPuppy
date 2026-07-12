@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'preact/hooks'
-import { getWatchingSerials, WatchingItem } from '../api/kinopub'
+import { getWatchingSerials, enrichMovieItemsMeta, WatchingItem, MovieItem } from '../api/kinopub'
 import { MovieCard } from '../components/MovieCard'
 import { GridScreen } from '../components/GridScreen'
 import { useKeyboardNavigation, useGridLayout, createGridNavigationHandlers } from '../hooks'
@@ -12,9 +12,27 @@ interface NewEpisodesScreenProps {
   isActive: boolean
 }
 
+function watchingToMovieItem(item: WatchingItem): MovieItem {
+  return {
+    id: item.id,
+    title: item.title,
+    type: item.type,
+    posters: item.posters,
+    year: item.year,
+    plot: '',
+    rating: 0,
+    imdbRating: 0,
+    kinopoiskRating: 0,
+    ratingPercentage: 0,
+    quality: 0,
+    views: 0
+  }
+}
+
 export function NewEpisodesScreen({ onSelectItem, onNavigateToMenu, isActive }: NewEpisodesScreenProps) {
   const { t } = useI18n()
   const [items, setItems] = useState<WatchingItem[]>([])
+  const [cardMeta, setCardMeta] = useState<Map<number, MovieItem>>(new Map())
   const [loading, setLoading] = useState(true)
   const [focusedIndex, setFocusedIndex] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -27,6 +45,8 @@ export function NewEpisodesScreen({ onSelectItem, onNavigateToMenu, isActive }: 
         const data = await getWatchingSerials()
         const withNewEpisodes = data.filter(item => item.new > 0)
         setItems(withNewEpisodes)
+        const enriched = await enrichMovieItemsMeta(withNewEpisodes.map(watchingToMovieItem))
+        setCardMeta(new Map(enriched.map(item => [item.id, item])))
       } catch (err) {
         if (import.meta.env.DEV) console.error('Failed to load new episodes:', err)
       } finally {
@@ -57,28 +77,16 @@ export function NewEpisodesScreen({ onSelectItem, onNavigateToMenu, isActive }: 
     const badge = newEpisodes > 0
       ? `${newEpisodes} ${t.newEpisodesCount}`
       : undefined
+    const meta = cardMeta.get(item.id)
     return (
       <MovieCard
-        movie={{
-          id: item.id,
-          title: item.title,
-          type: item.type,
-          posters: item.posters,
-          year: item.year,
-          plot: '',
-          rating: 0,
-          imdbRating: 0,
-          kinopoiskRating: 0,
-          ratingPercentage: 0,
-          quality: 0,
-          views: 0
-        }}
+        movie={meta || watchingToMovieItem(item)}
         focused={focused}
         onSelect={() => onSelectItem(item.id)}
         badge={badge}
       />
     )
-  }, [onSelectItem, t])
+  }, [onSelectItem, t, cardMeta])
 
   return (
     <GridScreen

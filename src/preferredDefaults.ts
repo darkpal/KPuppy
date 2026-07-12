@@ -55,12 +55,25 @@ export function markDeviceDefaultsApplied(): void {
   }
 }
 
-/** Apply preferred device settings once per install after login. */
-export async function applyPreferredDeviceDefaultsOnce(): Promise<void> {
-  if (hasAppliedDeviceDefaults()) return
+export function clearDeviceDefaultsApplied(): void {
+  try {
+    localStorage.removeItem(DEVICE_DEFAULTS_KEY)
+  } catch {
+    // ignore
+  }
+}
+
+/** Apply preferred device settings. Pass force=true to re-apply from Settings. */
+export async function applyPreferredDeviceDefaults(force = false): Promise<void> {
+  if (!force && hasAppliedDeviceDefaults()) return
 
   const deviceInfo = await getDeviceInfo()
   const preferred = buildPreferredDeviceSettings(deviceInfo.settings)
   await updateDeviceSettings(deviceInfo.id, preferred)
   markDeviceDefaultsApplied()
+}
+
+/** Apply preferred device settings once per install after login. */
+export async function applyPreferredDeviceDefaultsOnce(): Promise<void> {
+  await applyPreferredDeviceDefaults(false)
 }

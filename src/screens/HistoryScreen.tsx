@@ -16,8 +16,6 @@ interface HistoryScreenProps {
 type HistorySection = 'series' | 'movies'
 
 const SERIES_TYPES = ['serial', 'docuserial', 'tvshow']
-const SERIES_MAX_ROWS = 2
-const MOVIES_MAX_ROWS = 1
 
 export function HistoryScreen({ onSelectItem, onNavigateToMenu, isActive }: HistoryScreenProps) {
   const { t } = useI18n()
@@ -28,20 +26,11 @@ export function HistoryScreen({ onSelectItem, onNavigateToMenu, isActive }: Hist
   const [actionLoading, setActionLoading] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
-  const allSeriesItems = useMemo(() => items.filter(item => SERIES_TYPES.includes(item.type)), [items])
-  const allMovieItems = useMemo(() => items.filter(item => !SERIES_TYPES.includes(item.type)), [items])
+  const seriesItems = useMemo(() => items.filter(item => SERIES_TYPES.includes(item.type)), [items])
+  const movieItems = useMemo(() => items.filter(item => !SERIES_TYPES.includes(item.type)), [items])
 
-  const { itemsPerRow: seriesPerRow, cardWidth: seriesCardWidth } = useGridLayout('.history-series-grid', 240, [allSeriesItems.length])
-  const { itemsPerRow: moviesPerRow, cardWidth: moviesCardWidth } = useGridLayout('.history-movies-grid', 240, [allMovieItems.length])
-
-  const seriesItems = useMemo(
-    () => allSeriesItems.slice(0, seriesPerRow * SERIES_MAX_ROWS),
-    [allSeriesItems, seriesPerRow]
-  )
-  const movieItems = useMemo(
-    () => allMovieItems.slice(0, moviesPerRow * MOVIES_MAX_ROWS),
-    [allMovieItems, moviesPerRow]
-  )
+  const { itemsPerRow: seriesPerRow, cardWidth: seriesCardWidth } = useGridLayout('.history-series-grid', 240, [seriesItems.length])
+  const { itemsPerRow: moviesPerRow, cardWidth: moviesCardWidth } = useGridLayout('.history-movies-grid', 240, [movieItems.length])
 
   useEffect(() => {
     async function loadHistory() {

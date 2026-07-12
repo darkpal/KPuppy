@@ -7,6 +7,7 @@ import * as kinopub from '../../src/api/kinopub'
 
 vi.mock('../../src/api/kinopub', () => ({
   getWatchingSerials: vi.fn(),
+  enrichMovieItemsMeta: vi.fn(async (items: unknown[]) => items),
 }))
 
 function renderWithI18n(component: preact.ComponentChild) {

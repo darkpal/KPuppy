@@ -153,9 +153,28 @@ export interface Translations {
   allCountries: string
   allTypes: string
   type: string
+  sort: string
+  sortNewest: string
+  sortRating: string
+  sortViews: string
+  sortYear: string
+  sortTitle: string
+  year: string
+  allYears: string
+  filter4k: string
+  allQualities: string
+  searchField: string
+  searchFieldAny: string
+  searchFieldTitle: string
+  searchFieldActor: string
+  searchFieldDirector: string
+  applyRecommendedSettings: string
+  recommendedSettingsApplied: string
 
   // Home screen
   showContinueWatching: string
+  freshMovies: string
+  freshSeries: string
 }
 
 const en: Translations = {
@@ -285,8 +304,27 @@ const en: Translations = {
   allCountries: 'All Countries',
   allTypes: 'All Types',
   type: 'Type',
+  sort: 'Sort',
+  sortNewest: 'Newest',
+  sortRating: 'Rating',
+  sortViews: 'Views',
+  sortYear: 'Year',
+  sortTitle: 'Title',
+  year: 'Year',
+  allYears: 'All Years',
+  filter4k: '4K only',
+  allQualities: 'All Qualities',
+  searchField: 'Search in',
+  searchFieldAny: 'Anywhere',
+  searchFieldTitle: 'Title',
+  searchFieldActor: 'Actor',
+  searchFieldDirector: 'Director',
+  applyRecommendedSettings: 'Apply Recommended Device Settings',
+  recommendedSettingsApplied: 'Recommended settings applied',
 
   showContinueWatching: 'Show Continue Watching on Home',
+  freshMovies: 'Fresh Movies',
+  freshSeries: 'Fresh Series',
 }
 
 const ru: Translations = {
@@ -416,8 +454,27 @@ const ru: Translations = {
   allCountries: 'Все страны',
   allTypes: 'Все типы',
   type: 'Тип',
+  sort: 'Сортировка',
+  sortNewest: 'Новинки',
+  sortRating: 'Рейтинг',
+  sortViews: 'Просмотры',
+  sortYear: 'Год',
+  sortTitle: 'Название',
+  year: 'Год',
+  allYears: 'Все годы',
+  filter4k: 'Только 4K',
+  allQualities: 'Любое качество',
+  searchField: 'Искать в',
+  searchFieldAny: 'Везде',
+  searchFieldTitle: 'Название',
+  searchFieldActor: 'Актёр',
+  searchFieldDirector: 'Режиссёр',
+  applyRecommendedSettings: 'Применить рекомендуемые настройки',
+  recommendedSettingsApplied: 'Рекомендуемые настройки применены',
 
   showContinueWatching: 'Показывать «Продолжить просмотр» на главной',
+  freshMovies: 'Свежие фильмы',
+  freshSeries: 'Свежие сериалы',
 }
 
 const de: Translations = {
@@ -547,8 +604,27 @@ const de: Translations = {
   allCountries: 'Alle Länder',
   allTypes: 'Alle Typen',
   type: 'Typ',
+  sort: 'Sortierung',
+  sortNewest: 'Neueste',
+  sortRating: 'Bewertung',
+  sortViews: 'Aufrufe',
+  sortYear: 'Jahr',
+  sortTitle: 'Titel',
+  year: 'Jahr',
+  allYears: 'Alle Jahre',
+  filter4k: 'Nur 4K',
+  allQualities: 'Alle Qualitäten',
+  searchField: 'Suchen in',
+  searchFieldAny: 'Überall',
+  searchFieldTitle: 'Titel',
+  searchFieldActor: 'Schauspieler',
+  searchFieldDirector: 'Regisseur',
+  applyRecommendedSettings: 'Empfohlene Geräteeinstellungen anwenden',
+  recommendedSettingsApplied: 'Empfohlene Einstellungen angewendet',
 
   showContinueWatching: '„Weiterschauen“ auf Startseite anzeigen',
+  freshMovies: 'Frische Filme',
+  freshSeries: 'Frische Serien',
 }
 
 export const translations: Record<Language, Translations> = { en, ru, de }

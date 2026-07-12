@@ -17,13 +17,21 @@ interface SearchScreenProps {
   initialField?: 'title' | 'director' | 'actor'
 }
 
-type FocusArea = 'keyboard' | 'filter' | 'results'
+type FocusArea = 'keyboard' | 'filter' | 'field' | 'results'
+type SearchField = 'title' | 'director' | 'actor' | undefined
+type FilterTarget = 'type' | 'field'
 
+const SEARCH_FIELDS: { id: SearchField; labelKey: 'searchFieldAny' | 'searchFieldTitle' | 'searchFieldActor' | 'searchFieldDirector' }[] = [
+  { id: undefined, labelKey: 'searchFieldAny' },
+  { id: 'title', labelKey: 'searchFieldTitle' },
+  { id: 'actor', labelKey: 'searchFieldActor' },
+  { id: 'director', labelKey: 'searchFieldDirector' },
+]
 
 export function SearchScreen({ onBack, onSelectItem, onNavigateToMenu, isActive, initialQuery = '', initialField }: SearchScreenProps) {
   const { t } = useI18n()
   const [query, setQuery] = useState(initialQuery)
-  const [searchField, setSearchField] = useState<'title' | 'director' | 'actor' | undefined>(initialField)
+  const [searchField, setSearchField] = useState<SearchField>(initialField)
   const [results, setResults] = useState<MovieItem[]>([])
   const [loading, setLoading] = useState(false)
   const [focusArea, setFocusArea] = useState<FocusArea>(initialQuery.trim().length >= 2 ? 'results' : 'keyboard')
@@ -38,6 +46,7 @@ export function SearchScreen({ onBack, onSelectItem, onNavigateToMenu, isActive,
   const [selectedType, setSelectedType] = useState<string | null>(null)
   const [filterDropdownOpen, setFilterDropdownOpen] = useState(false)
   const [filterDropdownIndex, setFilterDropdownIndex] = useState(0)
+  const [activeFilter, setActiveFilter] = useState<FilterTarget>('type')
 
   useEffect(() => {
     const updateResultsPerRow = () => {
@@ -76,7 +85,7 @@ export function SearchScreen({ onBack, onSelectItem, onNavigateToMenu, isActive,
       })
   }, [])
 
-  const performSearch = useCallback(async (searchQuery: string, type: string | null) => {
+  const performSearch = useCallback(async (searchQuery: string, type: string | null, field: SearchField) => {
     if (!searchQuery.trim()) {
       setResults([])
       setHasSearched(false)
@@ -90,7 +99,7 @@ export function SearchScreen({ onBack, onSelectItem, onNavigateToMenu, isActive,
         q: searchQuery,
         perpage: 48,
         type: type || undefined,
-        field: searchField
+        field
       })
       setResults(response.items)
     } catch (err) {
@@ -99,7 +108,7 @@ export function SearchScreen({ onBack, onSelectItem, onNavigateToMenu, isActive,
     } finally {
       setLoading(false)
     }
-  }, [searchField])
+  }, [])
 
   useEffect(() => {
     if (searchTimeoutRef.current) {
@@ -108,7 +117,7 @@ export function SearchScreen({ onBack, onSelectItem, onNavigateToMenu, isActive,
 
     if (query.trim().length >= 2) {
       searchTimeoutRef.current = window.setTimeout(() => {
-        performSearch(query, selectedType)
+        performSearch(query, selectedType, searchField)
       }, 500)
     } else {
       setResults([])
@@ -120,7 +129,7 @@ export function SearchScreen({ onBack, onSelectItem, onNavigateToMenu, isActive,
         clearTimeout(searchTimeoutRef.current)
       }
     }
-  }, [query, selectedType, performSearch])
+  }, [query, selectedType, searchField, performSearch])
 
   const handleKeyPress = useCallback((key: string) => {
     const result = handleSpecialKey(key, query)
@@ -138,43 +147,64 @@ export function SearchScreen({ onBack, onSelectItem, onNavigateToMenu, isActive,
       if (result.text === '') {
         setResults([])
         setHasSearched(false)
-        setSearchField(undefined)
       }
     }
   }, [query, results.length])
 
-  const filterOptions = useMemo(() => {
+  const typeOptions = useMemo(() => {
     return [{ id: '', title: '' }, ...contentTypes]
   }, [contentTypes])
 
+  const currentDropdownOptions = activeFilter === 'type' ? typeOptions : SEARCH_FIELDS
+
   const handlers = useMemo(() => {
     const cols = KEYBOARD_ROWS_WITH_SEARCH[keyboardRow]?.length || 12
+    const inFilterBar = focusArea === 'filter' || focusArea === 'field'
 
-    if (focusArea === 'filter') {
+    if (inFilterBar) {
       if (filterDropdownOpen) {
         return {
           onBack: () => setFilterDropdownOpen(false),
           onLeft: () => {},
           onRight: () => {},
           onUp: () => setFilterDropdownIndex(prev => (prev > 0 ? prev - 1 : prev)),
-          onDown: () => setFilterDropdownIndex(prev => (prev < filterOptions.length - 1 ? prev + 1 : prev)),
+          onDown: () => setFilterDropdownIndex(prev => (prev < currentDropdownOptions.length - 1 ? prev + 1 : prev)),
           onEnter: () => {
-            const option = filterOptions[filterDropdownIndex]
-            setSelectedType(option?.id || null)
+            if (activeFilter === 'type') {
+              const option = typeOptions[filterDropdownIndex]
+              setSelectedType(option?.id || null)
+            } else {
+              setSearchField(SEARCH_FIELDS[filterDropdownIndex]?.id)
+            }
             setFilterDropdownOpen(false)
           }
         }
       }
       return {
         onBack: onBack,
-        onLeft: onNavigateToMenu,
-        onRight: () => {},
+        onLeft: () => {
+          if (focusArea === 'field') {
+            setFocusArea('filter')
+            setActiveFilter('type')
+          } else {
+            onNavigateToMenu()
+          }
+        },
+        onRight: () => {
+          if (focusArea === 'filter') {
+            setFocusArea('field')
+            setActiveFilter('field')
+          }
+        },
         onUp: () => {},
         onDown: () => {
           setFocusArea('keyboard')
           setKeyboardRow(0)
         },
-        onEnter: () => setFilterDropdownOpen(true)
+        onEnter: () => {
+          setFilterDropdownIndex(0)
+          setFilterDropdownOpen(true)
+        }
       }
     }
 
@@ -199,8 +229,9 @@ export function SearchScreen({ onBack, onSelectItem, onNavigateToMenu, isActive,
           if (keyboardRow > 0) {
             setKeyboardRow(prev => prev - 1)
             setKeyboardCol(prev => Math.min(prev, KEYBOARD_ROWS_WITH_SEARCH[keyboardRow - 1].length - 1))
-          } else if (contentTypes.length > 0) {
+          } else {
             setFocusArea('filter')
+            setActiveFilter('type')
           }
         },
         onDown: () => {
@@ -238,7 +269,7 @@ export function SearchScreen({ onBack, onSelectItem, onNavigateToMenu, isActive,
       }),
       onBack: () => setFocusArea('keyboard')
     }
-  }, [focusArea, keyboardRow, keyboardCol, results, resultIndex, resultsPerRow, query, onBack, onSelectItem, handleKeyPress, onNavigateToMenu, filterDropdownOpen, filterDropdownIndex, filterOptions, contentTypes.length])
+  }, [focusArea, keyboardRow, keyboardCol, results, resultIndex, resultsPerRow, query, onBack, onSelectItem, handleKeyPress, onNavigateToMenu, filterDropdownOpen, filterDropdownIndex, currentDropdownOptions.length, activeFilter, typeOptions])
 
   useKeyboardNavigation(handlers, isActive)
 
@@ -255,43 +286,91 @@ export function SearchScreen({ onBack, onSelectItem, onNavigateToMenu, isActive,
     return type?.title || t.allTypes
   }, [selectedType, contentTypes, t.allTypes])
 
+  const selectedFieldName = useMemo(() => {
+    const found = SEARCH_FIELDS.find(f => f.id === searchField)
+    return t[found?.labelKey || 'searchFieldAny']
+  }, [searchField, t])
+
+  const openFilter = (target: FilterTarget) => {
+    setActiveFilter(target)
+    setFocusArea(target === 'type' ? 'filter' : 'field')
+    let initial = 0
+    if (target === 'type') {
+      initial = selectedType ? typeOptions.findIndex(o => o.id === selectedType) : 0
+    } else {
+      initial = Math.max(0, SEARCH_FIELDS.findIndex(f => f.id === searchField))
+    }
+    setFilterDropdownIndex(Math.max(0, initial))
+    setFilterDropdownOpen(true)
+  }
+
   return (
     <div class="search-screen">
       <div class="search-header">
         <div class="search-icon">🔍</div>
         <div class="search-input-container">
           {searchField === 'actor' && <span class="search-field-badge">👤</span>}
+          {searchField === 'director' && <span class="search-field-badge">🎬</span>}
+          {searchField === 'title' && <span class="search-field-badge">Aa</span>}
           <span class="search-query">{query}</span>
           <span class="search-cursor" />
         </div>
-        {contentTypes.length > 0 && (
+        <div class="search-filters">
+          {contentTypes.length > 0 && (
+            <div class="search-filter">
+              <button
+                class={`search-filter-button ${focusArea === 'filter' ? 'focused' : ''}`}
+                onClick={() => openFilter('type')}
+              >
+                <span class="search-filter-label">{t.type}:</span>
+                <span class="search-filter-value">{selectedTypeName}</span>
+                <span class="search-filter-arrow">{filterDropdownOpen && activeFilter === 'type' ? '▲' : '▼'}</span>
+              </button>
+              {filterDropdownOpen && activeFilter === 'type' && (
+                <div class="search-filter-dropdown">
+                  {typeOptions.map((option, index) => (
+                    <button
+                      key={option.id || 'all'}
+                      class={`search-filter-option ${filterDropdownIndex === index ? 'focused' : ''} ${selectedType === (option.id || null) ? 'selected' : ''}`}
+                      onClick={() => {
+                        setSelectedType(option.id || null)
+                        setFilterDropdownOpen(false)
+                      }}
+                    >
+                      {option.title || t.allTypes}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
           <div class="search-filter">
             <button
-              class={`search-filter-button ${focusArea === 'filter' ? 'focused' : ''}`}
-              onClick={() => setFilterDropdownOpen(!filterDropdownOpen)}
+              class={`search-filter-button ${focusArea === 'field' ? 'focused' : ''}`}
+              onClick={() => openFilter('field')}
             >
-              <span class="search-filter-label">{t.type}:</span>
-              <span class="search-filter-value">{selectedTypeName}</span>
-              <span class="search-filter-arrow">{filterDropdownOpen ? '▲' : '▼'}</span>
+              <span class="search-filter-label">{t.searchField}:</span>
+              <span class="search-filter-value">{selectedFieldName}</span>
+              <span class="search-filter-arrow">{filterDropdownOpen && activeFilter === 'field' ? '▲' : '▼'}</span>
             </button>
-            {filterDropdownOpen && (
+            {filterDropdownOpen && activeFilter === 'field' && (
               <div class="search-filter-dropdown">
-                {filterOptions.map((option, index) => (
+                {SEARCH_FIELDS.map((option, index) => (
                   <button
-                    key={option.id || 'all'}
-                    class={`search-filter-option ${filterDropdownIndex === index ? 'focused' : ''} ${selectedType === (option.id || null) ? 'selected' : ''}`}
+                    key={option.labelKey}
+                    class={`search-filter-option ${filterDropdownIndex === index ? 'focused' : ''} ${searchField === option.id ? 'selected' : ''}`}
                     onClick={() => {
-                      setSelectedType(option.id || null)
+                      setSearchField(option.id)
                       setFilterDropdownOpen(false)
                     }}
                   >
-                    {option.title || t.allTypes}
+                    {t[option.labelKey]}
                   </button>
                 ))}
               </div>
             )}
           </div>
-        )}
+        </div>
       </div>
 
       {focusArea !== 'results' && (

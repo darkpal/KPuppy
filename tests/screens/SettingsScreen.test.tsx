@@ -6,8 +6,12 @@ import { I18nProvider } from '../../src/i18n/context'
 import * as kinopub from '../../src/api/kinopub'
 
 vi.mock('../../src/storage', () => ({
-  getLocalSettings: vi.fn(() => ({ defaultQuality: 'auto', playerType: 'native', language: 'en' })),
+  getLocalSettings: vi.fn(() => ({ defaultQuality: 'auto', playerType: 'native', language: 'en', showContinueWatching: true })),
   saveLocalSettings: vi.fn(),
+}))
+
+vi.mock('../../src/preferredDefaults', () => ({
+  applyPreferredDeviceDefaults: vi.fn(() => Promise.resolve()),
 }))
 
 vi.mock('../../src/api/kinopub', () => ({

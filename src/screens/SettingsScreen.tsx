@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'preact/hooks'
 import { getDeviceInfo, updateDeviceSettings, DeviceSettings, SelectOption } from '../api/kinopub'
 import { getLocalSettings, saveLocalSettings, VideoQuality, PlayerType } from '../storage'
+import { applyPreferredDeviceDefaults } from '../preferredDefaults'
 import { LoadingState } from '../components/LoadingSpinner'
 import { useKeyboardNavigation } from '../hooks'
 import { useI18n, Language } from '../i18n'
@@ -24,7 +25,7 @@ interface SettingsScreenProps {
   isActive: boolean
 }
 
-type SettingType = 'toggle' | 'select' | 'language'
+type SettingType = 'toggle' | 'select' | 'language' | 'action'
 
 interface SettingItem {
   id: string
@@ -42,6 +43,7 @@ const ALL_SETTINGS: SettingItem[] = [
   { id: 'mixedPlaylist', labelKey: 'mixedPlaylist', type: 'toggle', key: 'mixedPlaylist', section: 'client' },
   { id: 'serverLocation', labelKey: 'server', type: 'select', key: 'serverLocation', section: 'client' },
   { id: 'streamingType', labelKey: 'streaming', type: 'select', key: 'streamingType', section: 'client' },
+  { id: 'applyRecommended', labelKey: 'applyRecommendedSettings', type: 'action', section: 'client' },
   { id: 'quality', labelKey: 'quality', type: 'select', section: 'local' },
   { id: 'player', labelKey: 'player', type: 'select', section: 'local' },
   { id: 'showContinueWatching', labelKey: 'showContinueWatching', type: 'toggle', section: 'local' },
@@ -61,6 +63,7 @@ export function SettingsScreen({ onNavigateToMenu, isActive }: SettingsScreenPro
   const [focusedRow, setFocusedRow] = useState(0)
   const [expandedSelect, setExpandedSelect] = useState<string | null>(null)
   const [selectFocusIndex, setSelectFocusIndex] = useState(0)
+  const [statusMessage, setStatusMessage] = useState<string | null>(null)
 
   useEffect(() => {
     async function loadSettings() {
@@ -164,6 +167,22 @@ export function SettingsScreen({ onNavigateToMenu, isActive }: SettingsScreenPro
   }, [expandedSelect, selectFocusIndex, languages, settings, saveSettingChange, setLanguage])
 
   const activateItem = useCallback((item: SettingItem) => {
+    if (item.type === 'action' && item.id === 'applyRecommended') {
+      setSaving(true)
+      setStatusMessage(null)
+      applyPreferredDeviceDefaults(true)
+        .then(async () => {
+          const deviceInfo = await getDeviceInfo()
+          setDeviceId(deviceInfo.id)
+          setSettings(deviceInfo.settings)
+          setStatusMessage(t.recommendedSettingsApplied)
+        })
+        .catch(err => {
+          if (import.meta.env.DEV) console.error('applyPreferredDeviceDefaults failed:', err)
+        })
+        .finally(() => setSaving(false))
+      return
+    }
     if (item.type === 'toggle' && item.id === 'showContinueWatching') {
       const newValue = !showContinueWatching
       setShowContinueWatching(newValue)
@@ -185,7 +204,7 @@ export function SettingsScreen({ onNavigateToMenu, isActive }: SettingsScreenPro
       setSelectFocusIndex(Math.max(0, selectedIdx))
       setExpandedSelect('language')
     }
-  }, [settings, saveSettingChange, showContinueWatching])
+  }, [settings, saveSettingChange, showContinueWatching, t.recommendedSettingsApplied])
 
   const handleActivateItem = useCallback(() => {
     const currentItem = columns[focusedCol]?.[focusedRow]
@@ -290,6 +309,11 @@ export function SettingsScreen({ onNavigateToMenu, isActive }: SettingsScreenPro
             <span class="settings-select-arrow">▶</span>
           </div>
         )}
+        {item.type === 'action' && (
+          <div class="settings-select">
+            <span class="settings-select-arrow">▶</span>
+          </div>
+        )}
       </div>
     )
   }
@@ -307,6 +331,7 @@ export function SettingsScreen({ onNavigateToMenu, isActive }: SettingsScreenPro
     <div class="settings-screen">
       <h1 class="settings-title">{t.settings}</h1>
       {saving && <div class="settings-saving">{t.saving}</div>}
+      {!saving && statusMessage && <div class="settings-saving">{statusMessage}</div>}
 
       <div class="settings-sections">
         {columns[0].length > 0 && (

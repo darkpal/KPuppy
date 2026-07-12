@@ -3,13 +3,14 @@ import { useI18n } from '../i18n'
 
 interface ItemDetailsProps {
   countries?: string
-  directors?: string
+  directors?: Person[]
   actors?: Person[]
   audios: Audio[]
   subtitles: Subtitle[]
   focusedActorIndex?: number | null
   onHoverActor?: (index: number) => void
   onSelectActor?: (name: string) => void
+  onSelectDirector?: (name: string) => void
 }
 
 function formatAudioLabel(audio: Audio): string {
@@ -39,20 +40,25 @@ function formatSubtitleLabel(sub: Subtitle): string {
     tr: 'Türkçe',
     spa: 'Español',
     es: 'Español',
-    por: 'Português',
-    pt: 'Português',
     deu: 'Deutsch',
     de: 'Deutsch',
-    ger: 'Deutsch',
     fra: 'Français',
     fr: 'Français',
     ita: 'Italiano',
     it: 'Italiano',
+    por: 'Português',
+    pt: 'Português',
     pol: 'Polski',
     pl: 'Polski',
+    jpn: '日本語',
+    ja: '日本語',
+    chi: '中文',
+    zh: '中文',
+    kor: '한국어',
+    ko: '한국어',
   }
-  const base = langNames[code] || (sub.lang ? sub.lang.toUpperCase() : 'SUB')
-  return sub.forced ? `${base} Forced` : base
+  const name = langNames[code] || sub.lang.toUpperCase()
+  return sub.forced ? `${name} (forced)` : name
 }
 
 export function ItemDetails({
@@ -63,10 +69,12 @@ export function ItemDetails({
   subtitles,
   focusedActorIndex = null,
   onHoverActor,
-  onSelectActor
+  onSelectActor,
+  onSelectDirector
 }: ItemDetailsProps) {
   const { t } = useI18n()
   const visibleActors = actors?.slice(0, 8) || []
+  const visibleDirectors = directors?.slice(0, 3) || []
 
   return (
     <div class="item-column-right">
@@ -76,11 +84,22 @@ export function ItemDetails({
           <span class="item-detail-value">{countries}</span>
         </p>
       )}
-      {directors && (
-        <p class="item-detail">
+      {visibleDirectors.length > 0 && (
+        <div class="item-detail item-detail-cast">
           <span class="item-detail-label">{t.director}:</span>
-          <span class="item-detail-value">{directors}</span>
-        </p>
+          <div class="item-cast-list">
+            {visibleDirectors.map((director) => (
+              <button
+                key={`dir-${director.id}-${director.name}`}
+                type="button"
+                class="item-chip"
+                onClick={() => onSelectDirector?.(director.name)}
+              >
+                {director.name}
+              </button>
+            ))}
+          </div>
+        </div>
       )}
       {visibleActors.length > 0 && (
         <div class="item-detail item-detail-cast">

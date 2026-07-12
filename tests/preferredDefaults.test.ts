@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { buildPreferredDeviceSettings, hasAppliedDeviceDefaults, markDeviceDefaultsApplied, applyPreferredDeviceDefaultsOnce } from '../src/preferredDefaults'
+import { buildPreferredDeviceSettings, hasAppliedDeviceDefaults, markDeviceDefaultsApplied, applyPreferredDeviceDefaultsOnce, applyPreferredDeviceDefaults } from '../src/preferredDefaults'
 import type { DeviceSettings } from '../src/api/kinopub'
 
 vi.mock('../src/api/kinopub', () => ({
@@ -84,5 +84,16 @@ describe('preferredDefaults', () => {
     markDeviceDefaultsApplied()
     await applyPreferredDeviceDefaultsOnce()
     expect(getDeviceInfo).not.toHaveBeenCalled()
+  })
+
+  it('re-applies when force is true', async () => {
+    markDeviceDefaultsApplied()
+    vi.mocked(getDeviceInfo).mockResolvedValue({ id: 42, settings: baseSettings() })
+    vi.mocked(updateDeviceSettings).mockResolvedValue()
+
+    await applyPreferredDeviceDefaults(true)
+
+    expect(getDeviceInfo).toHaveBeenCalled()
+    expect(updateDeviceSettings).toHaveBeenCalledTimes(1)
   })
 })

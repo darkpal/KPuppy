@@ -265,6 +265,18 @@ export function App() {
     }))
   }, [])
 
+  const handleSelectDirector = useCallback((name: string) => {
+    setState(prev => ({
+      ...prev,
+      itemId: null,
+      seriesId: null,
+      selectedMenuId: 'search',
+      searchPreset: { q: name, field: 'director' },
+      categoryGenreId: null,
+      focusArea: 'content'
+    }))
+  }, [])
+
   const handleNavigateToMenu = useCallback(() => {
     setState(prev => ({ ...prev, focusArea: 'menu' }))
   }, [])
@@ -584,6 +596,7 @@ export function App() {
           onSelectItem={handleSelectItem}
           onSelectGenre={handleSelectGenre}
           onSelectActor={handleSelectActor}
+          onSelectDirector={handleSelectDirector}
           onNavigateToMenu={handleNavigateToMenu}
           isActive={isContentActive}
         />
@@ -608,7 +621,7 @@ export function App() {
       case 'search':
         return (
           <SearchScreen
-            key={state.searchPreset ? `actor-${state.searchPreset.q}` : 'search'}
+            key={state.searchPreset ? `${state.searchPreset.field}-${state.searchPreset.q}` : 'search'}
             onBack={() => handleMenuSelect('home')}
             onSelectItem={handleSelectItem}
             onNavigateToMenu={handleNavigateToMenu}

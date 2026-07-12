@@ -22,6 +22,7 @@ interface ItemScreenProps {
   onSelectItem: (itemId: number) => void
   onSelectGenre?: (genreId: number, itemType: string) => void
   onSelectActor?: (name: string) => void
+  onSelectDirector?: (name: string) => void
   onNavigateToMenu: () => void
   isActive: boolean
 }
@@ -133,7 +134,7 @@ function itemScreenReducer(state: ItemScreenState, action: ItemScreenAction): It
   }
 }
 
-export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeries, onSelectItem, onSelectGenre, onSelectActor, onNavigateToMenu, isActive }: ItemScreenProps) {
+export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeries, onSelectItem, onSelectGenre, onSelectActor, onSelectDirector, onNavigateToMenu, isActive }: ItemScreenProps) {
   const { t } = useI18n()
   const [state, dispatch] = useReducer(itemScreenReducer, initialState)
   const { item, loading, error, focusArea, selectedQuality, dropdownFocusIndex, similarItems, similarFocusIndex, metaFocusIndex, watchlistLoading, showFolderDialog, folders, itemFolderIds, folderFocusIndex, isWatching, watchingToggleLoading } = state
@@ -521,7 +522,7 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
 
   const kpRating = item.kinopoiskRating
   const imdbRating = item.imdbRating
-  const directors = item.directors?.slice(0, 3).map(d => d.name).join(', ')
+  const directors = item.directors?.slice(0, 3) || []
   const countries = item.countries?.slice(0, 3).map(c => c.title).join(', ')
 
   return (
@@ -685,6 +686,7 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
                 dispatch({ type: 'SET_META_FOCUS_INDEX', index })
               }}
               onSelectActor={onSelectActor}
+              onSelectDirector={onSelectDirector}
             />
           </div>
 

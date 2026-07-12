@@ -3,9 +3,9 @@
     {
       "id": "com.kpuppy.app",
       "title": "KPuppy",
-      "shortDescription": "KinoPub for LG webOS — v0.0.28 (full subtitles via media-links, Magic Remote dots)",
+      "shortDescription": "KinoPub for LG webOS — v0.0.29 (catalog filters, search fields, popular/fresh home, full history)",
       "iconUri": "https://raw.githubusercontent.com/darkpal/KPuppy/develop/webos-meta/icon.png",
-      "manifestUrl": "https://github.com/darkpal/KPuppy/releases/download/v0.0.28/com.kpuppy.app.manifest.json"
+      "manifestUrl": "https://github.com/darkpal/KPuppy/releases/download/v0.0.29/com.kpuppy.app.manifest.json"
     }
   ]
 }
