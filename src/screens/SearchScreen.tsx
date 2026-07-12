@@ -17,7 +17,7 @@ interface SearchScreenProps {
   initialField?: 'title' | 'director' | 'actor'
 }
 
-type FocusArea = 'keyboard' | 'filter' | 'field' | 'results'
+type FocusArea = 'query' | 'keyboard' | 'filter' | 'field' | 'results'
 type SearchField = 'title' | 'director' | 'actor' | undefined
 type FilterTarget = 'type' | 'field'
 
@@ -42,6 +42,7 @@ export function SearchScreen({ onBack, onSelectItem, onNavigateToMenu, isActive,
   const [resultsPerRow, setResultsPerRow] = useState(6)
   const searchTimeoutRef = useRef<number | null>(null)
   const resultsContainerRef = useRef<HTMLDivElement>(null)
+  const queryInputRef = useRef<HTMLInputElement>(null)
   const [contentTypes, setContentTypes] = useState<ContentType[]>([])
   const [selectedType, setSelectedType] = useState<string | null>(null)
   const [filterDropdownOpen, setFilterDropdownOpen] = useState(false)
@@ -84,6 +85,14 @@ export function SearchScreen({ onBack, onSelectItem, onNavigateToMenu, isActive,
         if (import.meta.env.DEV) console.error('getContentTypes failed:', err)
       })
   }, [])
+
+  useEffect(() => {
+    if (focusArea === 'query') {
+      queryInputRef.current?.focus()
+    } else {
+      queryInputRef.current?.blur()
+    }
+  }, [focusArea])
 
   const performSearch = useCallback(async (searchQuery: string, type: string | null, field: SearchField) => {
     if (!searchQuery.trim()) {
@@ -139,6 +148,12 @@ export function SearchScreen({ onBack, onSelectItem, onNavigateToMenu, isActive,
         setFocusArea('results')
         setResultIndex(0)
       }
+      return
+    }
+
+    if (result.action === 'voice') {
+      // Focus real <input> so Magic Remote / system voice can inject text (ValeraGin-style)
+      setFocusArea('query')
       return
     }
 
@@ -198,12 +213,33 @@ export function SearchScreen({ onBack, onSelectItem, onNavigateToMenu, isActive,
         },
         onUp: () => {},
         onDown: () => {
-          setFocusArea('keyboard')
-          setKeyboardRow(0)
+          setFocusArea('query')
         },
         onEnter: () => {
           setFilterDropdownIndex(0)
           setFilterDropdownOpen(true)
+        }
+      }
+    }
+
+    if (focusArea === 'query') {
+      return {
+        onBack: onBack,
+        onLeft: onNavigateToMenu,
+        onRight: () => {
+          setFocusArea('filter')
+          setActiveFilter('type')
+        },
+        onUp: () => {
+          setFocusArea('filter')
+          setActiveFilter('type')
+        },
+        onDown: () => {
+          setFocusArea('keyboard')
+          setKeyboardRow(0)
+        },
+        onEnter: () => {
+          queryInputRef.current?.focus()
         }
       }
     }
@@ -230,8 +266,7 @@ export function SearchScreen({ onBack, onSelectItem, onNavigateToMenu, isActive,
             setKeyboardRow(prev => prev - 1)
             setKeyboardCol(prev => Math.min(prev, KEYBOARD_ROWS_WITH_SEARCH[keyboardRow - 1].length - 1))
           } else {
-            setFocusArea('filter')
-            setActiveFilter('type')
+            setFocusArea('query')
           }
         },
         onDown: () => {
@@ -307,13 +342,37 @@ export function SearchScreen({ onBack, onSelectItem, onNavigateToMenu, isActive,
   return (
     <div class="search-screen">
       <div class="search-header">
-        <div class="search-icon">🔍</div>
-        <div class="search-input-container">
-          {searchField === 'actor' && <span class="search-field-badge">👤</span>}
-          {searchField === 'director' && <span class="search-field-badge">🎬</span>}
+        <div class="search-icon" aria-hidden="true">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
+          </svg>
+        </div>
+        <div
+          class={`search-input-container ${focusArea === 'query' ? 'focused' : ''}`}
+          onClick={() => setFocusArea('query')}
+        >
+          {searchField === 'actor' && <span class="search-field-badge">A</span>}
+          {searchField === 'director' && <span class="search-field-badge">D</span>}
           {searchField === 'title' && <span class="search-field-badge">Aa</span>}
-          <span class="search-query">{query}</span>
-          <span class="search-cursor" />
+          <input
+            ref={queryInputRef}
+            class="search-query-input"
+            type="text"
+            value={query}
+            placeholder={t.searchPlaceholder}
+            autocomplete="off"
+            autocorrect="off"
+            spellcheck={false}
+            onInput={(e) => {
+              const value = (e.currentTarget as HTMLInputElement).value
+              setQuery(value)
+              if (!value) {
+                setResults([])
+                setHasSearched(false)
+              }
+            }}
+            onFocus={() => setFocusArea('query')}
+          />
         </div>
         <div class="search-filters">
           {contentTypes.length > 0 && (
