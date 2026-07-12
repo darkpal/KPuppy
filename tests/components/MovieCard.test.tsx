@@ -1,8 +1,13 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/preact'
 import { h } from 'preact'
-import { MovieCard } from '../../src/components/MovieCard'
+import { MovieCard, cardTitleForLanguage } from '../../src/components/MovieCard'
 import { MovieItem } from '../../src/api/kinopub'
+import { I18nProvider } from '../../src/i18n/context'
+
+function renderCard(ui: preact.VNode) {
+  return render(<I18nProvider>{ui}</I18nProvider>)
+}
 
 function createMockMovie(overrides?: Partial<MovieItem>): MovieItem {
   return {
@@ -27,11 +32,15 @@ function createMockMovie(overrides?: Partial<MovieItem>): MovieItem {
 }
 
 describe('MovieCard', () => {
+  beforeEach(() => {
+    localStorage.setItem('kpuppy_language', 'ru')
+  })
+
   describe('rendering', () => {
     it('renders movie title', () => {
       const movie = createMockMovie({ title: 'Inception' })
 
-      render(<MovieCard movie={movie} focused={false} />)
+      renderCard(<MovieCard movie={movie} focused={false} />)
 
       expect(screen.getByText('Inception')).toBeDefined()
     })
@@ -39,7 +48,7 @@ describe('MovieCard', () => {
     it('renders movie year', () => {
       const movie = createMockMovie({ year: 2010 })
 
-      render(<MovieCard movie={movie} focused={false} />)
+      renderCard(<MovieCard movie={movie} focused={false} />)
 
       expect(screen.getByText('2010')).toBeDefined()
     })
@@ -53,7 +62,7 @@ describe('MovieCard', () => {
         }
       })
 
-      render(<MovieCard movie={movie} focused={false} />)
+      renderCard(<MovieCard movie={movie} focused={false} />)
 
       const img = screen.getByAltText(movie.title)
       expect(img.getAttribute('src')).toBe('medium.jpg')
@@ -67,7 +76,7 @@ describe('MovieCard', () => {
         }
       })
 
-      render(<MovieCard movie={movie} focused={false} />)
+      renderCard(<MovieCard movie={movie} focused={false} />)
 
       const img = screen.getByAltText(movie.title)
       expect(img.getAttribute('src')).toBe('big.jpg')
@@ -80,7 +89,7 @@ describe('MovieCard', () => {
         }
       })
 
-      render(<MovieCard movie={movie} focused={false} />)
+      renderCard(<MovieCard movie={movie} focused={false} />)
 
       const img = screen.getByAltText(movie.title)
       expect(img.getAttribute('src')).toBe('small.jpg')
@@ -91,7 +100,7 @@ describe('MovieCard', () => {
     it('renders IMDb rating when present', () => {
       const movie = createMockMovie({ imdbRating: 8.0, kinopoiskRating: 7.3, ratingPercentage: 82 })
 
-      render(<MovieCard movie={movie} focused={false} />)
+      renderCard(<MovieCard movie={movie} focused={false} />)
 
       expect(screen.getByText('8.0')).toBeDefined()
       expect(screen.getByText('7.3')).toBeDefined()
@@ -101,56 +110,66 @@ describe('MovieCard', () => {
     it('hides ratings bar when all ratings are zero', () => {
       const movie = createMockMovie({ imdbRating: 0, kinopoiskRating: 0, ratingPercentage: 0 })
 
-      const { container } = render(<MovieCard movie={movie} focused={false} />)
+      const { container } = renderCard(<MovieCard movie={movie} focused={false} />)
 
       expect(container.querySelector('.movie-card-ratings')).toBeNull()
     })
   })
 
   describe('title', () => {
-    it('shows only primary title without English original', () => {
+    it('picks localized title for Russian UI', () => {
+      expect(cardTitleForLanguage('Интерстеллар / Interstellar', 'ru')).toBe('Интерстеллар')
+      expect(cardTitleForLanguage('Валериан/Valerian', 'ru')).toBe('Валериан')
+    })
+
+    it('picks original title for English and German UI', () => {
+      expect(cardTitleForLanguage('Интерстеллар / Interstellar', 'en')).toBe('Interstellar')
+      expect(cardTitleForLanguage('Интерстеллар / Interstellar', 'de')).toBe('Interstellar')
+      expect(cardTitleForLanguage('Валериан/Valerian', 'en')).toBe('Valerian')
+    })
+
+    it('handles title without separator', () => {
+      expect(cardTitleForLanguage('Simple Title', 'en')).toBe('Simple Title')
+      expect(cardTitleForLanguage('Simple Title', 'ru')).toBe('Simple Title')
+    })
+
+    it('renders localized title when app language is Russian', () => {
+      localStorage.setItem('kpuppy_language', 'ru')
       const movie = createMockMovie({ title: 'Интерстеллар / Interstellar' })
 
-      render(<MovieCard movie={movie} focused={false} />)
+      renderCard(<MovieCard movie={movie} focused={false} />)
 
       expect(screen.getByText('Интерстеллар')).toBeDefined()
       expect(screen.queryByText('Interstellar')).toBeNull()
     })
 
-    it('strips English title when slash has no spaces', () => {
-      const movie = createMockMovie({ title: 'Валериан/Valerian' })
+    it('renders original title when app language is English', () => {
+      localStorage.setItem('kpuppy_language', 'en')
+      const movie = createMockMovie({ title: 'Интерстеллар / Interstellar' })
 
-      render(<MovieCard movie={movie} focused={false} />)
+      renderCard(<MovieCard movie={movie} focused={false} />)
 
-      expect(screen.getByText('Валериан')).toBeDefined()
-      expect(screen.queryByText(/Valerian/)).toBeNull()
-    })
-
-    it('handles title without separator', () => {
-      const movie = createMockMovie({ title: 'Simple Title' })
-
-      render(<MovieCard movie={movie} focused={false} />)
-
-      expect(screen.getByText('Simple Title')).toBeDefined()
+      expect(screen.getByText('Interstellar')).toBeDefined()
+      expect(screen.queryByText('Интерстеллар')).toBeNull()
     })
   })
 
   describe('poster badges', () => {
     it('shows HD badge for 1080p quality', () => {
       const movie = createMockMovie({ quality: 1080 })
-      render(<MovieCard movie={movie} focused={false} />)
+      renderCard(<MovieCard movie={movie} focused={false} />)
       expect(screen.getByText('HD')).toBeDefined()
     })
 
     it('shows 4K badge for 2160p quality', () => {
       const movie = createMockMovie({ quality: 2160 })
-      render(<MovieCard movie={movie} focused={false} />)
+      renderCard(<MovieCard movie={movie} focused={false} />)
       expect(screen.getByText('4K')).toBeDefined()
     })
 
     it('shows year on poster', () => {
       const movie = createMockMovie({ year: 2010 })
-      render(<MovieCard movie={movie} focused={false} />)
+      renderCard(<MovieCard movie={movie} focused={false} />)
       expect(screen.getByText('2010')).toBeDefined()
     })
   })
@@ -160,7 +179,7 @@ describe('MovieCard', () => {
       const movie = createMockMovie()
       const episodeInfo = { season: 2, episode: 5, title: 'Episode Title' }
 
-      render(<MovieCard movie={movie} focused={false} episodeInfo={episodeInfo} />)
+      renderCard(<MovieCard movie={movie} focused={false} episodeInfo={episodeInfo} />)
 
       expect(screen.getByText('S2E5')).toBeDefined()
     })
@@ -168,7 +187,7 @@ describe('MovieCard', () => {
     it('does not show badge without episodeInfo', () => {
       const movie = createMockMovie()
 
-      render(<MovieCard movie={movie} focused={false} />)
+      renderCard(<MovieCard movie={movie} focused={false} />)
 
       expect(screen.queryByText(/S\d+E\d+/)).toBeNull()
     })
@@ -177,7 +196,7 @@ describe('MovieCard', () => {
       const movie = createMockMovie()
       const episodeInfo = { season: 1, episode: 3, title: 'Episode Title', thumbnail: 'episode-thumb.jpg' }
 
-      render(<MovieCard movie={movie} focused={false} episodeInfo={episodeInfo} />)
+      renderCard(<MovieCard movie={movie} focused={false} episodeInfo={episodeInfo} />)
 
       const img = screen.getByAltText(movie.title)
       expect(img.getAttribute('src')).toBe('episode-thumb.jpg')
@@ -187,7 +206,7 @@ describe('MovieCard', () => {
       const movie = createMockMovie()
       const episodeInfo = { season: 1, episode: 3, title: 'Episode Title' }
 
-      render(<MovieCard movie={movie} focused={false} episodeInfo={episodeInfo} />)
+      renderCard(<MovieCard movie={movie} focused={false} episodeInfo={episodeInfo} />)
 
       const img = screen.getByAltText(movie.title)
       expect(img.getAttribute('src')).toBe('http://example.com/medium.jpg')
@@ -199,7 +218,7 @@ describe('MovieCard', () => {
       const movie = createMockMovie()
       const onSelect = vi.fn()
 
-      render(<MovieCard movie={movie} focused={false} onSelect={onSelect} />)
+      renderCard(<MovieCard movie={movie} focused={false} onSelect={onSelect} />)
 
       fireEvent.click(screen.getByText('Test Movie').closest('.movie-card')!)
 
@@ -209,7 +228,7 @@ describe('MovieCard', () => {
     it('does not throw when clicked without onSelect', () => {
       const movie = createMockMovie()
 
-      render(<MovieCard movie={movie} focused={false} />)
+      renderCard(<MovieCard movie={movie} focused={false} />)
 
       expect(() => {
         fireEvent.click(screen.getByText('Test Movie').closest('.movie-card')!)
@@ -221,7 +240,7 @@ describe('MovieCard', () => {
     it('applies focused class when focused', () => {
       const movie = createMockMovie()
 
-      const { container } = render(<MovieCard movie={movie} focused={true} />)
+      const { container } = renderCard(<MovieCard movie={movie} focused={true} />)
 
       const card = container.firstChild as HTMLElement
       expect(card.classList.contains('focused')).toBe(true)
@@ -230,7 +249,7 @@ describe('MovieCard', () => {
     it('does not apply focused class when not focused', () => {
       const movie = createMockMovie()
 
-      const { container } = render(<MovieCard movie={movie} focused={false} />)
+      const { container } = renderCard(<MovieCard movie={movie} focused={false} />)
 
       const card = container.firstChild as HTMLElement
       expect(card.classList.contains('focused')).toBe(false)

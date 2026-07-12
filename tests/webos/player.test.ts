@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getStreamUrl, withHlsAudioIndex } from '../../src/webos/player'
+import { getStreamUrl, withHlsAudioIndex, getAvailableQualities } from '../../src/webos/player'
 
 describe('player', () => {
   describe('getStreamUrl', () => {
@@ -66,6 +66,16 @@ describe('player', () => {
 
     it('falls back to first file for invalid preferred quality', () => {
       expect(getStreamUrl(mockFiles, '360p')).toBe('https://480p.m3u8')
+    })
+  })
+
+  describe('getAvailableQualities', () => {
+    it('returns ordered available qualities', () => {
+      expect(getAvailableQualities([
+        { quality: '720p' },
+        { quality: '2160p' },
+        { quality: '1080p' }
+      ])).toEqual(['2160p', '1080p', '720p'])
     })
   })
 

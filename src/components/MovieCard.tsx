@@ -1,4 +1,5 @@
 import { MovieItem } from '../api/kinopub'
+import { useI18n, Language } from '../i18n'
 import imdbIcon from '../assets/imdb.svg'
 import kinopoiskIcon from '../assets/kinopoisk.svg'
 import thumbUpIcon from '../assets/thumb-up.svg'
@@ -20,11 +21,17 @@ interface MovieCardProps {
   badge?: string
 }
 
-/** Local / primary title only — English original stays on the item screen. */
-function primaryTitle(title: string): string {
+/**
+ * Kinopub titles are usually "Localized / Original".
+ * Russian UI keeps the local name; other UI languages prefer the original.
+ */
+export function cardTitleForLanguage(title: string, language: Language): string {
   const idx = title.indexOf('/')
-  if (idx >= 0) return title.slice(0, idx).trim()
-  return title.trim()
+  if (idx < 0) return title.trim()
+  const local = title.slice(0, idx).trim()
+  const original = title.slice(idx + 1).trim()
+  if (language === 'ru') return local || original
+  return original || local
 }
 
 function qualityLabel(quality?: number): string | null {
@@ -39,7 +46,8 @@ function formatRating(value: number): string {
 }
 
 export function MovieCard({ movie, focused, onSelect, onHover, episodeInfo, badge }: MovieCardProps) {
-  const title = primaryTitle(movie.title)
+  const { language } = useI18n()
+  const title = cardTitleForLanguage(movie.title, language)
   const episodeBadge = badge || (episodeInfo ? `S${episodeInfo.season}E${episodeInfo.episode}` : null)
   const imageSrc = episodeInfo?.thumbnail || movie.posters?.medium || movie.posters?.big || movie.posters?.small
   const showRatings = movie.imdbRating > 0 || movie.kinopoiskRating > 0 || movie.ratingPercentage > 0
@@ -54,7 +62,7 @@ export function MovieCard({ movie, focused, onSelect, onHover, episodeInfo, badg
       <div class="movie-card-poster">
         <img
           src={imageSrc}
-          alt={movie.title}
+          alt={title}
           class="movie-card-image"
         />
         {quality && <div class="movie-card-quality">{quality}</div>}
@@ -79,8 +87,8 @@ export function MovieCard({ movie, focused, onSelect, onHover, episodeInfo, badg
           </div>
         )}
       </div>
-      <div class="movie-card-caption">
-        <div class="movie-card-title">{title}</div>
+      <div class="movie-card-info">
+        <h3 class="movie-card-title">{title}</h3>
       </div>
     </div>
   )

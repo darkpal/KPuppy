@@ -79,7 +79,18 @@ describe('PlayerScreen', () => {
     it('renders play state indicator', () => {
       renderWithI18n(<PlayerScreen {...mockProps} />)
 
-      expect(document.querySelector('.player-state')).toBeDefined()
+      expect(document.querySelector('.player-state-button')).toBeDefined()
+    })
+  })
+
+  describe('quality tracks', () => {
+    it('shows quality hint when multiple qualities provided', () => {
+      const files = [
+        { quality: '1080p', url: { hls: 'https://a.m3u8' } },
+        { quality: '720p', url: { hls: 'https://b.m3u8' } }
+      ]
+      renderWithI18n(<PlayerScreen {...mockProps} files={files} initialQuality="1080p" />)
+      expect(screen.getByText('1080p')).toBeDefined()
     })
   })
 

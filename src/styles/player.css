@@ -201,50 +201,76 @@
 
 .player-hints {
   display: flex;
+  align-items: center;
 }
 
 .player-hints > * + * {
-  margin-left: 24px;
+  margin-left: 16px;
 }
 
 .player-hint {
   display: flex;
   align-items: center;
-  font-size: 16px;
-  color: rgba(255, 255, 255, 0.8);
+  font-size: 22px;
+  font-weight: 600;
+  color: #fff;
 }
 
 .player-hint-button {
   margin: 0;
-  padding: 8px 12px;
+  padding: 14px 22px;
+  min-height: 56px;
   border: none;
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: var(--radius-sm);
+  border-radius: 12px;
   cursor: pointer;
   font: inherit;
-  color: inherit;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
 }
 
 .player-hint-button:hover,
 .player-hint-button:focus {
-  background: rgba(255, 255, 255, 0.18);
   outline: none;
+  filter: brightness(1.12);
+}
+
+.player-hint-audio {
+  background: rgba(229, 9, 20, 0.85);
+}
+
+.player-hint-subtitles {
+  background: rgba(46, 204, 113, 0.85);
+}
+
+.player-hint-quality {
+  background: rgba(241, 196, 15, 0.9);
+  color: #1a1a1a;
 }
 
 .player-hint > * + * {
-  margin-left: 8px;
+  margin-left: 10px;
 }
 
 .player-hint-key {
-  font-size: 12px;
+  font-size: 18px;
+  line-height: 1;
 }
 
-.player-hint-key.red {
-  color: #e50914;
+.player-hint-key.red,
+.player-hint-key.green,
+.player-hint-key.yellow {
+  color: inherit;
+  opacity: 0.95;
 }
 
-.player-hint-key.green {
-  color: #2ecc71;
+.player-hint-icon {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+}
+
+.player-hint-label {
+  line-height: 1.1;
 }
 
 .player-panel {

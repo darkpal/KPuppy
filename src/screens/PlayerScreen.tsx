@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'preact/hooks'
 import type { JSX } from 'preact'
-import { Audio, Subtitle } from '../api/kinopub'
-import { withHlsAudioIndex } from '../webos/player'
+import { Audio, Subtitle, VideoFile } from '../api/kinopub'
+import { withHlsAudioIndex, getStreamUrl, getAvailableQualities } from '../webos/player'
 import { saveAudioPreference } from '../storage'
 import { KEY_CODES } from '../hooks'
 import { useI18n } from '../i18n'
@@ -34,11 +34,38 @@ function srtToVtt(srt: string): string {
   return vtt
 }
 
+function IconAudio() {
+  return (
+    <svg class="player-hint-icon" viewBox="0 0 24 24" aria-hidden="true">
+      <path fill="currentColor" d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zm-7 8a1 1 0 0 1 2 0 5 5 0 0 0 10 0 1 1 0 1 1 2 0 7 7 0 0 1-6 6.93V21a1 1 0 1 1-2 0v-3.07A7 7 0 0 1 5 11z" />
+    </svg>
+  )
+}
+
+function IconSubtitles() {
+  return (
+    <svg class="player-hint-icon" viewBox="0 0 24 24" aria-hidden="true">
+      <path fill="currentColor" d="M4 5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H4zm2 11h5a1 1 0 1 1 0 2H6a1 1 0 1 1 0-2zm7 0h5a1 1 0 1 1 0 2h-5a1 1 0 1 1 0-2zM6 12h12a1 1 0 1 1 0 2H6a1 1 0 1 1 0-2z" />
+    </svg>
+  )
+}
+
+function IconQuality() {
+  return (
+    <svg class="player-hint-icon" viewBox="0 0 24 24" aria-hidden="true">
+      <path fill="currentColor" d="M4 6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2H4zm1 3h2v6H5V9zm4 2h2v4H9v-4zm4-1h2v5h-2V10zm4-2h2v7h-2V8z" />
+    </svg>
+  )
+}
+
 export interface PlayerProps {
   url: string
   title: string
   audios?: Audio[]
   subtitles?: Subtitle[]
+  files?: VideoFile[]
+  streamingType?: string
+  initialQuality?: string
   startTime?: number
   initialAudioIndex?: number
   itemId?: number
@@ -48,9 +75,10 @@ export interface PlayerProps {
 
 interface ControlsState {
   visible: boolean
-  activePanel: 'none' | 'audio' | 'subtitles'
+  activePanel: 'none' | 'audio' | 'subtitles' | 'quality'
   selectedAudioIndex: number
   selectedSubtitleIndex: number
+  selectedQuality: string | null
 }
 
 interface ConvertedSubtitle {
@@ -58,13 +86,30 @@ interface ConvertedSubtitle {
   url: string
 }
 
-export function PlayerScreen({ url, title, audios = [], subtitles = [], startTime = 0, initialAudioIndex = 0, itemId = 0, onBack, onTimeUpdate }: PlayerProps) {
+export function PlayerScreen({
+  url,
+  title,
+  audios = [],
+  subtitles = [],
+  files = [],
+  streamingType,
+  initialQuality,
+  startTime = 0,
+  initialAudioIndex = 0,
+  itemId = 0,
+  onBack,
+  onTimeUpdate
+}: PlayerProps) {
   const { t } = useI18n()
   const videoRef = useRef<HTMLVideoElement>(null)
   const progressBarRef = useRef<HTMLDivElement>(null)
   const controlsTimeoutRef = useRef<number>(0)
   const lastTimeRef = useRef<number>(0)
   const isSeekingRef = useRef(false)
+  const startTimeAppliedRef = useRef(false)
+  const resumeAfterReloadRef = useRef<number | null>(null)
+
+  const availableQualities = getAvailableQualities(files)
 
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
@@ -75,7 +120,8 @@ export function PlayerScreen({ url, title, audios = [], subtitles = [], startTim
     visible: true,
     activePanel: 'none',
     selectedAudioIndex: Math.max(0, Math.min(initialAudioIndex, Math.max(0, audios.length - 1))),
-    selectedSubtitleIndex: -1
+    selectedSubtitleIndex: -1,
+    selectedQuality: initialQuality || availableQualities[0] || null
   })
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [hoverPreview, setHoverPreview] = useState<{ percent: number; time: number } | null>(null)
@@ -88,6 +134,27 @@ export function PlayerScreen({ url, title, audios = [], subtitles = [], startTim
       onTimeUpdate?.(value)
     }
   }, [onTimeUpdate])
+
+  const reloadStream = useCallback((nextSrc: string, resumeAt: number, wasPaused: boolean) => {
+    const video = videoRef.current
+    if (!video) return
+    resumeAfterReloadRef.current = resumeAt
+    const onLoaded = () => {
+      video.removeEventListener('loadedmetadata', onLoaded)
+      const target = resumeAfterReloadRef.current
+      resumeAfterReloadRef.current = null
+      if (target != null && target > 0 && Number.isFinite(target)) {
+        video.currentTime = target
+        setCurrentTime(target)
+      }
+      if (!wasPaused) {
+        void video.play()
+      }
+    }
+    video.addEventListener('loadedmetadata', onLoaded)
+    video.src = nextSrc
+    flushTime(resumeAt)
+  }, [flushTime])
 
   const getRatioFromClientX = useCallback((clientX: number) => {
     const bar = progressBarRef.current
@@ -127,7 +194,7 @@ export function PlayerScreen({ url, title, audios = [], subtitles = [], startTim
     }
 
     return () => {
-      blobUrls.forEach(url => URL.revokeObjectURL(url))
+      blobUrls.forEach(u => URL.revokeObjectURL(u))
     }
   }, [subtitles])
 
@@ -262,28 +329,13 @@ export function PlayerScreen({ url, title, audios = [], subtitles = [], startTim
     }
     if (!video || listIndex < 0) return
 
-    // Kinopub classic HLS switches озвучка by playlist: master-v1a1, master-v1a2, …
     const currentSrc = video.currentSrc || video.getAttribute('src') || url
     const nextSrc = withHlsAudioIndex(currentSrc, listIndex)
     if (nextSrc !== currentSrc) {
-      const resumeAt = video.currentTime
-      const wasPaused = video.paused
-      const onLoaded = () => {
-        video.removeEventListener('loadedmetadata', onLoaded)
-        if (resumeAt > 0 && Number.isFinite(resumeAt)) {
-          video.currentTime = resumeAt
-        }
-        if (!wasPaused) {
-          void video.play()
-        }
-      }
-      video.addEventListener('loadedmetadata', onLoaded)
-      video.src = nextSrc
-      flushTime(resumeAt)
+      reloadStream(nextSrc, video.currentTime, video.paused)
       return
     }
 
-    // Some streams expose multiple HTML5 audioTracks (rare on webOS without HLS.js)
     const audioTracks = (video as unknown as {
       audioTracks?: { length: number; [i: number]: { enabled: boolean } }
     }).audioTracks
@@ -293,7 +345,24 @@ export function PlayerScreen({ url, title, audios = [], subtitles = [], startTim
     for (let i = 0; i < audioTracks.length; i++) {
       audioTracks[i].enabled = i === trackIndex
     }
-  }, [url, flushTime, audios, itemId])
+  }, [url, reloadStream, audios, itemId])
+
+  const selectQuality = useCallback((quality: string) => {
+    const video = videoRef.current
+    if (!video || !files.length) return
+    if (quality === controls.selectedQuality) {
+      setControls(prev => ({ ...prev, activePanel: 'none' }))
+      return
+    }
+
+    let nextSrc = getStreamUrl(files, quality, streamingType, { preferClassicHls: true })
+    if (!nextSrc) return
+    nextSrc = withHlsAudioIndex(nextSrc, controls.selectedAudioIndex)
+
+    setControls(prev => ({ ...prev, selectedQuality: quality, activePanel: 'none' }))
+    setErrorMessage(null)
+    reloadStream(nextSrc, video.currentTime, video.paused)
+  }, [files, streamingType, controls.selectedQuality, controls.selectedAudioIndex, reloadStream])
 
   const selectSubtitle = useCallback((index: number) => {
     const video = videoRef.current
@@ -318,6 +387,12 @@ export function PlayerScreen({ url, title, audios = [], subtitles = [], startTim
     showControls()
   }, [convertedSubs.length, showControls])
 
+  const openQualityPanel = useCallback(() => {
+    if (availableQualities.length <= 1) return
+    setControls(prev => ({ ...prev, visible: true, activePanel: 'quality' }))
+    showControls()
+  }, [availableQualities.length, showControls])
+
   useEffect(() => {
     const video = videoRef.current
     if (!video) return
@@ -341,7 +416,9 @@ export function PlayerScreen({ url, title, audios = [], subtitles = [], startTim
       }
     }
     const handleLoadedMetadata = () => {
-      if (startTime > 0) {
+      if (resumeAfterReloadRef.current != null) return
+      if (!startTimeAppliedRef.current && startTime > 0) {
+        startTimeAppliedRef.current = true
         video.currentTime = startTime
         setCurrentTime(startTime)
         lastTimeRef.current = startTime
@@ -409,6 +486,26 @@ export function PlayerScreen({ url, title, audios = [], subtitles = [], startTim
       }
 
       if (controls.activePanel !== 'none') {
+        if (controls.activePanel === 'quality') {
+          const currentIndex = Math.max(0, availableQualities.indexOf(controls.selectedQuality || ''))
+          switch (e.keyCode) {
+            case KEY_CODES.UP:
+              if (currentIndex > 0) selectQuality(availableQualities[currentIndex - 1])
+              e.preventDefault()
+              break
+            case KEY_CODES.DOWN:
+              if (currentIndex < availableQualities.length - 1) selectQuality(availableQualities[currentIndex + 1])
+              e.preventDefault()
+              break
+            case KEY_CODES.ENTER:
+            case KEY_CODES.BACK:
+              setControls(prev => ({ ...prev, activePanel: 'none' }))
+              e.preventDefault()
+              break
+          }
+          return
+        }
+
         const items = controls.activePanel === 'audio' ? audios : convertedSubs
         const currentIndex = controls.activePanel === 'audio'
           ? controls.selectedAudioIndex
@@ -442,7 +539,7 @@ export function PlayerScreen({ url, title, audios = [], subtitles = [], startTim
 
       switch (e.keyCode) {
         case KEY_CODES.ENTER:
-        case 32: // Space
+        case 32:
           togglePlay()
           e.preventDefault()
           break
@@ -480,12 +577,32 @@ export function PlayerScreen({ url, title, audios = [], subtitles = [], startTim
           openSubtitlesPanel()
           e.preventDefault()
           break
+        case KEY_CODES.YELLOW:
+          openQualityPanel()
+          e.preventDefault()
+          break
       }
     }
 
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [controls, audios, convertedSubs, togglePlay, seek, selectAudio, selectSubtitle, showControls, onBack, flushTime, openAudioPanel, openSubtitlesPanel])
+  }, [
+    controls,
+    audios,
+    convertedSubs,
+    availableQualities,
+    togglePlay,
+    seek,
+    selectAudio,
+    selectSubtitle,
+    selectQuality,
+    showControls,
+    onBack,
+    flushTime,
+    openAudioPanel,
+    openSubtitlesPanel,
+    openQualityPanel
+  ])
 
   useEffect(() => {
     showControls()
@@ -586,25 +703,43 @@ export function PlayerScreen({ url, title, audios = [], subtitles = [], startTim
                 {audios.length > 0 && (
                   <button
                     type="button"
-                    class="player-hint player-hint-button"
+                    class="player-hint player-hint-button player-hint-audio"
                     onClick={(event) => {
                       event.stopPropagation()
                       openAudioPanel()
                     }}
                   >
-                    <span class="player-hint-key red">●</span> {t.audio}
+                    <span class="player-hint-key red">●</span>
+                    <IconAudio />
+                    <span class="player-hint-label">{t.audio}</span>
                   </button>
                 )}
                 {convertedSubs.length > 0 && (
                   <button
                     type="button"
-                    class="player-hint player-hint-button"
+                    class="player-hint player-hint-button player-hint-subtitles"
                     onClick={(event) => {
                       event.stopPropagation()
                       openSubtitlesPanel()
                     }}
                   >
-                    <span class="player-hint-key green">●</span> {t.subtitles}
+                    <span class="player-hint-key green">●</span>
+                    <IconSubtitles />
+                    <span class="player-hint-label">{t.subtitles}</span>
+                  </button>
+                )}
+                {availableQualities.length > 1 && (
+                  <button
+                    type="button"
+                    class="player-hint player-hint-button player-hint-quality"
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      openQualityPanel()
+                    }}
+                  >
+                    <span class="player-hint-key yellow">●</span>
+                    <IconQuality />
+                    <span class="player-hint-label">{controls.selectedQuality || t.quality}</span>
                   </button>
                 )}
               </div>
@@ -660,6 +795,28 @@ export function PlayerScreen({ url, title, audios = [], subtitles = [], startTim
                     }}
                   >
                     {sub.lang.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {controls.activePanel === 'quality' && (
+            <div class="player-panel" onClick={(event) => event.stopPropagation()}>
+              <h2 class="player-panel-title">{t.quality}</h2>
+              <div class="player-panel-list">
+                {availableQualities.map((q) => (
+                  <button
+                    type="button"
+                    key={q}
+                    class={`player-panel-item ${q === controls.selectedQuality ? 'selected' : ''}`}
+                    onMouseEnter={() => showControls()}
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      selectQuality(q)
+                    }}
+                  >
+                    {q}
                   </button>
                 ))}
               </div>

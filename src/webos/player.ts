@@ -47,6 +47,15 @@ export async function launchNativePlayer(payload: VideoPayload): Promise<void> {
   )
 }
 
+export const QUALITY_ORDER = ['2160p', '1080p', '720p', '480p'] as const
+
+export function getAvailableQualities(
+  files?: Array<{ quality: string }> | null
+): string[] {
+  if (!files || files.length === 0) return []
+  return QUALITY_ORDER.filter(q => files.some(f => f.quality === q))
+}
+
 export function getStreamUrl(
   files: Array<{ quality: string; url: { http?: string; hls?: string; hls2?: string; hls4?: string } }>,
   preferredQuality?: string,
@@ -55,7 +64,7 @@ export function getStreamUrl(
 ): string | null {
   if (!files || files.length === 0) return null
 
-  const qualityOrder = ['2160p', '1080p', '720p', '480p']
+  const qualityOrder = [...QUALITY_ORDER]
 
   let selectedFile = files[0]
 

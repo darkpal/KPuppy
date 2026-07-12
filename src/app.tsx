@@ -18,10 +18,10 @@ import { ALL_MENU_ITEMS_COUNT, getMenuIdByIndex } from './components/SideMenu'
 import { KEY_CODES } from './hooks'
 import { ScreenManager } from './components/ScreenManager'
 import { isAuthenticated, clearTokens, getTokens, getLocalSettings, saveReturnTo, getReturnTo, clearReturnTo, getContentTypesCache, saveContentTypesCache, getSavedAudioPreference, findAudioIndex, ReturnToState } from './storage'
-import { refreshAccessToken, getItem, setOnAuthError, getDeviceInfo, markTime, getWatchingProgress, getContentTypes, registerDevice, Audio, Subtitle } from './api/kinopub'
+import { refreshAccessToken, getItem, setOnAuthError, getDeviceInfo, markTime, getWatchingProgress, getContentTypes, registerDevice, VideoFile, Audio, Subtitle } from './api/kinopub'
 import { applyPreferredDeviceDefaultsOnce } from './preferredDefaults'
 import { saveTokens } from './storage'
-import { launchNativePlayer, getStreamUrl, withHlsAudioIndex } from './webos/player'
+import { launchNativePlayer, getStreamUrl, withHlsAudioIndex, getAvailableQualities } from './webos/player'
 import { platformBack } from './webos/service'
 import { getResumeTime } from './utils/watching'
 import { useI18n } from './i18n'
@@ -41,6 +41,9 @@ interface PlayerState {
   title: string
   audios: Audio[]
   subtitles: Subtitle[]
+  files: VideoFile[]
+  streamingType?: string
+  initialQuality?: string
   itemId: number
   /** Episode/video number for Kinopub marktime API */
   video: number
@@ -291,6 +294,7 @@ export function App() {
         title,
         audios: [],
         subtitles: [],
+        files: [],
         itemId: 0,
         video: 1,
         startTime: 0,
@@ -374,6 +378,11 @@ export function App() {
       }
 
       if (localSettings.playerType === 'builtin') {
+        const available = getAvailableQualities(files)
+        const initialQuality = preferredQuality && available.includes(preferredQuality)
+          ? preferredQuality
+          : available[0]
+
         setState(prev => ({
           ...prev,
           player: {
@@ -381,6 +390,9 @@ export function App() {
             title,
             audios,
             subtitles,
+            files: files || [],
+            streamingType,
+            initialQuality,
             itemId,
             video: videoNumber,
             season,
@@ -521,6 +533,9 @@ export function App() {
         title={state.player.title}
         audios={state.player.audios}
         subtitles={state.player.subtitles}
+        files={state.player.files}
+        streamingType={state.player.streamingType}
+        initialQuality={state.player.initialQuality}
         startTime={state.player.startTime}
         initialAudioIndex={state.player.initialAudioIndex}
         itemId={state.player.itemId}
