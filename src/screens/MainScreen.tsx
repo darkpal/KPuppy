@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'preact/hooks'
-import { getItems, getPopularItems, getFreshItems, getWatching, MovieItem, ItemsParams } from '../api/kinopub'
+import { getItems, getPopularItems, getFreshItems, getHotItems, getWatching, MovieItem, ItemsParams } from '../api/kinopub'
 import { getLocalSettings } from '../storage'
 import { MovieRow } from '../components/MovieRow'
 import { useKeyboardNavigation, useScrollToFocused, useWheelScroll } from '../hooks'
@@ -18,7 +18,7 @@ interface MainScreenProps {
   onFocusChange?: (row: number, col: number) => void
 }
 
-type FeedSource = 'items' | 'popular' | 'fresh'
+type FeedSource = 'items' | 'popular' | 'fresh' | 'hot'
 
 interface ContentRow {
   id: string
@@ -54,9 +54,10 @@ function createHomeRowConfigs(): RowConfig[] {
       params: { type: 'movie', page: 0, perpage: 20 }
     },
     {
+      // /items/popular for serials drifts from web; /items/hot matches prior good list
       id: 'popular-series',
       titleKey: 'popularSeries',
-      feed: 'popular',
+      feed: 'hot',
       params: { type: 'serial', page: 0, perpage: 20 }
     },
     {
@@ -128,6 +129,9 @@ export function MainScreen({ onBack, onSelectItem, onNavigateToMenu, isActive, i
           items = response.items
         } else if (config.feed === 'fresh') {
           const response = await getFreshItems(config.params?.type, config.params?.perpage ?? 20)
+          items = response.items
+        } else if (config.feed === 'hot') {
+          const response = await getHotItems(config.params?.type, config.params?.perpage ?? 20)
           items = response.items
         } else {
           const response = await getItems(config.params!)
