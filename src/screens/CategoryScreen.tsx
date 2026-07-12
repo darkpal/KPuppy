@@ -7,6 +7,24 @@ import { LoadingState } from '../components/LoadingSpinner'
 import { useI18n } from '../i18n'
 import '../styles/category.css'
 
+export type CategorySortOption = NonNullable<ItemsParams['sort']>
+
+export interface CategoryFilters {
+  genreId: number | null
+  countryId: number | null
+  sort: CategorySortOption
+  year: number | null
+  only4k: boolean
+}
+
+export const DEFAULT_CATEGORY_FILTERS: CategoryFilters = {
+  genreId: null,
+  countryId: null,
+  sort: 'created-',
+  year: null,
+  only4k: false
+}
+
 interface CategoryScreenProps {
   categoryId: string
   title: string
@@ -16,6 +34,8 @@ interface CategoryScreenProps {
   initialFocusIndex?: number
   onFocusChange?: (index: number) => void
   initialGenreId?: number | null
+  initialFilters?: CategoryFilters | null
+  onFiltersChange?: (filters: CategoryFilters) => void
 }
 
 const CATEGORY_PARAMS: Record<string, ItemsParams> = {
@@ -33,8 +53,25 @@ const CURRENT_YEAR = new Date().getFullYear()
 const YEAR_OPTIONS = Array.from({ length: CURRENT_YEAR - 1969 }, (_, i) => CURRENT_YEAR - i)
 
 type FocusArea = 'filter' | 'grid'
-type SortOption = NonNullable<ItemsParams['sort']>
+type SortOption = CategorySortOption
 type FilterKind = 'genre' | 'country' | 'sort' | 'year' | 'quality'
+
+function resolveInitialFilters(
+  initialFilters?: CategoryFilters | null,
+  initialGenreId?: number | null
+): CategoryFilters {
+  if (initialFilters) {
+    return {
+      ...DEFAULT_CATEGORY_FILTERS,
+      ...initialFilters,
+      genreId: initialFilters.genreId ?? initialGenreId ?? null
+    }
+  }
+  return {
+    ...DEFAULT_CATEGORY_FILTERS,
+    genreId: initialGenreId ?? null
+  }
+}
 
 const SORT_OPTIONS: { id: SortOption; labelKey: 'sortNewest' | 'sortRating' | 'sortViews' | 'sortYear' | 'sortTitle' }[] = [
   { id: 'created-', labelKey: 'sortNewest' },
@@ -46,7 +83,18 @@ const SORT_OPTIONS: { id: SortOption; labelKey: 'sortNewest' | 'sortRating' | 's
 
 const FILTER_KINDS: FilterKind[] = ['genre', 'country', 'sort', 'year', 'quality']
 
-export function CategoryScreen({ categoryId, title, onSelectItem, onNavigateToMenu, isActive, initialFocusIndex = 0, onFocusChange, initialGenreId = null }: CategoryScreenProps) {
+export function CategoryScreen({
+  categoryId,
+  title,
+  onSelectItem,
+  onNavigateToMenu,
+  isActive,
+  initialFocusIndex = 0,
+  onFocusChange,
+  initialGenreId = null,
+  initialFilters = null,
+  onFiltersChange
+}: CategoryScreenProps) {
   const { t } = useI18n()
   const [items, setItems] = useState<MovieItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -58,15 +106,18 @@ export function CategoryScreen({ categoryId, title, onSelectItem, onNavigateToMe
   const prevCategoryIdRef = useRef<string>(categoryId)
   const onFocusChangeRef = useRef(onFocusChange)
   onFocusChangeRef.current = onFocusChange
+  const onFiltersChangeRef = useRef(onFiltersChange)
+  onFiltersChangeRef.current = onFiltersChange
   const { itemsPerRow, cardWidth } = useGridLayout('.category-grid', 240, [items.length])
 
+  const resolvedInitial = resolveInitialFilters(initialFilters, initialGenreId)
   const [genres, setGenres] = useState<Genre[]>([])
   const [countries, setCountries] = useState<Country[]>([])
-  const [selectedGenre, setSelectedGenre] = useState<number | null>(initialGenreId)
-  const [selectedCountry, setSelectedCountry] = useState<number | null>(null)
-  const [selectedSort, setSelectedSort] = useState<SortOption>('created-')
-  const [selectedYear, setSelectedYear] = useState<number | null>(null)
-  const [only4k, setOnly4k] = useState(false)
+  const [selectedGenre, setSelectedGenre] = useState<number | null>(resolvedInitial.genreId)
+  const [selectedCountry, setSelectedCountry] = useState<number | null>(resolvedInitial.countryId)
+  const [selectedSort, setSelectedSort] = useState<SortOption>(resolvedInitial.sort)
+  const [selectedYear, setSelectedYear] = useState<number | null>(resolvedInitial.year)
+  const [only4k, setOnly4k] = useState(resolvedInitial.only4k)
   const [focusArea, setFocusArea] = useState<FocusArea>('grid')
   const [filterFocusIndex, setFilterFocusIndex] = useState(0)
   const [filterDropdownOpen, setFilterDropdownOpen] = useState(false)
@@ -78,6 +129,16 @@ export function CategoryScreen({ categoryId, title, onSelectItem, onNavigateToMe
   useEffect(() => {
     onFocusChangeRef.current?.(focusedIndex)
   }, [focusedIndex])
+
+  useEffect(() => {
+    onFiltersChangeRef.current?.({
+      genreId: selectedGenre,
+      countryId: selectedCountry,
+      sort: selectedSort,
+      year: selectedYear,
+      only4k
+    })
+  }, [selectedGenre, selectedCountry, selectedSort, selectedYear, only4k])
 
   useEffect(() => {
     if (showFilters) {
@@ -154,12 +215,13 @@ export function CategoryScreen({ categoryId, title, onSelectItem, onNavigateToMe
     setItems([])
     setCurrentPage(1)
     if (categoryChanged) {
+      const next = resolveInitialFilters(initialFilters, initialGenreId)
       setFocusedIndex(0)
-      setSelectedGenre(initialGenreId ?? null)
-      setSelectedCountry(null)
-      setSelectedSort('created-')
-      setSelectedYear(null)
-      setOnly4k(false)
+      setSelectedGenre(next.genreId)
+      setSelectedCountry(next.countryId)
+      setSelectedSort(next.sort)
+      setSelectedYear(next.year)
+      setOnly4k(next.only4k)
       setFocusArea('grid')
       setFilterFocusIndex(0)
       setFilterDropdownOpen(false)
@@ -169,7 +231,10 @@ export function CategoryScreen({ categoryId, title, onSelectItem, onNavigateToMe
     }
     setHasMore(true)
     loadItems(1, false)
-  }, [categoryId, selectedGenre, selectedCountry, selectedSort, selectedYear, only4k, loadItems, initialGenreId])
+    // initialFilters / initialGenreId are only applied when the category changes;
+    // otherwise filters stay in local state and are reported via onFiltersChange.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categoryId, selectedGenre, selectedCountry, selectedSort, selectedYear, only4k, loadItems])
 
   const loadMore = useCallback(() => {
     if (!loadingMore && hasMore) {

@@ -133,6 +133,50 @@ describe('CategoryScreen', () => {
         expect(document.querySelector('.category-filters')).toBeDefined()
       })
     })
+
+    it('restores initialFilters and reports them via onFiltersChange', async () => {
+      const onFiltersChange = vi.fn()
+      vi.mocked(kinopub.getItems).mockResolvedValue({
+        items: [mockItem],
+        pagination: { current: 1, total: 1, totalItems: 1, perpage: 48 }
+      })
+
+      renderWithI18n(
+        <CategoryScreen
+          {...mockProps}
+          initialFilters={{
+            genreId: 7,
+            countryId: 3,
+            sort: 'views-',
+            year: 2020,
+            only4k: true
+          }}
+          onFiltersChange={onFiltersChange}
+        />
+      )
+
+      await waitFor(() => {
+        expect(onFiltersChange).toHaveBeenCalledWith({
+          genreId: 7,
+          countryId: 3,
+          sort: 'views-',
+          year: 2020,
+          only4k: true
+        })
+      })
+
+      await waitFor(() => {
+        expect(kinopub.getItems).toHaveBeenCalledWith(
+          expect.objectContaining({
+            genre: 7,
+            country: 3,
+            sort: 'views-',
+            year: '2020',
+            quality: '4k'
+          })
+        )
+      })
+    })
   })
 
   describe('watching category', () => {

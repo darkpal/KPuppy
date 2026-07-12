@@ -3,7 +3,7 @@ import { AuthScreen } from './screens/AuthScreen'
 import { MainScreen } from './screens/MainScreen'
 import { ItemScreen } from './screens/ItemScreen'
 import { SearchScreen } from './screens/SearchScreen'
-import { CategoryScreen } from './screens/CategoryScreen'
+import { CategoryScreen, CategoryFilters, DEFAULT_CATEGORY_FILTERS } from './screens/CategoryScreen'
 import { BookmarksScreen } from './screens/BookmarksScreen'
 import { CollectionsScreen } from './screens/CollectionsScreen'
 import { HistoryScreen } from './screens/HistoryScreen'
@@ -66,6 +66,7 @@ interface AppState {
   player: PlayerState | null
   searchPreset: { q: string; field: 'actor' | 'director' | 'title' } | null
   categoryGenreId: number | null
+  categoryFilters: CategoryFilters | null
 }
 
 const ITEM_TYPE_TO_CATEGORY: Record<string, string> = {
@@ -116,7 +117,8 @@ export function App() {
       returnToSeriesId: null,
       player: null,
       searchPreset: null,
-      categoryGenreId: null
+      categoryGenreId: null,
+      categoryFilters: null
     }
 
     const savedReturnTo = getReturnTo()
@@ -236,7 +238,8 @@ export function App() {
       itemId: null,
       seriesId: null,
       searchPreset: null,
-      categoryGenreId: null
+      categoryGenreId: null,
+      categoryFilters: null
     }))
   }, [])
 
@@ -248,8 +251,17 @@ export function App() {
       seriesId: null,
       selectedMenuId: categoryId,
       categoryGenreId: genreId,
+      categoryFilters: { ...DEFAULT_CATEGORY_FILTERS, genreId },
       searchPreset: null,
       focusArea: 'content'
+    }))
+  }, [])
+
+  const handleCategoryFiltersChange = useCallback((filters: CategoryFilters) => {
+    setState(prev => ({
+      ...prev,
+      categoryFilters: filters,
+      categoryGenreId: filters.genreId
     }))
   }, [])
 
@@ -695,7 +707,7 @@ export function App() {
         const categoryFocus = state.screenFocus[state.selectedMenuId] || { row: 0, col: 0 }
         return (
           <CategoryScreen
-            key={`${state.selectedMenuId}-${state.categoryGenreId ?? 'all'}`}
+            key={state.selectedMenuId}
             categoryId={state.selectedMenuId}
             title={title}
             onSelectItem={handleSelectItem}
@@ -704,6 +716,8 @@ export function App() {
             initialFocusIndex={categoryFocus.row}
             onFocusChange={(index) => handleFocusChange(state.selectedMenuId, index, 0)}
             initialGenreId={state.categoryGenreId}
+            initialFilters={state.categoryFilters}
+            onFiltersChange={handleCategoryFiltersChange}
           />
         )
       }
