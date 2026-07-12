@@ -29,6 +29,7 @@ const mockSeriesDetails = {
   imdbRating: 7.5,
   kinopoiskRating: 8.2,
   ratingPercentage: 0,
+  quality: 0,
   views: 1000,
   directors: [],
   actors: [],

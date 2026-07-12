@@ -20,15 +20,21 @@ interface MovieCardProps {
   badge?: string
 }
 
-function splitTitle(title: string): { primary: string; secondary?: string } {
-  const separators = [' / ', ' / ']
-  for (const sep of separators) {
+/** Local / primary title only — English original stays on the item screen. */
+function primaryTitle(title: string): string {
+  for (const sep of [' / ', ' / ']) {
     if (title.includes(sep)) {
-      const parts = title.split(sep)
-      return { primary: parts[0], secondary: parts[1] }
+      return title.split(sep)[0]
     }
   }
-  return { primary: title }
+  return title
+}
+
+function qualityLabel(quality?: number): string | null {
+  if (!quality || quality <= 0) return null
+  if (quality >= 2160) return '4K'
+  if (quality >= 720) return 'HD'
+  return null
 }
 
 function formatRating(value: number): string {
@@ -36,11 +42,11 @@ function formatRating(value: number): string {
 }
 
 export function MovieCard({ movie, focused, onSelect, onHover, episodeInfo, badge }: MovieCardProps) {
-  const { primary, secondary } = splitTitle(movie.title)
-
+  const title = primaryTitle(movie.title)
   const episodeBadge = badge || (episodeInfo ? `S${episodeInfo.season}E${episodeInfo.episode}` : null)
   const imageSrc = episodeInfo?.thumbnail || movie.posters?.medium || movie.posters?.big || movie.posters?.small
   const showRatings = movie.imdbRating > 0 || movie.kinopoiskRating > 0 || movie.ratingPercentage > 0
+  const quality = qualityLabel(movie.quality)
 
   return (
     <div
@@ -54,7 +60,11 @@ export function MovieCard({ movie, focused, onSelect, onHover, episodeInfo, badg
           alt={movie.title}
           class="movie-card-image"
         />
-        {episodeBadge && <div class="movie-card-badge">{episodeBadge}</div>}
+        {quality && <div class="movie-card-quality">{quality}</div>}
+        <div class="movie-card-top-right">
+          {movie.year > 0 && <div class="movie-card-year-badge">{movie.year}</div>}
+          {episodeBadge && <div class="movie-card-badge">{episodeBadge}</div>}
+        </div>
         {showRatings && (
           <div class="movie-card-ratings">
             <div class="movie-card-rating">
@@ -73,9 +83,7 @@ export function MovieCard({ movie, focused, onSelect, onHover, episodeInfo, badg
         )}
       </div>
       <div class="movie-card-caption">
-        <div class="movie-card-title">{primary}</div>
-        {secondary && <div class="movie-card-title-secondary">{secondary}</div>}
-        {movie.year > 0 && <div class="movie-card-year">{movie.year}</div>}
+        <div class="movie-card-title">{title}</div>
       </div>
     </div>
   )

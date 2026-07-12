@@ -1,6 +1,6 @@
 {
   "name": "kpuppy",
-  "version": "0.0.22",
+  "version": "0.0.23",
   "description": "KinoPub client for LG webOS TV",
   "type": "module",
   "scripts": {

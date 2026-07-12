@@ -10,8 +10,8 @@
   flex: 1;
   overflow-x: hidden;
   overflow-y: hidden;
-  padding-top: 30px;
-  padding-bottom: 40px;
+  padding-top: 16px;
+  padding-bottom: 16px;
   scrollbar-width: none;
   overscroll-behavior: none;
 }
@@ -22,22 +22,22 @@
 
 .movie-row {
   padding: 0 48px;
-  margin-bottom: 36px;
+  margin-bottom: 12px;
 }
 
 .row-title {
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 600;
   color: #ffffff;
-  margin-bottom: 16px;
+  margin-bottom: 8px;
 }
 
 .movie-grid {
   display: flex;
   overflow-x: hidden;
   overflow-y: hidden;
-  padding: 16px;
-  margin: -16px;
+  padding: 10px;
+  margin: -10px;
   margin-right: -48px;
   padding-right: 48px;
   scrollbar-width: none;
@@ -45,7 +45,7 @@
 }
 
 .movie-grid > .movie-card {
-  margin-right: 28px;
+  margin-right: 22px;
   flex-shrink: 0;
 }
 
@@ -57,54 +57,55 @@
   display: none;
 }
 
-/* ~6 posters visible on 1080p TV instead of ~8 */
+/* ~6 across; 2 rows with 2-line titles fit on 1080p */
 .movie-row .movie-card {
-  width: 270px;
+  width: 240px;
   height: auto;
 }
 
 .movie-row .movie-card-poster {
-  width: 270px;
+  width: 240px;
+}
+
+.movie-row .movie-card-caption {
+  padding: 6px 4px 4px;
+  min-height: 2.5em;
 }
 
 .movie-row .movie-card-title {
-  font-size: 22px;
+  font-size: 18px;
+  -webkit-line-clamp: 2;
 }
 
-.movie-row .movie-card-title-secondary {
-  font-size: 16px;
-}
-
-.movie-row .movie-card-year {
-  font-size: 15px;
-}
-
+.movie-row .movie-card-quality,
+.movie-row .movie-card-year-badge,
 .movie-row .movie-card-badge {
-  font-size: 14px;
+  font-size: 12px;
+  padding: 2px 6px;
 }
 
 .movie-row .movie-card-ratings {
-  font-size: 18px;
-  padding: 6px 8px;
-  left: 8px;
-  right: 8px;
-  bottom: 8px;
-  gap: 6px;
+  font-size: 15px;
+  padding: 4px 6px;
+  left: 6px;
+  right: 6px;
+  bottom: 6px;
+  gap: 4px;
 }
 
 .movie-row .movie-card-rating {
-  gap: 10px;
+  gap: 7px;
 }
 
 .movie-row .movie-card-rating-icon {
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
 }
 
 .row-loading {
   display: flex;
   align-items: center;
-  height: 460px;
+  height: 400px;
   padding-left: 20px;
 }
 

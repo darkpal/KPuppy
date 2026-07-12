@@ -20,6 +20,7 @@ function createMockMovie(overrides?: Partial<MovieItem>): MovieItem {
     imdbRating: 7.5,
     kinopoiskRating: 8,
     ratingPercentage: 82,
+    quality: 0,
     views: 1000,
     ...overrides
   }
@@ -106,14 +107,14 @@ describe('MovieCard', () => {
     })
   })
 
-  describe('split title', () => {
-    it('splits title with / separator', () => {
+  describe('title', () => {
+    it('shows only primary title without English original', () => {
       const movie = createMockMovie({ title: 'Интерстеллар / Interstellar' })
 
       render(<MovieCard movie={movie} focused={false} />)
 
       expect(screen.getByText('Интерстеллар')).toBeDefined()
-      expect(screen.getByText('Interstellar')).toBeDefined()
+      expect(screen.queryByText('Interstellar')).toBeNull()
     })
 
     it('handles title without separator', () => {
@@ -122,6 +123,26 @@ describe('MovieCard', () => {
       render(<MovieCard movie={movie} focused={false} />)
 
       expect(screen.getByText('Simple Title')).toBeDefined()
+    })
+  })
+
+  describe('poster badges', () => {
+    it('shows HD badge for 1080p quality', () => {
+      const movie = createMockMovie({ quality: 1080 })
+      render(<MovieCard movie={movie} focused={false} />)
+      expect(screen.getByText('HD')).toBeDefined()
+    })
+
+    it('shows 4K badge for 2160p quality', () => {
+      const movie = createMockMovie({ quality: 2160 })
+      render(<MovieCard movie={movie} focused={false} />)
+      expect(screen.getByText('4K')).toBeDefined()
+    })
+
+    it('shows year on poster', () => {
+      const movie = createMockMovie({ year: 2010 })
+      render(<MovieCard movie={movie} focused={false} />)
+      expect(screen.getByText('2010')).toBeDefined()
     })
   })
 

@@ -49,6 +49,8 @@ export interface MovieItem {
   imdbRating: number
   kinopoiskRating: number
   ratingPercentage: number
+  /** Max available height, e.g. 2160 / 1080 / 720 (Kinopub API). */
+  quality: number
   views: number
 }
 
@@ -249,6 +251,7 @@ function mapToMovieItem(item: Record<string, unknown>): MovieItem {
     imdbRating: Number(item.imdb_rating) || 0,
     kinopoiskRating: Number(item.kinopoisk_rating) || 0,
     ratingPercentage: Number(item.rating_percentage) || 0,
+    quality: Number(item.quality) || 0,
     views: Number(item.views) || 0
   }
 }
@@ -833,6 +836,7 @@ export async function getItem(id: number): Promise<ItemDetails> {
     imdbRating: item.imdb_rating,
     kinopoiskRating: item.kinopoisk_rating,
     ratingPercentage: item.rating_percentage || 0,
+    quality: Number(item.quality) || 0,
     views: item.views,
     directors,
     actors,
