@@ -56,6 +56,30 @@ function IconQuality() {
   )
 }
 
+/** LG Magic Remote colored keys: red=1, green=2, yellow=3 dots. */
+function RemoteKeyDots({ count }: { count: 1 | 2 | 3 }) {
+  return (
+    <span class={`player-hint-key-dots dots-${count}`} aria-hidden="true">
+      {Array.from({ length: count }, (_, i) => (
+        <span key={i} class="player-hint-key-dot" />
+      ))}
+    </span>
+  )
+}
+
+function formatPlayerSubtitleLabel(lang: string): string {
+  const code = (lang || '').toLowerCase()
+  const names: Record<string, string> = {
+    rus: 'Русский', ru: 'Русский',
+    eng: 'English', en: 'English',
+    ukr: 'Українська', uk: 'Українська',
+    tur: 'Türkçe', tr: 'Türkçe',
+    deu: 'Deutsch', de: 'Deutsch', ger: 'Deutsch',
+    fra: 'Français', fr: 'Français',
+  }
+  return names[code] || (lang ? lang.toUpperCase() : 'SUB')
+}
+
 export interface PlayerProps {
   url: string
   title: string
@@ -168,17 +192,32 @@ export function PlayerScreen({
     async function convertSubtitles() {
       const converted: ConvertedSubtitle[] = []
 
-      for (const sub of subtitles) {
+      for (let i = 0; i < subtitles.length; i++) {
+        const sub = subtitles[i]
+        if (!sub.url) continue
         try {
           const response = await fetch(sub.url)
-          if (!response.ok) continue
+          if (!response.ok) {
+            if (import.meta.env.DEV) console.error('Subtitle fetch failed:', sub.lang, response.status)
+            continue
+          }
 
-          const srtText = await response.text()
+          const buffer = await response.arrayBuffer()
+          let srtText = new TextDecoder('utf-8').decode(buffer)
+          // Fallback if UTF-8 looks broken (common for legacy SRTs)
+          if (srtText.includes('�')) {
+            try {
+              srtText = new TextDecoder('windows-1251').decode(buffer)
+            } catch {
+              // keep utf-8 result
+            }
+          }
           const vttText = srtToVtt(srtText)
           const blob = new Blob([vttText], { type: 'text/vtt' })
           const blobUrl = URL.createObjectURL(blob)
           blobUrls.push(blobUrl)
-          converted.push({ lang: sub.lang, url: blobUrl })
+          const label = sub.forced ? `${sub.lang}-forced` : sub.lang
+          converted.push({ lang: label || `sub${i + 1}`, url: blobUrl })
         } catch (e) {
           if (import.meta.env.DEV) console.error('Failed to convert subtitle:', sub.lang, e)
         }
@@ -628,13 +667,13 @@ export function PlayerScreen({
         src={url}
         preload="metadata"
       >
-        {convertedSubs.map((sub) => (
+        {convertedSubs.map((sub, idx) => (
           <track
-            key={sub.lang}
+            key={`${sub.lang}-${idx}`}
             kind="subtitles"
             src={sub.url}
             srcLang={sub.lang}
-            label={sub.lang.toUpperCase()}
+            label={formatPlayerSubtitleLabel(sub.lang)}
           />
         ))}
       </video>
@@ -707,7 +746,7 @@ export function PlayerScreen({
                       openQualityPanel()
                     }}
                   >
-                    <span class="player-hint-key">●</span>
+                    <RemoteKeyDots count={1} />
                     <IconQuality />
                     <span class="player-hint-label">{controls.selectedQuality || t.quality}</span>
                   </button>
@@ -721,7 +760,7 @@ export function PlayerScreen({
                       openAudioPanel()
                     }}
                   >
-                    <span class="player-hint-key">●</span>
+                    <RemoteKeyDots count={2} />
                     <IconAudio />
                     <span class="player-hint-label">{t.audio}</span>
                   </button>
@@ -735,7 +774,7 @@ export function PlayerScreen({
                       openSubtitlesPanel()
                     }}
                   >
-                    <span class="player-hint-key">●</span>
+                    <RemoteKeyDots count={3} />
                     <IconSubtitles />
                     <span class="player-hint-label">{t.subtitles}</span>
                   </button>
@@ -784,7 +823,7 @@ export function PlayerScreen({
                 {convertedSubs.map((sub, idx) => (
                   <button
                     type="button"
-                    key={sub.lang}
+                    key={`${sub.lang}-${idx}`}
                     class={`player-panel-item ${idx === controls.selectedSubtitleIndex ? 'selected' : ''}`}
                     onMouseEnter={() => showControls()}
                     onClick={(event) => {
@@ -792,7 +831,7 @@ export function PlayerScreen({
                       selectSubtitle(idx)
                     }}
                   >
-                    {sub.lang.toUpperCase()}
+                    {formatPlayerSubtitleLabel(sub.lang)}
                   </button>
                 ))}
               </div>

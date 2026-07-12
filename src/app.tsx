@@ -18,7 +18,7 @@ import { ALL_MENU_ITEMS_COUNT, getMenuIdByIndex } from './components/SideMenu'
 import { KEY_CODES } from './hooks'
 import { ScreenManager } from './components/ScreenManager'
 import { isAuthenticated, clearTokens, getTokens, getLocalSettings, saveReturnTo, getReturnTo, clearReturnTo, getContentTypesCache, saveContentTypesCache, getSavedAudioPreference, findAudioIndex, ReturnToState } from './storage'
-import { refreshAccessToken, getItem, setOnAuthError, getDeviceInfo, markTime, getWatchingProgress, getContentTypes, registerDevice, VideoFile, Audio, Subtitle } from './api/kinopub'
+import { refreshAccessToken, getItem, getMediaLinks, setOnAuthError, getDeviceInfo, markTime, getWatchingProgress, getContentTypes, registerDevice, VideoFile, Audio, Subtitle } from './api/kinopub'
 import { applyPreferredDeviceDefaultsOnce } from './preferredDefaults'
 import { saveTokens } from './storage'
 import { launchNativePlayer, getStreamUrl, withHlsAudioIndex, getAvailableQualities } from './webos/player'
@@ -329,6 +329,7 @@ export function App() {
       let subtitles = item.videos?.[0]?.subtitles || []
       let title = item.title
       let videoNumber = item.videos?.[0]?.number || 1
+      let mediaId = item.videos?.[0]?.id
       let startTime = getResumeTime(item.videos?.[0]?.watching, item.videos?.[0]?.duration)
 
       if (season !== undefined && episode !== undefined && item.seasons) {
@@ -339,9 +340,20 @@ export function App() {
           audios = episodeData.audios || []
           subtitles = episodeData.subtitles || []
           videoNumber = episodeData.number
+          mediaId = episodeData.id
           title = `${item.title} - S${season}E${episode}`
           if (episodeData.title) title += ` - ${episodeData.title}`
           startTime = getResumeTime(episodeData.watching, episodeData.duration)
+        }
+      }
+
+      if (mediaId) {
+        try {
+          const links = await getMediaLinks(mediaId)
+          if (links.files.length > 0) files = links.files
+          if (links.subtitles.length > 0) subtitles = links.subtitles
+        } catch (err) {
+          if (import.meta.env.DEV) console.error('getMediaLinks failed:', err)
         }
       }
 

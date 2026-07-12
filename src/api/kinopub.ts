@@ -117,6 +117,7 @@ export interface WatchingProgress {
 }
 
 export interface Video {
+  id?: number | string
   number: number
   title: string
   files: VideoFile[]
@@ -782,6 +783,54 @@ export async function getUser(): Promise<User> {
   }
 
   return result
+}
+
+
+function normalizeVideoFile(raw: Record<string, unknown>): VideoFile {
+  const urls = (raw.urls || raw.url || {}) as Record<string, string | undefined>
+  return {
+    quality: String(raw.quality || ''),
+    url: {
+      http: urls.http,
+      hls: urls.hls,
+      hls2: urls.hls2,
+      hls4: urls.hls4
+    }
+  }
+}
+
+function normalizeSubtitles(raw: unknown): Subtitle[] {
+  if (!Array.isArray(raw)) return []
+  return raw.map((entry, index) => {
+    const s = (entry || {}) as Record<string, unknown>
+    const lang = s.lang ?? s.language ?? s.title
+    return {
+      lang: String(lang || `sub${index + 1}`),
+      shift: Number(s.shift) || 0,
+      embed: Boolean(s.embed),
+      forced: Boolean(s.forced),
+      file: String(s.file || ''),
+      url: String(s.url || '')
+    }
+  }).filter(sub => Boolean(sub.url || sub.lang))
+}
+
+export interface MediaLinks {
+  files: VideoFile[]
+  subtitles: Subtitle[]
+}
+
+/** Full files + subtitles for a media/video id (Kinopub media-links). */
+export async function getMediaLinks(mediaId: number | string): Promise<MediaLinks> {
+  const response = await authFetch(`${BASE_URL}/v1/items/media-links?mid=${mediaId}`)
+  if (!response.ok) {
+    throw new ApiError('Failed to fetch media links', response.status)
+  }
+  const data = await response.json()
+  return {
+    files: Array.isArray(data.files) ? data.files.map((f: Record<string, unknown>) => normalizeVideoFile(f)) : [],
+    subtitles: normalizeSubtitles(data.subtitles)
+  }
 }
 
 export async function getItem(id: number): Promise<ItemDetails> {

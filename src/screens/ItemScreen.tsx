@@ -1,5 +1,5 @@
 import { useEffect, useCallback, useMemo, useReducer } from 'preact/hooks'
-import { getItem, getSimilarItems, getBookmarkFolders, getItemFolders, addToBookmark, removeFromBookmark, toggleWatchlist, isItemInWatchlist, ItemDetails as ItemDetailsType, MovieItem, VideoFile, BookmarkFolder } from '../api/kinopub'
+import { getItem, getMediaLinks, getSimilarItems, getBookmarkFolders, getItemFolders, addToBookmark, removeFromBookmark, toggleWatchlist, isItemInWatchlist, ItemDetails as ItemDetailsType, MovieItem, VideoFile, BookmarkFolder } from '../api/kinopub'
 import { getLocalSettings } from '../storage'
 import { useKeyboardNavigation } from '../hooks'
 import { LoadingState } from '../components/LoadingSpinner'
@@ -142,10 +142,53 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
     async function loadItem() {
       try {
         dispatch({ type: 'LOAD_START' })
-        const data = await getItem(itemId)
+        let data = await getItem(itemId)
 
         const hasSeries = data.seasons && data.seasons.length > 0
         const newFocusArea: FocusArea = hasSeries ? 'seasons' : 'play'
+
+        // media-links returns the full subtitle/file set (item payload can be incomplete)
+        const mediaId = data.videos?.[0]?.id || data.seasons?.[0]?.episodes?.[0]?.id
+        if (mediaId) {
+          try {
+            const links = await getMediaLinks(mediaId)
+            if (data.videos?.[0]) {
+              data = {
+                ...data,
+                videos: [
+                  {
+                    ...data.videos[0],
+                    files: links.files.length > 0 ? links.files : data.videos[0].files,
+                    subtitles: links.subtitles.length > 0 ? links.subtitles : data.videos[0].subtitles
+                  },
+                  ...data.videos.slice(1)
+                ]
+              }
+            } else if (data.seasons?.[0]?.episodes?.[0]) {
+              const season0 = data.seasons[0]
+              const ep0 = season0.episodes[0]
+              data = {
+                ...data,
+                seasons: [
+                  {
+                    ...season0,
+                    episodes: [
+                      {
+                        ...ep0,
+                        files: links.files.length > 0 ? links.files : ep0.files,
+                        subtitles: links.subtitles.length > 0 ? links.subtitles : ep0.subtitles
+                      },
+                      ...season0.episodes.slice(1)
+                    ]
+                  },
+                  ...data.seasons.slice(1)
+                ]
+              }
+            }
+          } catch (err) {
+            if (import.meta.env.DEV) console.error('getMediaLinks failed:', err)
+          }
+        }
 
         const files = data.videos?.[0]?.files || data.seasons?.[0]?.episodes?.[0]?.files
         const available = getAvailableQualities(files)

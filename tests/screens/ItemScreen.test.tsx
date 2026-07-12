@@ -8,6 +8,7 @@ import * as storage from '../../src/storage'
 
 vi.mock('../../src/api/kinopub', () => ({
   getItem: vi.fn(),
+  getMediaLinks: vi.fn().mockResolvedValue({ files: [], subtitles: [] }),
   getSimilarItems: vi.fn(),
   getBookmarkFolders: vi.fn(),
   getItemFolders: vi.fn(),

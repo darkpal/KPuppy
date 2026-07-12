@@ -27,16 +27,32 @@ function formatAudioLabel(audio: Audio): string {
 }
 
 function formatSubtitleLabel(sub: Subtitle): string {
+  const code = (sub.lang || '').toLowerCase()
   const langNames: Record<string, string> = {
     rus: 'Русский',
+    ru: 'Русский',
     eng: 'English',
+    en: 'English',
     ukr: 'Українська',
+    uk: 'Українська',
+    tur: 'Türkçe',
+    tr: 'Türkçe',
     spa: 'Español',
+    es: 'Español',
     por: 'Português',
+    pt: 'Português',
     deu: 'Deutsch',
+    de: 'Deutsch',
+    ger: 'Deutsch',
     fra: 'Français',
+    fr: 'Français',
+    ita: 'Italiano',
+    it: 'Italiano',
+    pol: 'Polski',
+    pl: 'Polski',
   }
-  return langNames[sub.lang] || sub.lang.toUpperCase()
+  const base = langNames[code] || (sub.lang ? sub.lang.toUpperCase() : 'SUB')
+  return sub.forced ? `${base} Forced` : base
 }
 
 export function ItemDetails({
@@ -102,7 +118,7 @@ export function ItemDetails({
           <span class="item-detail-label">{t.subtitles}:</span>
           <span class="item-detail-value">
             {subtitles.map((sub, idx) => (
-              <span key={sub.lang}>
+              <span key={`${sub.lang}-${sub.forced ? 'f' : 'n'}-${idx}`}>
                 {formatSubtitleLabel(sub)}
                 {idx < subtitles.length - 1 && ', '}
               </span>
