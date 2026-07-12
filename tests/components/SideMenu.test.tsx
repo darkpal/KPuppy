@@ -159,6 +159,19 @@ describe('getMenuIdByIndex', () => {
     expect(getMenuIdByIndex(1)).toBe('search')
   })
 
+  it('returns history, then catalog types', () => {
+    expect(getMenuIdByIndex(2)).toBe('history')
+    expect(getMenuIdByIndex(3)).toBe('movies')
+    expect(getMenuIdByIndex(4)).toBe('series')
+  })
+
+  it('puts collections before bookmarks after livetv', () => {
+    expect(getMenuIdByIndex(9)).toBe('livetv')
+    expect(getMenuIdByIndex(10)).toBe('collections')
+    expect(getMenuIdByIndex(11)).toBe('bookmarks')
+    expect(getMenuIdByIndex(12)).toBe('newepisodes')
+  })
+
   it('returns user for last index', () => {
     expect(getMenuIdByIndex(ALL_MENU_ITEMS_COUNT - 1)).toBe('user')
   })
@@ -174,10 +187,10 @@ describe('getMenuIdByIndex', () => {
 
 describe('menu constants', () => {
   it('MENU_ITEMS_COUNT does not include user', () => {
-    expect(MENU_ITEMS_COUNT).toBe(15)
+    expect(MENU_ITEMS_COUNT).toBe(14)
   })
 
   it('ALL_MENU_ITEMS_COUNT includes user', () => {
-    expect(ALL_MENU_ITEMS_COUNT).toBe(16)
+    expect(ALL_MENU_ITEMS_COUNT).toBe(15)
   })
 })

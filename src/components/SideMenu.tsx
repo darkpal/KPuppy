@@ -1,10 +1,10 @@
-import { ComponentType } from 'preact'
+import { ComponentType, Fragment } from 'preact'
 import { useRef } from 'preact/hooks'
 import { useI18n } from '../i18n'
 import { useScrollToFocused } from '../hooks/useScrollToFocused'
 import { Translations } from '../i18n/translations'
 import {
-  HomeIcon, SearchIcon, PlayIcon, BookmarkIcon, CollectionIcon, HistoryIcon, FilmIcon, TvIcon,
+  HomeIcon, SearchIcon, BookmarkIcon, CollectionIcon, HistoryIcon, FilmIcon, TvIcon,
   MicIcon, GlassesIcon, VideoIcon, RadioIcon, LiveIcon, SettingsIcon, UserIcon, BellIcon
 } from './Icons'
 import '../styles/sidemenu.css'
@@ -18,10 +18,6 @@ export interface MenuItem {
 const MENU_ITEM_CONFIGS: MenuItem[] = [
   { id: 'home', Icon: HomeIcon, labelKey: 'menuHome' },
   { id: 'search', Icon: SearchIcon, labelKey: 'menuSearch' },
-  { id: 'watching', Icon: PlayIcon, labelKey: 'menuContinue' },
-  { id: 'newepisodes', Icon: BellIcon, labelKey: 'menuNewEpisodes' },
-  { id: 'bookmarks', Icon: BookmarkIcon, labelKey: 'menuBookmarks' },
-  { id: 'collections', Icon: CollectionIcon, labelKey: 'menuCollections' },
   { id: 'history', Icon: HistoryIcon, labelKey: 'menuHistory' },
   { id: 'movies', Icon: FilmIcon, labelKey: 'menuMovies' },
   { id: 'series', Icon: TvIcon, labelKey: 'menuSeries' },
@@ -30,8 +26,14 @@ const MENU_ITEM_CONFIGS: MenuItem[] = [
   { id: 'docs', Icon: VideoIcon, labelKey: 'menuDocs' },
   { id: 'tvshows', Icon: RadioIcon, labelKey: 'menuTvShows' },
   { id: 'livetv', Icon: LiveIcon, labelKey: 'menuLiveTV' },
+  { id: 'collections', Icon: CollectionIcon, labelKey: 'menuCollections' },
+  { id: 'bookmarks', Icon: BookmarkIcon, labelKey: 'menuBookmarks' },
+  { id: 'newepisodes', Icon: BellIcon, labelKey: 'menuNewEpisodes' },
   { id: 'settings', Icon: SettingsIcon, labelKey: 'menuSettings' },
 ]
+
+/** Visual group breaks — after History and after Live TV. */
+const SEPARATOR_AFTER_IDS = new Set(['history', 'livetv'])
 
 const USER_MENU_CONFIG: MenuItem = { id: 'user', Icon: UserIcon, labelKey: 'menuProfile' }
 
@@ -85,7 +87,14 @@ export function SideMenu({ selectedId, focusedIndex, onSelect }: SideMenuProps) 
         {isExpanded ? t.appName : 'K'}
       </div>
       <ul class="side-menu-items" ref={menuItemsRef}>
-        {MENU_ITEM_CONFIGS.map((item, index) => renderMenuItem(item, index))}
+        {MENU_ITEM_CONFIGS.map((item, index) => (
+          <Fragment key={item.id}>
+            {renderMenuItem(item, index)}
+            {SEPARATOR_AFTER_IDS.has(item.id) && (
+              <li class="side-menu-separator" aria-hidden="true" />
+            )}
+          </Fragment>
+        ))}
       </ul>
       <ul class="side-menu-bottom">
         {renderMenuItem(USER_MENU_CONFIG, MENU_ITEM_CONFIGS.length)}
