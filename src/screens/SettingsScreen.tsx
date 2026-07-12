@@ -47,6 +47,7 @@ const ALL_SETTINGS: SettingItem[] = [
   { id: 'quality', labelKey: 'quality', type: 'select', section: 'local' },
   { id: 'player', labelKey: 'player', type: 'select', section: 'local' },
   { id: 'showContinueWatching', labelKey: 'showContinueWatching', type: 'toggle', section: 'local' },
+  { id: 'pinSideMenu', labelKey: 'pinSideMenu', type: 'toggle', section: 'local' },
   { id: 'language', labelKey: 'language', type: 'language', section: 'local' },
 ]
 
@@ -59,6 +60,7 @@ export function SettingsScreen({ onNavigateToMenu, isActive }: SettingsScreenPro
   const [quality, setQuality] = useState<VideoQuality>(() => getLocalSettings().defaultQuality)
   const [playerType, setPlayerType] = useState<PlayerType>(() => getLocalSettings().playerType)
   const [showContinueWatching, setShowContinueWatching] = useState<boolean>(() => getLocalSettings().showContinueWatching)
+  const [pinSideMenu, setPinSideMenu] = useState<boolean>(() => getLocalSettings().pinSideMenu)
   const [focusedCol, setFocusedCol] = useState(0)
   const [focusedRow, setFocusedRow] = useState(0)
   const [expandedSelect, setExpandedSelect] = useState<string | null>(null)
@@ -187,6 +189,10 @@ export function SettingsScreen({ onNavigateToMenu, isActive }: SettingsScreenPro
       const newValue = !showContinueWatching
       setShowContinueWatching(newValue)
       saveLocalSettings({ showContinueWatching: newValue })
+    } else if (item.type === 'toggle' && item.id === 'pinSideMenu') {
+      const newValue = !pinSideMenu
+      setPinSideMenu(newValue)
+      saveLocalSettings({ pinSideMenu: newValue })
     } else if (item.type === 'toggle' && settings && item.key) {
       const currentValue = settings[item.key] as number
       const newValue = currentValue ? 0 : 1
@@ -204,7 +210,7 @@ export function SettingsScreen({ onNavigateToMenu, isActive }: SettingsScreenPro
       setSelectFocusIndex(Math.max(0, selectedIdx))
       setExpandedSelect('language')
     }
-  }, [settings, saveSettingChange, showContinueWatching, t.recommendedSettingsApplied])
+  }, [settings, saveSettingChange, showContinueWatching, pinSideMenu, t.recommendedSettingsApplied])
 
   const handleActivateItem = useCallback(() => {
     const currentItem = columns[focusedCol]?.[focusedRow]
@@ -282,6 +288,16 @@ export function SettingsScreen({ onNavigateToMenu, isActive }: SettingsScreenPro
             </div>
             <span class="settings-toggle-text">
               {showContinueWatching ? t.on : t.off}
+            </span>
+          </div>
+        )}
+        {item.type === 'toggle' && item.id === 'pinSideMenu' && (
+          <div class={`settings-toggle ${pinSideMenu ? 'on' : 'off'}`}>
+            <div class="settings-toggle-track">
+              <div class="settings-toggle-thumb" />
+            </div>
+            <span class="settings-toggle-text">
+              {pinSideMenu ? t.on : t.off}
             </span>
           </div>
         )}

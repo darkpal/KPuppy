@@ -6,7 +6,7 @@ import { I18nProvider } from '../../src/i18n/context'
 import * as kinopub from '../../src/api/kinopub'
 
 vi.mock('../../src/storage', () => ({
-  getLocalSettings: vi.fn(() => ({ defaultQuality: 'auto', playerType: 'native', language: 'en', showContinueWatching: true })),
+  getLocalSettings: vi.fn(() => ({ defaultQuality: 'auto', playerType: 'native', language: 'en', showContinueWatching: true, pinSideMenu: false })),
   saveLocalSettings: vi.fn(),
 }))
 

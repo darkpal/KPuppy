@@ -1,8 +1,9 @@
 import { ComponentType, Fragment } from 'preact'
-import { useRef } from 'preact/hooks'
+import { useEffect, useRef, useState } from 'preact/hooks'
 import { useI18n } from '../i18n'
 import { useScrollToFocused } from '../hooks/useScrollToFocused'
 import { Translations } from '../i18n/translations'
+import { getLocalSettings } from '../storage'
 import {
   HomeIcon, SearchIcon, BookmarkIcon, CollectionIcon, HistoryIcon, FilmIcon, TvIcon,
   MicIcon, GlassesIcon, VideoIcon, RadioIcon, LiveIcon, SettingsIcon, UserIcon, BellIcon
@@ -54,8 +55,15 @@ interface SideMenuProps {
 
 export function SideMenu({ selectedId, focusedIndex, onSelect }: SideMenuProps) {
   const { t } = useI18n()
-  const isExpanded = focusedIndex !== null
+  const [pinSideMenu, setPinSideMenu] = useState(() => getLocalSettings().pinSideMenu)
+  const isExpanded = pinSideMenu || focusedIndex !== null
   const menuItemsRef = useRef<HTMLUListElement>(null)
+
+  useEffect(() => {
+    const sync = () => setPinSideMenu(getLocalSettings().pinSideMenu)
+    window.addEventListener('kpuppy-settings-changed', sync)
+    return () => window.removeEventListener('kpuppy-settings-changed', sync)
+  }, [])
 
   useScrollToFocused({
     containerRef: menuItemsRef,

@@ -16,12 +16,15 @@ export interface LocalSettings {
   defaultQuality: VideoQuality
   playerType: PlayerType
   showContinueWatching: boolean
+  /** Keep side menu labels visible even when focus is in content. */
+  pinSideMenu: boolean
 }
 
 const DEFAULT_SETTINGS: LocalSettings = {
   defaultQuality: 'auto',
   playerType: 'builtin',
-  showContinueWatching: true
+  showContinueWatching: true,
+  pinSideMenu: false
 }
 
 export function getLocalSettings(): LocalSettings {
@@ -38,6 +41,9 @@ export function getLocalSettings(): LocalSettings {
 export function saveLocalSettings(settings: Partial<LocalSettings>): void {
   const current = getLocalSettings()
   localStorage.setItem(SETTINGS_KEY, JSON.stringify({ ...current, ...settings }))
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('kpuppy-settings-changed'))
+  }
 }
 
 export function saveTokens(tokens: Tokens): void {

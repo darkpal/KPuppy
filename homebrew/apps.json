@@ -3,9 +3,9 @@
     {
       "id": "com.kpuppy.app",
       "title": "KPuppy",
-      "shortDescription": "KinoPub for LG webOS — v0.0.34 (search keyboard glyphs + Magic Remote voice)",
+      "shortDescription": "KinoPub for LG webOS — v0.0.35 (pin side menu setting)",
       "iconUri": "https://raw.githubusercontent.com/darkpal/KPuppy/develop/webos-meta/icon.png",
-      "manifestUrl": "https://github.com/darkpal/KPuppy/releases/download/v0.0.34/com.kpuppy.app.manifest.json"
+      "manifestUrl": "https://github.com/darkpal/KPuppy/releases/download/v0.0.35/com.kpuppy.app.manifest.json"
     }
   ]
 }

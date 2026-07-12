@@ -173,6 +173,7 @@ export interface Translations {
 
   // Home screen
   showContinueWatching: string
+  pinSideMenu: string
   freshMovies: string
   freshSeries: string
 }
@@ -323,6 +324,7 @@ const en: Translations = {
   recommendedSettingsApplied: 'Recommended settings applied',
 
   showContinueWatching: 'Show Continue Watching on Home',
+  pinSideMenu: 'Keep side menu expanded',
   freshMovies: 'Fresh Movies',
   freshSeries: 'Fresh Series',
 }
@@ -473,6 +475,7 @@ const ru: Translations = {
   recommendedSettingsApplied: 'Рекомендуемые настройки применены',
 
   showContinueWatching: 'Показывать «Продолжить просмотр» на главной',
+  pinSideMenu: 'Не скрывать боковую панель',
   freshMovies: 'Свежие фильмы',
   freshSeries: 'Свежие сериалы',
 }
@@ -623,6 +626,7 @@ const de: Translations = {
   recommendedSettingsApplied: 'Empfohlene Einstellungen angewendet',
 
   showContinueWatching: '„Weiterschauen“ auf Startseite anzeigen',
+  pinSideMenu: 'Seitenmenü ausgeklappt lassen',
   freshMovies: 'Frische Filme',
   freshSeries: 'Frische Serien',
 }

@@ -13,7 +13,8 @@ describe('storage', () => {
       expect(getLocalSettings()).toEqual({
         defaultQuality: 'auto',
         playerType: 'builtin',
-        showContinueWatching: true
+        showContinueWatching: true,
+        pinSideMenu: false
       })
     })
   })

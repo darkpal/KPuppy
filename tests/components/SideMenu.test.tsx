@@ -52,6 +52,19 @@ describe('SideMenu', () => {
       expect(screen.getByText('Settings')).toBeDefined()
     })
 
+    it('keeps labels visible when pinSideMenu is on and menu unfocused', () => {
+      localStorage.setItem(
+        'kpuppy_settings',
+        JSON.stringify({ pinSideMenu: true })
+      )
+      renderWithI18n(
+        <SideMenu selectedId="home" focusedIndex={null} onSelect={() => {}} />
+      )
+
+      expect(screen.getByText('KPuppy')).toBeDefined()
+      expect(screen.getByText('Home')).toBeDefined()
+    })
+
     it('hides menu labels when collapsed', () => {
       renderWithI18n(
         <SideMenu selectedId="home" focusedIndex={null} onSelect={() => {}} />
