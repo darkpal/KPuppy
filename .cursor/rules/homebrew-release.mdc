@@ -1,0 +1,24 @@
+---
+description: Homebrew/IPK release checklist — always update apps.json feed
+alwaysApply: true
+---
+
+# KPuppy release checklist
+
+When shipping a new version (user asks to release / «выложи» / «собери»):
+
+1. Bump `package.json` version (`0.0.X`).
+2. `npm run test:run`, `npm run build`, `ares-package dist -o .`
+3. Write `com.kpuppy.app.manifest.json` with:
+   - `ipkUrl`: relative `com.kpuppy.app_0.0.X_all.ipk`
+   - `ipkHash`: **object** `{ "sha256": "<hex>" }` — never a bare string (Homebrew breaks with `undefined expected`)
+4. **Update `homebrew/apps.json`** `manifestUrl` to the new version:
+   `https://github.com/darkpal/KPuppy/releases/download/v0.0.X/com.kpuppy.app.manifest.json`
+   Do **not** leave a previous version pinned. Prefer versioned URLs over `/releases/latest` (CDN can stick on old latest).
+5. Commit sources + `homebrew/apps.json` + `package.json` (not `.ipk` / local manifest if gitignored).
+6. Push `develop`, create GitHub release `v0.0.X` with IPK + manifest, `make_latest: true`.
+7. Verify:
+   - `raw.githubusercontent.com/darkpal/KPuppy/develop/homebrew/apps.json` points at `v0.0.X`
+   - that manifest downloads and has `ipkHash.sha256`
+
+See also `docs/RELEASE.md`.

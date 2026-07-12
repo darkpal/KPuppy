@@ -3,9 +3,9 @@
     {
       "id": "com.kpuppy.app",
       "title": "KPuppy",
-      "shortDescription": "KinoPub for LG webOS \u2014 fork with resume, Magic Remote seek, \u043e\u0437\u0432\u0443\u0447\u043a\u0430, and home feed fixes",
+      "shortDescription": "KinoPub for LG webOS — fork with resume, Magic Remote seek, озвучка, and home feed fixes",
       "iconUri": "https://raw.githubusercontent.com/darkpal/KPuppy/develop/webos-meta/icon.png",
-      "manifestUrl": "https://github.com/darkpal/KPuppy/releases/download/v0.0.25/com.kpuppy.app.manifest.json"
+      "manifestUrl": "https://github.com/darkpal/KPuppy/releases/download/v0.0.26/com.kpuppy.app.manifest.json"
     }
   ]
 }
