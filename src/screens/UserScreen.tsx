@@ -3,6 +3,7 @@ import { getUser, User } from '../api/kinopub'
 import { useKeyboardNavigation } from '../hooks'
 import { LoadingState } from '../components/LoadingSpinner'
 import { useI18n } from '../i18n'
+import { formatUnixDate } from '../utils/formatDate'
 import '../styles/user.css'
 
 interface UserScreenProps {
@@ -44,17 +45,6 @@ export function UserScreen({ onNavigateToMenu, onLogout, isActive }: UserScreenP
 
   useKeyboardNavigation(handlers, isActive)
 
-  const formatSubscriptionDate = (timestamp: number): string => {
-    if (!timestamp) return 'Unknown'
-    const date = new Date(timestamp * 1000)
-    const locale = language === 'ru' ? 'ru-RU' : language === 'de' ? 'de-DE' : 'en-US'
-    return date.toLocaleDateString(locale, {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric'
-    })
-  }
-
   if (loading) {
     return (
       <div class="user-screen">
@@ -95,7 +85,7 @@ export function UserScreen({ onNavigateToMenu, onLogout, isActive }: UserScreenP
                 <div class="user-subscription-row">
                   <span class="user-subscription-label">{t.expires}</span>
                   <span class="user-subscription-value">
-                    {formatSubscriptionDate(user.subscription.endTime)}
+                    {formatUnixDate(user.subscription.endTime, language)}
                   </span>
                 </div>
                 <div class="user-subscription-row">
