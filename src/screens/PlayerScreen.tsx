@@ -52,9 +52,7 @@ function IconSubtitles() {
 
 function IconQuality() {
   return (
-    <svg class="player-hint-icon" viewBox="0 0 24 24" aria-hidden="true">
-      <path fill="currentColor" d="M4 6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2H4zm1 3h2v6H5V9zm4 2h2v4H9v-4zm4-1h2v5h-2V10zm4-2h2v7h-2V8z" />
-    </svg>
+    <span class="player-hint-icon player-hint-icon-hd" aria-hidden="true">HD</span>
   )
 }
 
@@ -570,15 +568,15 @@ export function PlayerScreen({
           e.preventDefault()
           break
         case KEY_CODES.RED:
-          openAudioPanel()
+          openQualityPanel()
           e.preventDefault()
           break
         case KEY_CODES.GREEN:
-          openSubtitlesPanel()
+          openAudioPanel()
           e.preventDefault()
           break
         case KEY_CODES.YELLOW:
-          openQualityPanel()
+          openSubtitlesPanel()
           e.preventDefault()
           break
       }
@@ -700,16 +698,30 @@ export function PlayerScreen({
                 {isPlaying ? <span class="icon-pause" /> : <span class="icon-play" />}
               </button>
               <div class="player-hints">
+                {availableQualities.length > 1 && (
+                  <button
+                    type="button"
+                    class="player-hint player-hint-quality"
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      openQualityPanel()
+                    }}
+                  >
+                    <span class="player-hint-key">●</span>
+                    <IconQuality />
+                    <span class="player-hint-label">{controls.selectedQuality || t.quality}</span>
+                  </button>
+                )}
                 {audios.length > 0 && (
                   <button
                     type="button"
-                    class="player-hint player-hint-button player-hint-audio"
+                    class="player-hint player-hint-audio"
                     onClick={(event) => {
                       event.stopPropagation()
                       openAudioPanel()
                     }}
                   >
-                    <span class="player-hint-key red">●</span>
+                    <span class="player-hint-key">●</span>
                     <IconAudio />
                     <span class="player-hint-label">{t.audio}</span>
                   </button>
@@ -717,29 +729,15 @@ export function PlayerScreen({
                 {convertedSubs.length > 0 && (
                   <button
                     type="button"
-                    class="player-hint player-hint-button player-hint-subtitles"
+                    class="player-hint player-hint-subtitles"
                     onClick={(event) => {
                       event.stopPropagation()
                       openSubtitlesPanel()
                     }}
                   >
-                    <span class="player-hint-key green">●</span>
+                    <span class="player-hint-key">●</span>
                     <IconSubtitles />
                     <span class="player-hint-label">{t.subtitles}</span>
-                  </button>
-                )}
-                {availableQualities.length > 1 && (
-                  <button
-                    type="button"
-                    class="player-hint player-hint-button player-hint-quality"
-                    onClick={(event) => {
-                      event.stopPropagation()
-                      openQualityPanel()
-                    }}
-                  >
-                    <span class="player-hint-key yellow">●</span>
-                    <IconQuality />
-                    <span class="player-hint-label">{controls.selectedQuality || t.quality}</span>
                   </button>
                 )}
               </div>
