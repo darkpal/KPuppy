@@ -3,9 +3,9 @@
     {
       "id": "com.kpuppy.app",
       "title": "KPuppy",
-      "shortDescription": "KinoPub for LG webOS — v0.0.31 (side menu reorder + separators)",
+      "shortDescription": "KinoPub for LG webOS — v0.0.32 (popular series watchers-, movies views-+month)",
       "iconUri": "https://raw.githubusercontent.com/darkpal/KPuppy/develop/webos-meta/icon.png",
-      "manifestUrl": "https://github.com/darkpal/KPuppy/releases/download/v0.0.31/com.kpuppy.app.manifest.json"
+      "manifestUrl": "https://github.com/darkpal/KPuppy/releases/download/v0.0.32/com.kpuppy.app.manifest.json"
     }
   ]
 }

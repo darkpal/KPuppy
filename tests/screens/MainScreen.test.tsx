@@ -11,9 +11,7 @@ vi.mock('../../src/api/kinopub', async () => {
     ...actual,
     getItems: vi.fn(),
     getWatching: vi.fn(),
-    getPopularItems: vi.fn(),
     getFreshItems: vi.fn(),
-    getHotItems: vi.fn(),
   }
 })
 
@@ -57,9 +55,7 @@ describe('MainScreen', () => {
     vi.clearAllMocks()
     vi.mocked(kinopub.getWatching).mockResolvedValue([])
     vi.mocked(kinopub.getItems).mockResolvedValue(emptyPage)
-    vi.mocked(kinopub.getPopularItems).mockResolvedValue(emptyPage)
     vi.mocked(kinopub.getFreshItems).mockResolvedValue(emptyPage)
-    vi.mocked(kinopub.getHotItems).mockResolvedValue(emptyPage)
   })
 
   afterEach(() => {
@@ -70,9 +66,7 @@ describe('MainScreen', () => {
     it('shows loading spinner initially', async () => {
       vi.mocked(kinopub.getWatching).mockImplementation(() => new Promise(() => {}))
       vi.mocked(kinopub.getItems).mockImplementation(() => new Promise(() => {}))
-      vi.mocked(kinopub.getPopularItems).mockImplementation(() => new Promise(() => {}))
       vi.mocked(kinopub.getFreshItems).mockImplementation(() => new Promise(() => {}))
-      vi.mocked(kinopub.getHotItems).mockImplementation(() => new Promise(() => {}))
 
       renderWithI18n(<MainScreen {...mockProps} />)
 
@@ -88,15 +82,7 @@ describe('MainScreen', () => {
         items: [mockMovie],
         pagination: { current: 1, total: 1, totalItems: 1, perpage: 10 }
       })
-      vi.mocked(kinopub.getPopularItems).mockResolvedValue({
-        items: [mockMovie],
-        pagination: { current: 1, total: 1, totalItems: 1, perpage: 10 }
-      })
       vi.mocked(kinopub.getFreshItems).mockResolvedValue({
-        items: [mockMovie],
-        pagination: { current: 1, total: 1, totalItems: 1, perpage: 10 }
-      })
-      vi.mocked(kinopub.getHotItems).mockResolvedValue({
         items: [mockMovie],
         pagination: { current: 1, total: 1, totalItems: 1, perpage: 10 }
       })
@@ -118,13 +104,25 @@ describe('MainScreen', () => {
       })
     })
 
-    it('keeps popular movies on /popular and series on /hot', async () => {
+    it('loads popular movies via views-+month and series via watchers-', async () => {
       renderWithI18n(<MainScreen {...mockProps} />)
 
       await waitFor(() => {
-        expect(kinopub.getPopularItems).toHaveBeenCalledWith('movie', 20)
-        expect(kinopub.getPopularItems).not.toHaveBeenCalledWith('serial', 20)
-        expect(kinopub.getHotItems).toHaveBeenCalledWith('serial', 20)
+        expect(kinopub.getItems).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: 'movie',
+            sort: 'views-',
+            perpage: 20,
+            conditions: [expect.stringMatching(/^created>=\d+$/)]
+          })
+        )
+        expect(kinopub.getItems).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: 'serial',
+            sort: 'watchers-',
+            perpage: 20
+          })
+        )
         expect(kinopub.getFreshItems).toHaveBeenCalledWith('movie', 20)
         expect(kinopub.getFreshItems).toHaveBeenCalledWith('serial', 20)
       })
@@ -135,9 +133,7 @@ describe('MainScreen', () => {
     it('handles API error gracefully', async () => {
       vi.mocked(kinopub.getWatching).mockRejectedValue(new Error('API Error'))
       vi.mocked(kinopub.getItems).mockRejectedValue(new Error('API Error'))
-      vi.mocked(kinopub.getPopularItems).mockRejectedValue(new Error('API Error'))
       vi.mocked(kinopub.getFreshItems).mockRejectedValue(new Error('API Error'))
-      vi.mocked(kinopub.getHotItems).mockRejectedValue(new Error('API Error'))
 
       renderWithI18n(<MainScreen {...mockProps} />)
 
@@ -155,15 +151,7 @@ describe('MainScreen', () => {
         items: [mockMovie],
         pagination: { current: 1, total: 1, totalItems: 1, perpage: 10 }
       })
-      vi.mocked(kinopub.getPopularItems).mockResolvedValue({
-        items: [mockMovie],
-        pagination: { current: 1, total: 1, totalItems: 1, perpage: 10 }
-      })
       vi.mocked(kinopub.getFreshItems).mockResolvedValue({
-        items: [mockMovie],
-        pagination: { current: 1, total: 1, totalItems: 1, perpage: 10 }
-      })
-      vi.mocked(kinopub.getHotItems).mockResolvedValue({
         items: [mockMovie],
         pagination: { current: 1, total: 1, totalItems: 1, perpage: 10 }
       })
@@ -182,15 +170,7 @@ describe('MainScreen', () => {
         items: [mockMovie],
         pagination: { current: 1, total: 1, totalItems: 1, perpage: 10 }
       })
-      vi.mocked(kinopub.getPopularItems).mockResolvedValue({
-        items: [mockMovie],
-        pagination: { current: 1, total: 1, totalItems: 1, perpage: 10 }
-      })
       vi.mocked(kinopub.getFreshItems).mockResolvedValue({
-        items: [mockMovie],
-        pagination: { current: 1, total: 1, totalItems: 1, perpage: 10 }
-      })
-      vi.mocked(kinopub.getHotItems).mockResolvedValue({
         items: [mockMovie],
         pagination: { current: 1, total: 1, totalItems: 1, perpage: 10 }
       })

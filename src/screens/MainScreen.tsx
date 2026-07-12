@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'preact/hooks'
-import { getItems, getPopularItems, getFreshItems, getHotItems, getWatching, MovieItem, ItemsParams } from '../api/kinopub'
+import { getItems, getFreshItems, getWatching, monthAgoUnix, MovieItem, ItemsParams } from '../api/kinopub'
 import { getLocalSettings } from '../storage'
 import { MovieRow } from '../components/MovieRow'
 import { useKeyboardNavigation, useScrollToFocused, useWheelScroll } from '../hooks'
@@ -18,7 +18,7 @@ interface MainScreenProps {
   onFocusChange?: (row: number, col: number) => void
 }
 
-type FeedSource = 'items' | 'popular' | 'fresh' | 'hot'
+type FeedSource = 'items' | 'fresh'
 
 interface ContentRow {
   id: string
@@ -39,13 +39,22 @@ interface RowConfig {
 }
 
 function createHomeRowConfigs(): RowConfig[] {
+  // Web: /movie?order=views&period=month → sort=views- + created>=month
+  // Web: /serial?order=watchers&period=all → sort=watchers-
+  const lastMonth = monthAgoUnix()
+
   return [
     { id: 'watching', titleKey: 'categoryContinueWatching', isWatching: true },
     {
       id: 'popular-movies',
       titleKey: 'popularMovies',
-      feed: 'popular',
-      params: { type: 'movie', page: 0, perpage: 20 }
+      params: {
+        type: 'movie',
+        sort: 'views-',
+        page: 0,
+        perpage: 20,
+        conditions: [`created>=${lastMonth}`]
+      }
     },
     {
       id: 'fresh-movies',
@@ -54,11 +63,9 @@ function createHomeRowConfigs(): RowConfig[] {
       params: { type: 'movie', page: 0, perpage: 20 }
     },
     {
-      // /items/popular for serials drifts from web; /items/hot matches prior good list
       id: 'popular-series',
       titleKey: 'popularSeries',
-      feed: 'hot',
-      params: { type: 'serial', page: 0, perpage: 20 }
+      params: { type: 'serial', sort: 'watchers-', page: 0, perpage: 20 }
     },
     {
       id: 'fresh-series',
@@ -124,14 +131,8 @@ export function MainScreen({ onBack, onSelectItem, onNavigateToMenu, isActive, i
         let items: MovieItem[]
         if (config.isWatching) {
           items = await getWatching()
-        } else if (config.feed === 'popular') {
-          const response = await getPopularItems(config.params?.type, config.params?.perpage ?? 20)
-          items = response.items
         } else if (config.feed === 'fresh') {
           const response = await getFreshItems(config.params?.type, config.params?.perpage ?? 20)
-          items = response.items
-        } else if (config.feed === 'hot') {
-          const response = await getHotItems(config.params?.type, config.params?.perpage ?? 20)
           items = response.items
         } else {
           const response = await getItems(config.params!)
