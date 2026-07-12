@@ -974,14 +974,14 @@ describe('kinopub API', () => {
           ok: true,
           status: 200,
           json: async () => ({
-            item: { id: 1, imdb_rating: 7.5, kinopoisk_rating: 7.1, rating_percentage: 80 }
+            item: { id: 1, imdb_rating: 7.5, kinopoisk_rating: 7.1, rating_percentage: 80, quality: 1080, year: 2023 }
           })
         })
         .mockResolvedValueOnce({
           ok: true,
           status: 200,
           json: async () => ({
-            item: { id: 2, imdb_rating: 8.2, kinopoisk_rating: 8.0, rating_percentage: 90 }
+            item: { id: 2, imdb_rating: 8.2, kinopoisk_rating: 8.0, rating_percentage: 90, quality: 2160, year: 2022 }
           })
         })
 
@@ -990,7 +990,10 @@ describe('kinopub API', () => {
       expect(mockFetch).toHaveBeenCalledTimes(4)
       expect(result).toHaveLength(2)
       expect(result[0].imdbRating).toBe(7.5)
+      expect(result[0].quality).toBe(1080)
+      expect(result[0].year).toBe(2023)
       expect(result[1].imdbRating).toBe(8.2)
+      expect(result[1].quality).toBe(2160)
     })
 
     it('handles empty results', async () => {

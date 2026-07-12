@@ -22,12 +22,9 @@ interface MovieCardProps {
 
 /** Local / primary title only — English original stays on the item screen. */
 function primaryTitle(title: string): string {
-  for (const sep of [' / ', ' / ']) {
-    if (title.includes(sep)) {
-      return title.split(sep)[0]
-    }
-  }
-  return title
+  const idx = title.indexOf('/')
+  if (idx >= 0) return title.slice(0, idx).trim()
+  return title.trim()
 }
 
 function qualityLabel(quality?: number): string | null {

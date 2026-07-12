@@ -117,6 +117,15 @@ describe('MovieCard', () => {
       expect(screen.queryByText('Interstellar')).toBeNull()
     })
 
+    it('strips English title when slash has no spaces', () => {
+      const movie = createMockMovie({ title: 'Валериан/Valerian' })
+
+      render(<MovieCard movie={movie} focused={false} />)
+
+      expect(screen.getByText('Валериан')).toBeDefined()
+      expect(screen.queryByText(/Valerian/)).toBeNull()
+    })
+
     it('handles title without separator', () => {
       const movie = createMockMovie({ title: 'Simple Title' })
 

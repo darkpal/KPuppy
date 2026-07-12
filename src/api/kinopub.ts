@@ -417,7 +417,9 @@ export interface WatchingResponse {
   items: WatchingItem[]
 }
 
-async function fetchItemRatings(id: number): Promise<Pick<MovieItem, 'imdbRating' | 'kinopoiskRating' | 'ratingPercentage'> | null> {
+type ItemCardMeta = Pick<MovieItem, 'imdbRating' | 'kinopoiskRating' | 'ratingPercentage' | 'quality' | 'year'>
+
+async function fetchItemCardMeta(id: number): Promise<ItemCardMeta | null> {
   try {
     const response = await authFetch(`${BASE_URL}/v1/items/${id}`)
     if (!response.ok) return null
@@ -426,7 +428,9 @@ async function fetchItemRatings(id: number): Promise<Pick<MovieItem, 'imdbRating
     return {
       imdbRating: Number(item.imdb_rating) || 0,
       kinopoiskRating: Number(item.kinopoisk_rating) || 0,
-      ratingPercentage: Number(item.rating_percentage) || 0
+      ratingPercentage: Number(item.rating_percentage) || 0,
+      quality: Number(item.quality) || 0,
+      year: Number(item.year) || 0
     }
   } catch {
     return null
@@ -434,7 +438,7 @@ async function fetchItemRatings(id: number): Promise<Pick<MovieItem, 'imdbRating
 }
 
 export async function getWatching(): Promise<MovieItem[]> {
-  const cacheKey = 'watching'
+  const cacheKey = 'watching_v2'
   const cached = getCached<MovieItem[]>(cacheKey)
   if (cached) return cached
 
@@ -450,19 +454,29 @@ export async function getWatching(): Promise<MovieItem[]> {
 
   let result: MovieItem[] = allItems.map(mapToMovieItem)
 
-  // Watching list often omits ratings — enrich from item details (list is usually small).
-  const missing = result.filter(item => item.imdbRating <= 0 && item.kinopoiskRating <= 0 && item.ratingPercentage <= 0)
+  // Watching list often omits quality/year/ratings — enrich from item details.
+  const missing = result.filter(item =>
+    item.quality <= 0 || item.year <= 0 || (item.imdbRating <= 0 && item.kinopoiskRating <= 0 && item.ratingPercentage <= 0)
+  )
   if (missing.length > 0) {
-    const ratings = await Promise.all(missing.map(item => fetchItemRatings(item.id)))
-    const byId = new Map<number, Pick<MovieItem, 'imdbRating' | 'kinopoiskRating' | 'ratingPercentage'>>()
+    const metas = await Promise.all(missing.map(item => fetchItemCardMeta(item.id)))
+    const byId = new Map<number, ItemCardMeta>()
     missing.forEach((item, index) => {
-      const rating = ratings[index]
-      if (rating) byId.set(item.id, rating)
+      const meta = metas[index]
+      if (meta) byId.set(item.id, meta)
     })
     if (byId.size > 0) {
       result = result.map(item => {
-        const rating = byId.get(item.id)
-        return rating ? { ...item, ...rating } : item
+        const meta = byId.get(item.id)
+        if (!meta) return item
+        return {
+          ...item,
+          imdbRating: item.imdbRating > 0 ? item.imdbRating : meta.imdbRating,
+          kinopoiskRating: item.kinopoiskRating > 0 ? item.kinopoiskRating : meta.kinopoiskRating,
+          ratingPercentage: item.ratingPercentage > 0 ? item.ratingPercentage : meta.ratingPercentage,
+          quality: item.quality > 0 ? item.quality : meta.quality,
+          year: item.year > 0 ? item.year : meta.year
+        }
       })
     }
   }
@@ -867,7 +881,7 @@ export async function markTime(params: MarkTimeParams): Promise<void> {
   if (params.season !== undefined) searchParams.set('season', params.season.toString())
 
   await authFetch(`${BASE_URL}/v1/watching/marktime?${searchParams}`)
-  invalidateCache('watching')
+  invalidateCache('watching'); invalidateCache('watching_v2')
   invalidateCache('history')
   invalidateCache(createCacheKey('item', params.id))
 }
@@ -919,7 +933,7 @@ export async function toggleWatched(params: ToggleWatchedParams): Promise<void> 
   if (params.season !== undefined) searchParams.set('season', params.season.toString())
 
   await authFetch(`${BASE_URL}/v1/watching/toggle?${searchParams}`)
-  invalidateCache('watching')
+  invalidateCache('watching'); invalidateCache('watching_v2')
   invalidateCache('history')
   invalidateCache(createCacheKey('item', params.id))
 }
@@ -1210,7 +1224,7 @@ export async function toggleWatchlist(itemId: number): Promise<void> {
     throw new ApiError('Failed to toggle watchlist', response.status)
   }
 
-  invalidateCache('watching')
+  invalidateCache('watching'); invalidateCache('watching_v2')
   invalidateCache('watching_serials')
 }
 
