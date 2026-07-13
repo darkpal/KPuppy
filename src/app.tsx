@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'preact/hooks'
 import { AuthScreen } from './screens/AuthScreen'
 import { MainScreen } from './screens/MainScreen'
 import { ItemScreen } from './screens/ItemScreen'
-import { SearchScreen } from './screens/SearchScreen'
+import { SearchScreen, SearchScreenState, DEFAULT_SEARCH_STATE } from './screens/SearchScreen'
 import { CategoryScreen, CategoryFilters, DEFAULT_CATEGORY_FILTERS } from './screens/CategoryScreen'
 import { BookmarksScreen } from './screens/BookmarksScreen'
 import { CollectionsScreen } from './screens/CollectionsScreen'
@@ -64,7 +64,7 @@ interface AppState {
   returnToItemId: number | null
   returnToSeriesId: number | null
   player: PlayerState | null
-  searchPreset: { q: string; field: 'actor' | 'director' | 'title' } | null
+  searchState: SearchScreenState | null
   categoryGenreId: number | null
   categoryFilters: CategoryFilters | null
 }
@@ -116,7 +116,7 @@ export function App() {
       returnToItemId: null,
       returnToSeriesId: null,
       player: null,
-      searchPreset: null,
+      searchState: null,
       categoryGenreId: null,
       categoryFilters: null
     }
@@ -237,7 +237,8 @@ export function App() {
       focusArea: 'content',
       itemId: null,
       seriesId: null,
-      searchPreset: null,
+      // Drop search/category filters when leaving that section via the menu.
+      searchState: menuId === 'search' ? prev.searchState : null,
       categoryGenreId: null,
       categoryFilters: null
     }))
@@ -252,7 +253,7 @@ export function App() {
       selectedMenuId: categoryId,
       categoryGenreId: genreId,
       categoryFilters: { ...DEFAULT_CATEGORY_FILTERS, genreId },
-      searchPreset: null,
+      searchState: null,
       focusArea: 'content'
     }))
   }, [])
@@ -265,14 +266,19 @@ export function App() {
     }))
   }, [])
 
+  const handleSearchStateChange = useCallback((searchState: SearchScreenState) => {
+    setState(prev => ({ ...prev, searchState }))
+  }, [])
+
   const handleSelectActor = useCallback((name: string) => {
     setState(prev => ({
       ...prev,
       itemId: null,
       seriesId: null,
       selectedMenuId: 'search',
-      searchPreset: { q: name, field: 'actor' },
+      searchState: { ...DEFAULT_SEARCH_STATE, query: name, field: 'actor' },
       categoryGenreId: null,
+      categoryFilters: null,
       focusArea: 'content'
     }))
   }, [])
@@ -283,8 +289,9 @@ export function App() {
       itemId: null,
       seriesId: null,
       selectedMenuId: 'search',
-      searchPreset: { q: name, field: 'director' },
+      searchState: { ...DEFAULT_SEARCH_STATE, query: name, field: 'director' },
       categoryGenreId: null,
+      categoryFilters: null,
       focusArea: 'content'
     }))
   }, [])
@@ -630,18 +637,22 @@ export function App() {
           />
         )
       }
-      case 'search':
+      case 'search': {
+        const searchFocus = state.screenFocus['search'] || { row: 0, col: 0 }
         return (
           <SearchScreen
-            key={state.searchPreset ? `${state.searchPreset.field}-${state.searchPreset.q}` : 'search'}
+            key="search"
             onBack={() => handleMenuSelect('home')}
             onSelectItem={handleSelectItem}
             onNavigateToMenu={handleNavigateToMenu}
             isActive={isContentActive}
-            initialQuery={state.searchPreset?.q}
-            initialField={state.searchPreset?.field}
+            initialState={state.searchState}
+            initialFocusIndex={searchFocus.row}
+            onStateChange={handleSearchStateChange}
+            onFocusChange={(index) => handleFocusChange('search', index, 0)}
           />
         )
+      }
       case 'settings':
         return (
           <SettingsScreen

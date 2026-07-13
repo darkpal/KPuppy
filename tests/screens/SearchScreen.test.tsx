@@ -136,4 +136,52 @@ describe('SearchScreen', () => {
       })
     })
   })
+
+  describe('state restore', () => {
+    it('restores query from initialState and searches immediately', async () => {
+      const onStateChange = vi.fn()
+      vi.mocked(kinopub.searchItems).mockResolvedValue({
+        items: [{
+          id: 42,
+          title: 'Matrix',
+          type: 'movie',
+          year: 1999,
+          plot: '',
+          posters: { small: '', medium: '', big: '' },
+          rating: 9,
+          imdbRating: 8.7,
+          kinopoiskRating: 8.5,
+          ratingPercentage: 0,
+          quality: 0,
+          views: 1
+        }],
+        pagination: { current: 1, total: 1, totalItems: 1, perpage: 48 }
+      })
+
+      renderWithI18n(
+        <SearchScreen
+          {...mockProps}
+          initialState={{ query: 'matrix', field: 'title', type: 'movie' }}
+          onStateChange={onStateChange}
+        />
+      )
+
+      const input = document.querySelector('.search-query-input') as HTMLInputElement
+      expect(input.value).toBe('matrix')
+
+      await waitFor(() => {
+        expect(kinopub.searchItems).toHaveBeenCalledWith(
+          expect.objectContaining({ q: 'matrix', field: 'title', type: 'movie' })
+        )
+      })
+
+      await waitFor(() => {
+        expect(onStateChange).toHaveBeenCalledWith({
+          query: 'matrix',
+          field: 'title',
+          type: 'movie'
+        })
+      })
+    })
+  })
 })

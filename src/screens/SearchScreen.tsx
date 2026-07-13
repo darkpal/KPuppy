@@ -7,6 +7,20 @@ import { LoadingState } from '../components/LoadingSpinner'
 import { useI18n } from '../i18n'
 import '../styles/search.css'
 
+export type SearchField = 'title' | 'director' | 'actor' | undefined
+
+export interface SearchScreenState {
+  query: string
+  field: SearchField
+  type: string | null
+}
+
+export const DEFAULT_SEARCH_STATE: SearchScreenState = {
+  query: '',
+  field: undefined,
+  type: null
+}
+
 interface SearchScreenProps {
   onBack: () => void
   onSelectItem: (itemId: number) => void
@@ -14,10 +28,13 @@ interface SearchScreenProps {
   isActive: boolean
   initialQuery?: string
   initialField?: 'title' | 'director' | 'actor'
+  initialState?: SearchScreenState | null
+  initialFocusIndex?: number
+  onStateChange?: (state: SearchScreenState) => void
+  onFocusChange?: (index: number) => void
 }
 
 type FocusArea = 'query' | 'filter' | 'field' | 'results'
-type SearchField = 'title' | 'director' | 'actor' | undefined
 type FilterTarget = 'type' | 'field'
 
 const SEARCH_FIELDS: { id: SearchField; labelKey: 'searchFieldAny' | 'searchFieldTitle' | 'searchFieldActor' | 'searchFieldDirector' }[] = [
@@ -27,24 +44,73 @@ const SEARCH_FIELDS: { id: SearchField; labelKey: 'searchFieldAny' | 'searchFiel
   { id: 'director', labelKey: 'searchFieldDirector' },
 ]
 
-export function SearchScreen({ onBack, onSelectItem, onNavigateToMenu, isActive, initialQuery = '', initialField }: SearchScreenProps) {
+function resolveInitialState(
+  initialState?: SearchScreenState | null,
+  initialQuery?: string,
+  initialField?: 'title' | 'director' | 'actor'
+): SearchScreenState {
+  if (initialState) {
+    return {
+      ...DEFAULT_SEARCH_STATE,
+      ...initialState,
+      query: initialState.query || initialQuery || '',
+      field: initialState.field ?? initialField
+    }
+  }
+  return {
+    ...DEFAULT_SEARCH_STATE,
+    query: initialQuery || '',
+    field: initialField
+  }
+}
+
+export function SearchScreen({
+  onBack,
+  onSelectItem,
+  onNavigateToMenu,
+  isActive,
+  initialQuery = '',
+  initialField,
+  initialState = null,
+  initialFocusIndex = 0,
+  onStateChange,
+  onFocusChange
+}: SearchScreenProps) {
   const { t } = useI18n()
-  const [query, setQuery] = useState(initialQuery)
-  const [searchField, setSearchField] = useState<SearchField>(initialField)
+  const resolved = resolveInitialState(initialState, initialQuery, initialField)
+  const [query, setQuery] = useState(resolved.query)
+  const [searchField, setSearchField] = useState<SearchField>(resolved.field)
   const [results, setResults] = useState<MovieItem[]>([])
   const [loading, setLoading] = useState(false)
-  const [focusArea, setFocusArea] = useState<FocusArea>(initialQuery.trim().length >= 2 ? 'results' : 'query')
-  const [resultIndex, setResultIndex] = useState(0)
+  const [focusArea, setFocusArea] = useState<FocusArea>(resolved.query.trim().length >= 2 ? 'results' : 'query')
+  const [resultIndex, setResultIndex] = useState(initialFocusIndex)
   const [hasSearched, setHasSearched] = useState(false)
   const [resultsPerRow, setResultsPerRow] = useState(6)
   const searchTimeoutRef = useRef<number | null>(null)
+  const skipDebounceRef = useRef(resolved.query.trim().length >= 2)
   const resultsContainerRef = useRef<HTMLDivElement>(null)
   const queryInputRef = useRef<HTMLInputElement>(null)
+  const onStateChangeRef = useRef(onStateChange)
+  onStateChangeRef.current = onStateChange
+  const onFocusChangeRef = useRef(onFocusChange)
+  onFocusChangeRef.current = onFocusChange
   const [contentTypes, setContentTypes] = useState<ContentType[]>([])
-  const [selectedType, setSelectedType] = useState<string | null>(null)
+  const [selectedType, setSelectedType] = useState<string | null>(resolved.type)
   const [filterDropdownOpen, setFilterDropdownOpen] = useState(false)
   const [filterDropdownIndex, setFilterDropdownIndex] = useState(0)
   const [activeFilter, setActiveFilter] = useState<FilterTarget>('type')
+
+  useEffect(() => {
+    onStateChangeRef.current?.({
+      query,
+      field: searchField,
+      type: selectedType
+    })
+  }, [query, searchField, selectedType])
+
+  useEffect(() => {
+    onFocusChangeRef.current?.(resultIndex)
+  }, [resultIndex])
 
   useEffect(() => {
     const updateResultsPerRow = () => {
@@ -113,6 +179,10 @@ export function SearchScreen({ onBack, onSelectItem, onNavigateToMenu, isActive,
         field
       })
       setResults(response.items)
+      setResultIndex(prev => {
+        if (response.items.length === 0) return 0
+        return Math.min(prev, response.items.length - 1)
+      })
     } catch (err) {
       if (import.meta.env.DEV) console.error('Search failed:', err)
       setResults([])
@@ -127,9 +197,11 @@ export function SearchScreen({ onBack, onSelectItem, onNavigateToMenu, isActive,
     }
 
     if (query.trim().length >= 2) {
+      const delay = skipDebounceRef.current ? 0 : 500
+      skipDebounceRef.current = false
       searchTimeoutRef.current = window.setTimeout(() => {
         performSearch(query, selectedType, searchField)
-      }, 500)
+      }, delay)
     } else {
       setResults([])
       setHasSearched(false)
