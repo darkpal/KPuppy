@@ -3,8 +3,7 @@
     {
       "id": "com.kpuppy.app",
       "title": "KPuppy",
-      "shortDescription": "KinoPub client for LG webOS TV",
-      "fullDescriptionUrl": "https://raw.githubusercontent.com/darkpal/KPuppy/main/homebrew/full_description.html",
+      "shortDescription": "<p><b>KPuppy</b> — лёгкий клиент KinoPub для телевизоров LG webOS.</p><ul><li>Фильмы, сериалы, концерты, документалистика и Live TV</li><li>Поиск через системную клавиатуру webOS (в том числе голосом с Magic Remote)</li><li>Продолжение просмотра, закладки и история</li><li>Встроенный плеер и нативный плеер webOS</li><li>Русский / English / Deutsch</li></ul>",
       "iconUri": "https://raw.githubusercontent.com/darkpal/KPuppy/main/webos-meta/icon.png",
       "manifestUrl": "https://github.com/darkpal/KPuppy/releases/download/v0.0.37/com.kpuppy.app.manifest.json"
     }
