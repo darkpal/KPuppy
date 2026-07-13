@@ -3,7 +3,8 @@
     {
       "id": "com.kpuppy.app",
       "title": "KPuppy",
-      "shortDescription": "KinoPub for LG webOS \u2014 v0.0.37 (system keyboard search)",
+      "shortDescription": "KinoPub client for LG webOS TV",
+      "fullDescriptionUrl": "https://raw.githubusercontent.com/darkpal/KPuppy/main/homebrew/full_description.html",
       "iconUri": "https://raw.githubusercontent.com/darkpal/KPuppy/main/webos-meta/icon.png",
       "manifestUrl": "https://github.com/darkpal/KPuppy/releases/download/v0.0.37/com.kpuppy.app.manifest.json"
     }
