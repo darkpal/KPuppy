@@ -23,6 +23,7 @@ function formatDateNumeric(date: Date, language: string): string {
 export function formatUnixDate(timestamp: number, language: string): string {
   if (!timestamp) return 'Unknown'
   const date = new Date(timestamp * 1000)
+  if (isNaN(date.getTime())) return 'Unknown'
   try {
     return date.toLocaleDateString(dateLocale(language), {
       day: 'numeric',

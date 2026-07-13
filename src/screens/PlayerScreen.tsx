@@ -80,6 +80,13 @@ function formatPlayerSubtitleLabel(lang: string): string {
   return names[code] || (lang ? lang.toUpperCase() : 'SUB')
 }
 
+function playVideo(video: HTMLVideoElement | null | undefined): void {
+  if (!video) return
+  video.play().catch(err => {
+    if (import.meta.env.DEV) console.error('play failed:', err)
+  })
+}
+
 export interface PlayerProps {
   url: string
   title: string
@@ -170,7 +177,7 @@ export function PlayerScreen({
         setCurrentTime(target)
       }
       if (!wasPaused) {
-        void video.play()
+        playVideo(video)
       }
     }
     video.addEventListener('loadedmetadata', onLoaded)
@@ -236,6 +243,7 @@ export function PlayerScreen({
   }, [subtitles])
 
   const formatTime = (seconds: number): string => {
+    if (!Number.isFinite(seconds) || seconds < 0) return '0:00'
     const h = Math.floor(seconds / 3600)
     const m = Math.floor((seconds % 3600) / 60)
     const s = Math.floor(seconds % 60)
@@ -261,7 +269,7 @@ export function PlayerScreen({
     const video = videoRef.current
     if (!video) return
     if (video.paused) {
-      void video.play()
+      playVideo(video)
     } else {
       video.pause()
     }
@@ -270,7 +278,7 @@ export function PlayerScreen({
 
   const seek = useCallback((delta: number) => {
     const video = videoRef.current
-    if (!video || !Number.isFinite(video.duration)) return
+    if (!video || !Number.isFinite(video.duration) || !Number.isFinite(video.currentTime)) return
     video.currentTime = Math.max(0, Math.min(video.duration, video.currentTime + delta))
     setCurrentTime(video.currentTime)
     showControls()
@@ -446,7 +454,7 @@ export function PlayerScreen({
         onTimeUpdate(video.currentTime)
       }
     }
-    const handleDurationChange = () => setDuration(video.duration)
+    const handleDurationChange = () => setDuration(Number.isFinite(video.duration) ? video.duration : 0)
     const handleProgress = () => {
       if (video.buffered.length > 0) {
         setBuffered(video.buffered.end(video.buffered.length - 1))
@@ -454,13 +462,13 @@ export function PlayerScreen({
     }
     const handleLoadedMetadata = () => {
       if (resumeAfterReloadRef.current != null) return
-      if (!startTimeAppliedRef.current && startTime > 0) {
+      if (!startTimeAppliedRef.current && Number.isFinite(startTime) && startTime > 0) {
         startTimeAppliedRef.current = true
         video.currentTime = startTime
         setCurrentTime(startTime)
         lastTimeRef.current = startTime
       }
-      void video.play()
+      playVideo(video)
     }
 
     const handleError = () => {
@@ -512,7 +520,7 @@ export function PlayerScreen({
         e.keyCode === KEY_CODES.PAUSE
       ) {
         if (mediaKey === 'MediaPlay' || e.keyCode === KEY_CODES.PLAY) {
-          void videoRef.current?.play()
+          playVideo(videoRef.current)
         } else if (mediaKey === 'MediaPause' || e.keyCode === KEY_CODES.PAUSE) {
           videoRef.current?.pause()
         } else {

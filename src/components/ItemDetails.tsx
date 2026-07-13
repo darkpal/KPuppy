@@ -57,7 +57,7 @@ function formatSubtitleLabel(sub: Subtitle): string {
     kor: '한국어',
     ko: '한국어',
   }
-  const name = langNames[code] || sub.lang.toUpperCase()
+  const name = langNames[code] || (sub.lang || '').toUpperCase()
   return sub.forced ? `${name} (forced)` : name
 }
 

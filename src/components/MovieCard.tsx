@@ -42,7 +42,8 @@ function qualityLabel(quality?: number): string | null {
 }
 
 function formatRating(value: number): string {
-  return value > 0 ? value.toFixed(1) : '—'
+  const n = Number(value) || 0
+  return n > 0 ? n.toFixed(1) : '—'
 }
 
 export function MovieCard({ movie, focused, onSelect, onHover, episodeInfo, badge }: MovieCardProps) {

@@ -1,4 +1,5 @@
 import { getDeviceInfo, updateDeviceSettings, DeviceSettings, SelectOption } from './api/kinopub'
+import { writeStorage, removeStorage } from './storage'
 
 const DEVICE_DEFAULTS_KEY = 'kpuppy_device_defaults_applied'
 
@@ -40,6 +41,7 @@ export function buildPreferredDeviceSettings(settings: DeviceSettings): Record<s
 }
 
 export function hasAppliedDeviceDefaults(): boolean {
+  // If storage is broken, skip re-applying defaults every launch.
   try {
     return localStorage.getItem(DEVICE_DEFAULTS_KEY) === '1'
   } catch {
@@ -48,19 +50,11 @@ export function hasAppliedDeviceDefaults(): boolean {
 }
 
 export function markDeviceDefaultsApplied(): void {
-  try {
-    localStorage.setItem(DEVICE_DEFAULTS_KEY, '1')
-  } catch {
-    // ignore quota / private mode
-  }
+  writeStorage(DEVICE_DEFAULTS_KEY, '1')
 }
 
 export function clearDeviceDefaultsApplied(): void {
-  try {
-    localStorage.removeItem(DEVICE_DEFAULTS_KEY)
-  } catch {
-    // ignore
-  }
+  removeStorage(DEVICE_DEFAULTS_KEY)
 }
 
 /** Apply preferred device settings. Pass force=true to re-apply from Settings. */

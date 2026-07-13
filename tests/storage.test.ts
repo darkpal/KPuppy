@@ -106,4 +106,31 @@ describe('storage', () => {
       expect(isAuthenticated()).toBe(true)
     })
   })
+
+  describe('safe localStorage helpers', () => {
+    it('does not throw when localStorage is unavailable', async () => {
+      const { readStorage, writeStorage, removeStorage, getTokens, saveTokens } = await import('../src/storage')
+      const original = globalThis.localStorage
+      Object.defineProperty(globalThis, 'localStorage', {
+        configurable: true,
+        value: {
+          getItem: () => { throw new Error('disabled') },
+          setItem: () => { throw new Error('disabled') },
+          removeItem: () => { throw new Error('disabled') },
+        }
+      })
+
+      expect(() => readStorage('kpuppy_tokens')).not.toThrow()
+      expect(readStorage('kpuppy_tokens')).toBeNull()
+      expect(() => writeStorage('kpuppy_tokens', '{}')).not.toThrow()
+      expect(() => removeStorage('kpuppy_tokens')).not.toThrow()
+      expect(() => saveTokens({ access: 'a', refresh: 'r', expiresAt: 1 })).not.toThrow()
+      expect(getTokens()).toBeNull()
+
+      Object.defineProperty(globalThis, 'localStorage', {
+        configurable: true,
+        value: original
+      })
+    })
+  })
 })

@@ -520,8 +520,8 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
       : `${durationMinutes}m`
     : null
 
-  const kpRating = item.kinopoiskRating
-  const imdbRating = item.imdbRating
+  const kpRating = Number(item.kinopoiskRating) || 0
+  const imdbRating = Number(item.imdbRating) || 0
   const directors = item.directors?.slice(0, 3) || []
   const countries = item.countries?.slice(0, 3).map(c => c.title).join(', ')
 
