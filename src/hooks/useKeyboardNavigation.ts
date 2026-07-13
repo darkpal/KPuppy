@@ -36,12 +36,27 @@ export interface KeyboardHandlers {
   onBlue?: () => void
 }
 
+function isTextEditingTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false
+  const tag = target.tagName
+  if (tag === 'INPUT' || tag === 'TEXTAREA') return true
+  return target.isContentEditable
+}
+
 export function useKeyboardNavigation(
   handlers: KeyboardHandlers,
   enabled: boolean = true
 ): void {
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
     const { onUp, onDown, onLeft, onRight, onEnter, onBack, onRed, onGreen, onYellow, onBlue } = handlers
+
+    // While typing in a real text field / system IME, leave Backspace and Enter
+    // to the input. Arrow keys and remote Back still navigate the app.
+    if (isTextEditingTarget(event.target)) {
+      if (event.keyCode === KEY_CODES.BACKSPACE || event.keyCode === KEY_CODES.ENTER) {
+        return
+      }
+    }
 
     switch (event.keyCode) {
       case KEY_CODES.UP:

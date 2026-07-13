@@ -167,29 +167,6 @@
   color: #ffffff;
 }
 
-.search-keyboard {
-  margin-bottom: 24px;
-}
-
-.search-keyboard .keyboard-row {
-  margin-bottom: 20px;
-}
-
-.search-keyboard .keyboard-key {
-  width: 56px;
-  height: 56px;
-  font-size: 20px;
-  border-radius: var(--radius-sm);
-  margin-right: 16px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.search-keyboard .keyboard-key-special {
-  font-size: 18px;
-}
-
 .search-results {
   flex: 1;
   overflow-y: auto;

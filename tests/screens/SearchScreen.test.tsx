@@ -63,33 +63,26 @@ describe('SearchScreen', () => {
     })
   })
 
-  describe('keyboard', () => {
-    it('renders keyboard rows', () => {
+  describe('query input', () => {
+    it('does not render the on-screen letter keyboard', () => {
       renderWithI18n(<SearchScreen {...mockProps} />)
 
-      const keyboardRows = document.querySelectorAll('.keyboard-row')
-      expect(keyboardRows.length).toBe(3)
+      expect(document.querySelector('.keyboard')).toBeNull()
+      expect(document.querySelectorAll('.keyboard-key').length).toBe(0)
     })
 
-    it('renders keyboard keys', () => {
+    it('renders a real text input for the system keyboard', () => {
       renderWithI18n(<SearchScreen {...mockProps} />)
 
-      const keys = document.querySelectorAll('.keyboard-key')
-      expect(keys.length).toBeGreaterThan(0)
+      const input = document.querySelector('.search-query-input') as HTMLInputElement | null
+      expect(input).not.toBeNull()
+      expect(input?.type).toBe('text')
     })
 
-    it('shows focused state on default key', () => {
+    it('focuses the query field by default', () => {
       renderWithI18n(<SearchScreen {...mockProps} />)
 
-      const focusedKey = document.querySelector('.keyboard-key.focused')
-      expect(focusedKey).toBeDefined()
-    })
-
-    it('renders special keys', () => {
-      renderWithI18n(<SearchScreen {...mockProps} />)
-
-      const specialKeys = document.querySelectorAll('.keyboard-key-special')
-      expect(specialKeys.length).toBeGreaterThan(0)
+      expect(document.querySelector('.search-input-container.focused')).not.toBeNull()
     })
   })
 

@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'preact/hooks'
 import { searchItems, getContentTypes, MovieItem, ContentType } from '../api/kinopub'
 import { getContentTypesCache, saveContentTypesCache } from '../storage'
 import { MovieCard } from '../components/MovieCard'
-import { Keyboard, KEYBOARD_ROWS_WITH_SEARCH, handleSpecialKey } from '../components/Keyboard'
 import { useKeyboardNavigation, useScrollToFocused, createGridNavigationHandlers } from '../hooks'
 import { LoadingState } from '../components/LoadingSpinner'
 import { useI18n } from '../i18n'
@@ -17,7 +16,7 @@ interface SearchScreenProps {
   initialField?: 'title' | 'director' | 'actor'
 }
 
-type FocusArea = 'query' | 'keyboard' | 'filter' | 'field' | 'results'
+type FocusArea = 'query' | 'filter' | 'field' | 'results'
 type SearchField = 'title' | 'director' | 'actor' | undefined
 type FilterTarget = 'type' | 'field'
 
@@ -34,9 +33,7 @@ export function SearchScreen({ onBack, onSelectItem, onNavigateToMenu, isActive,
   const [searchField, setSearchField] = useState<SearchField>(initialField)
   const [results, setResults] = useState<MovieItem[]>([])
   const [loading, setLoading] = useState(false)
-  const [focusArea, setFocusArea] = useState<FocusArea>(initialQuery.trim().length >= 2 ? 'results' : 'keyboard')
-  const [keyboardRow, setKeyboardRow] = useState(0)
-  const [keyboardCol, setKeyboardCol] = useState(0)
+  const [focusArea, setFocusArea] = useState<FocusArea>(initialQuery.trim().length >= 2 ? 'results' : 'query')
   const [resultIndex, setResultIndex] = useState(0)
   const [hasSearched, setHasSearched] = useState(false)
   const [resultsPerRow, setResultsPerRow] = useState(6)
@@ -86,13 +83,18 @@ export function SearchScreen({ onBack, onSelectItem, onNavigateToMenu, isActive,
       })
   }, [])
 
+  // Focus the real input so webOS opens the system keyboard / voice IME.
   useEffect(() => {
+    if (!isActive) {
+      queryInputRef.current?.blur()
+      return
+    }
     if (focusArea === 'query') {
       queryInputRef.current?.focus()
     } else {
       queryInputRef.current?.blur()
     }
-  }, [focusArea])
+  }, [focusArea, isActive])
 
   const performSearch = useCallback(async (searchQuery: string, type: string | null, field: SearchField) => {
     if (!searchQuery.trim()) {
@@ -140,31 +142,9 @@ export function SearchScreen({ onBack, onSelectItem, onNavigateToMenu, isActive,
     }
   }, [query, selectedType, searchField, performSearch])
 
-  const handleKeyPress = useCallback((key: string) => {
-    const result = handleSpecialKey(key, query)
-
-    if (result.action === 'search') {
-      if (results.length > 0) {
-        setFocusArea('results')
-        setResultIndex(0)
-      }
-      return
-    }
-
-    if (result.action === 'voice') {
-      // Focus real <input> so Magic Remote / system voice can inject text (ValeraGin-style)
-      setFocusArea('query')
-      return
-    }
-
-    if (result.text !== query) {
-      setQuery(result.text)
-      if (result.text === '') {
-        setResults([])
-        setHasSearched(false)
-      }
-    }
-  }, [query, results.length])
+  const isQueryInputFocused = useCallback(() => {
+    return document.activeElement === queryInputRef.current
+  }, [])
 
   const typeOptions = useMemo(() => {
     return [{ id: '', title: '' }, ...contentTypes]
@@ -173,7 +153,6 @@ export function SearchScreen({ onBack, onSelectItem, onNavigateToMenu, isActive,
   const currentDropdownOptions = activeFilter === 'type' ? typeOptions : SEARCH_FIELDS
 
   const handlers = useMemo(() => {
-    const cols = KEYBOARD_ROWS_WITH_SEARCH[keyboardRow]?.length || 12
     const inFilterBar = focusArea === 'filter' || focusArea === 'field'
 
     if (inFilterBar) {
@@ -224,7 +203,14 @@ export function SearchScreen({ onBack, onSelectItem, onNavigateToMenu, isActive,
 
     if (focusArea === 'query') {
       return {
-        onBack: onBack,
+        onBack: () => {
+          // Remote Back while IME is open: dismiss input first, then leave search.
+          if (isQueryInputFocused()) {
+            queryInputRef.current?.blur()
+            return
+          }
+          onBack()
+        },
         onLeft: onNavigateToMenu,
         onRight: () => {
           setFocusArea('filter')
@@ -235,54 +221,13 @@ export function SearchScreen({ onBack, onSelectItem, onNavigateToMenu, isActive,
           setActiveFilter('type')
         },
         onDown: () => {
-          setFocusArea('keyboard')
-          setKeyboardRow(0)
-        },
-        onEnter: () => {
-          queryInputRef.current?.focus()
-        }
-      }
-    }
-
-    if (focusArea === 'keyboard') {
-      return {
-        onBack: () => {
-          if (query) {
-            setQuery(prev => prev.slice(0, -1))
-          } else {
-            onBack()
-          }
-        },
-        onLeft: () => {
-          if (keyboardCol === 0) {
-            onNavigateToMenu()
-          } else {
-            setKeyboardCol(prev => prev - 1)
-          }
-        },
-        onRight: () => setKeyboardCol(prev => (prev < cols - 1 ? prev + 1 : 0)),
-        onUp: () => {
-          if (keyboardRow > 0) {
-            setKeyboardRow(prev => prev - 1)
-            setKeyboardCol(prev => Math.min(prev, KEYBOARD_ROWS_WITH_SEARCH[keyboardRow - 1].length - 1))
-          } else {
-            setFocusArea('query')
-          }
-        },
-        onDown: () => {
-          if (keyboardRow < KEYBOARD_ROWS_WITH_SEARCH.length - 1) {
-            setKeyboardRow(prev => prev + 1)
-            setKeyboardCol(prev => Math.min(prev, KEYBOARD_ROWS_WITH_SEARCH[keyboardRow + 1].length - 1))
-          } else if (results.length > 0) {
+          if (results.length > 0) {
             setFocusArea('results')
             setResultIndex(0)
           }
         },
         onEnter: () => {
-          const key = KEYBOARD_ROWS_WITH_SEARCH[keyboardRow]?.[keyboardCol]
-          if (key) {
-            handleKeyPress(key)
-          }
+          queryInputRef.current?.focus()
         }
       }
     }
@@ -300,11 +245,11 @@ export function SearchScreen({ onBack, onSelectItem, onNavigateToMenu, isActive,
           }
         },
         onLeftEdge: onNavigateToMenu,
-        onTopEdge: () => setFocusArea('keyboard')
+        onTopEdge: () => setFocusArea('query')
       }),
-      onBack: () => setFocusArea('keyboard')
+      onBack: () => setFocusArea('query')
     }
-  }, [focusArea, keyboardRow, keyboardCol, results, resultIndex, resultsPerRow, query, onBack, onSelectItem, handleKeyPress, onNavigateToMenu, filterDropdownOpen, filterDropdownIndex, currentDropdownOptions.length, activeFilter, typeOptions])
+  }, [focusArea, results, resultIndex, resultsPerRow, onBack, onSelectItem, onNavigateToMenu, filterDropdownOpen, filterDropdownIndex, currentDropdownOptions.length, activeFilter, typeOptions, isQueryInputFocused])
 
   useKeyboardNavigation(handlers, isActive)
 
@@ -349,7 +294,10 @@ export function SearchScreen({ onBack, onSelectItem, onNavigateToMenu, isActive,
         </div>
         <div
           class={`search-input-container ${focusArea === 'query' ? 'focused' : ''}`}
-          onClick={() => setFocusArea('query')}
+          onClick={() => {
+            setFocusArea('query')
+            queryInputRef.current?.focus()
+          }}
         >
           {searchField === 'actor' && <span class="search-field-badge">A</span>}
           {searchField === 'director' && <span class="search-field-badge">D</span>}
@@ -431,17 +379,6 @@ export function SearchScreen({ onBack, onSelectItem, onNavigateToMenu, isActive,
           </div>
         </div>
       </div>
-
-      {focusArea !== 'results' && (
-        <Keyboard
-          rows={KEYBOARD_ROWS_WITH_SEARCH}
-          focusedRow={keyboardRow}
-          focusedCol={keyboardCol}
-          isFocused={focusArea === 'keyboard'}
-          onKeyPress={handleKeyPress}
-          className="search-keyboard"
-        />
-      )}
 
       <div class="search-results" ref={resultsContainerRef}>
         {loading && (

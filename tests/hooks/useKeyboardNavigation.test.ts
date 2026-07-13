@@ -68,6 +68,27 @@ describe('useKeyboardNavigation', () => {
     expect(onBack).toHaveBeenCalledTimes(1)
   })
 
+  it('does not steal Backspace or Enter from a focused text input', () => {
+    const onBack = vi.fn()
+    const onEnter = vi.fn()
+    const onDown = vi.fn()
+    renderHook(() => useKeyboardNavigation({ onBack, onEnter, onDown }))
+
+    const input = document.createElement('input')
+    document.body.appendChild(input)
+    input.focus()
+
+    input.dispatchEvent(new KeyboardEvent('keydown', { keyCode: KEY_CODES.BACKSPACE, bubbles: true }))
+    input.dispatchEvent(new KeyboardEvent('keydown', { keyCode: KEY_CODES.ENTER, bubbles: true }))
+    input.dispatchEvent(new KeyboardEvent('keydown', { keyCode: KEY_CODES.DOWN, bubbles: true }))
+
+    expect(onBack).not.toHaveBeenCalled()
+    expect(onEnter).not.toHaveBeenCalled()
+    expect(onDown).toHaveBeenCalledTimes(1)
+
+    input.remove()
+  })
+
   it('does not call handlers when disabled', () => {
     const onUp = vi.fn()
     const onDown = vi.fn()

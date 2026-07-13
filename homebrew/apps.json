@@ -3,9 +3,9 @@
     {
       "id": "com.kpuppy.app",
       "title": "KPuppy",
-      "shortDescription": "KinoPub for LG webOS \u2014 v0.0.36 (keep category filters on back)",
+      "shortDescription": "KinoPub for LG webOS \u2014 v0.0.37 (system keyboard search)",
       "iconUri": "https://raw.githubusercontent.com/darkpal/KPuppy/main/webos-meta/icon.png",
-      "manifestUrl": "https://github.com/darkpal/KPuppy/releases/download/v0.0.36/com.kpuppy.app.manifest.json"
+      "manifestUrl": "https://github.com/darkpal/KPuppy/releases/download/v0.0.37/com.kpuppy.app.manifest.json"
     }
   ]
 }
