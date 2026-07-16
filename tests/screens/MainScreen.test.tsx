@@ -3,6 +3,7 @@ import { render, screen, waitFor, cleanup } from '@testing-library/preact'
 import { h } from 'preact'
 import { MainScreen } from '../../src/screens/MainScreen'
 import { I18nProvider } from '../../src/i18n/context'
+import { KEY_CODES } from '../../src/hooks/useKeyboardNavigation'
 import * as kinopub from '../../src/api/kinopub'
 
 vi.mock('../../src/api/kinopub', async () => {
@@ -161,6 +162,46 @@ describe('MainScreen', () => {
       await waitFor(() => {
         expect(document.querySelector('.rows-container')).toBeDefined()
       })
+    })
+
+    it('enters a new row at first item and restores remembered column on return', async () => {
+      const movies = [1, 2, 3].map(id => ({ ...mockMovie, id, title: `Movie ${id}` }))
+      const page = {
+        items: movies,
+        pagination: { current: 1, total: 1, totalItems: 3, perpage: 10 }
+      }
+      const mockOnFocusChange = vi.fn()
+      vi.mocked(kinopub.getWatching).mockResolvedValue(movies)
+      vi.mocked(kinopub.getItems).mockResolvedValue(page)
+      vi.mocked(kinopub.getFreshItems).mockResolvedValue(page)
+
+      renderWithI18n(<MainScreen {...mockProps} onFocusChange={mockOnFocusChange} />)
+
+      await waitFor(() => {
+        expect(document.querySelector('.rows-container')).not.toBeNull()
+      })
+
+      const press = (keyCode: number) =>
+        document.dispatchEvent(new KeyboardEvent('keydown', { keyCode, bubbles: true }))
+
+      const pressAndExpect = async (keyCode: number, row: number, col: number) => {
+        press(keyCode)
+        await waitFor(() => expect(mockOnFocusChange).toHaveBeenLastCalledWith(row, col))
+      }
+
+      // Scroll right within row 0, then go down: new row starts at first item
+      await pressAndExpect(KEY_CODES.RIGHT, 0, 1)
+      await pressAndExpect(KEY_CODES.RIGHT, 0, 2)
+      await pressAndExpect(KEY_CODES.DOWN, 1, 0)
+
+      // Going back up restores the remembered column in row 0
+      await pressAndExpect(KEY_CODES.UP, 0, 2)
+
+      // Move within row 1, go up then down: row 1 position is remembered
+      await pressAndExpect(KEY_CODES.DOWN, 1, 0)
+      await pressAndExpect(KEY_CODES.RIGHT, 1, 1)
+      await pressAndExpect(KEY_CODES.UP, 0, 2)
+      await pressAndExpect(KEY_CODES.DOWN, 1, 1)
     })
 
     it('calls onFocusChange when focus changes', async () => {

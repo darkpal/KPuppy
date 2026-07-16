@@ -117,8 +117,14 @@ export function MainScreen({ onBack, onSelectItem, onNavigateToMenu, isActive, i
   const [scrollWithFocus, setScrollWithFocus] = useState(true)
   const [error] = useState<string | null>(null)
   const rowsContainerRef = useRef<HTMLDivElement>(null)
+  /** Last focused column per row, so Up/Down returns to where the user was in that row. */
+  const rowColMemory = useRef<Record<number, number>>({ [initialFocusRow]: initialFocusCol })
   const onFocusChangeRef = useRef(onFocusChange)
   onFocusChangeRef.current = onFocusChange
+
+  useEffect(() => {
+    rowColMemory.current[focusedRow] = focusedCol
+  }, [focusedRow, focusedCol])
 
   useEffect(() => {
     onFocusChangeRef.current?.(focusedRow, focusedCol)
@@ -185,8 +191,9 @@ export function MainScreen({ onBack, onSelectItem, onNavigateToMenu, isActive, i
           focusByKeyboard(() => {
             const newRow = focusedRow - 1
             const newRowItemCount = rows[newRow]?.items.length || 0
+            const rememberedCol = rowColMemory.current[newRow] ?? 0
             setFocusedRow(newRow)
-            setFocusedCol(prev => Math.min(prev, newRowItemCount - 1))
+            setFocusedCol(Math.min(rememberedCol, Math.max(0, newRowItemCount - 1)))
           })
         }
       },
@@ -195,8 +202,9 @@ export function MainScreen({ onBack, onSelectItem, onNavigateToMenu, isActive, i
           focusByKeyboard(() => {
             const newRow = focusedRow + 1
             const newRowItemCount = rows[newRow]?.items.length || 0
+            const rememberedCol = rowColMemory.current[newRow] ?? 0
             setFocusedRow(newRow)
-            setFocusedCol(prev => Math.min(prev, Math.max(0, newRowItemCount - 1)))
+            setFocusedCol(Math.min(rememberedCol, Math.max(0, newRowItemCount - 1)))
           })
         }
       },
