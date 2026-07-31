@@ -1,0 +1,50 @@
+---
+description: webOS image rendering pitfalls — large posters stall the compositor; how the banner avoids it
+globs: src/**/*.tsx,src/**/*.ts,src/**/*.css
+alwaysApply: false
+---
+
+# webOS image rendering (hard-won in v0.0.58–v0.0.66)
+
+Target engine is old Chromium on LG TVs (browserslist: Chrome 53). Two real
+bugs cost many releases; do not reintroduce them.
+
+## 1. Never hand a full-size poster bitmap to the compositor
+
+The webOS compositor cannot rasterize very large source images (hi-res `wide`
+posters). The frame containing the raw `<img>` never activates: the screen
+freezes on the previous frame (spinner appears stuck) until a real key press
+forces a redraw. JS stays alive — only the picture is missing.
+
+**Symptom fingerprint:** spinner "freezes", poster appears the instant any
+button is pressed, worse on sharper/bigger posters. This is a compositor
+stall, NOT a JS deadlock, NOT a load/decode-event problem.
+
+**The working fix** (keep this architecture):
+- `useDecodedImage` (src/hooks/useDecodedImage.ts) preloads the image off-DOM
+  (`new Image()`), with retries and a safety timeout. `img.decode()` is used
+  only where it exists (Chrome 64+ / webOS 5+).
+- The banner mounts only after the preload finishes — the DOM mutation itself
+  schedules the repaint webOS otherwise drops.
+- The poster is drawn **downscaled onto a screen-sized `<canvas>`**
+  (`drawBannerCover` in src/screens/ItemScreen.tsx), so the compositor only
+  ever sees a ~1920×1080 bitmap. Small card thumbnails are fine as `<img>`.
+
+## 2. Things that were tried and do NOT work
+
+- `revealWhenDecoded` / gating visibility on `onload` + `img.decode()`
+  callbacks — flaky on webOS, leaves the image at `opacity: 0`.
+- Force-paint hacks: `translateZ(0)` toggles, opacity nudges, `setInterval`
+  repaint loops, clearing/reassigning `src` on stall timers.
+- Mounting `<img>` early and waiting: no DOM change after load ⇒ no repaint.
+- Synchronous `canvas.drawImage` decode of a huge JPEG in `onload` blocks the
+  Chrome 53 main thread; avoid off-screen sync decodes of full-size posters.
+
+## 3. Canvas banner details
+
+- The canvas backing store is fixed at mount; keep `object-fit: cover` on
+  `.item-banner-image` so layout shifts (expanding side menu) crop instead of
+  squishing the frame.
+- `object-fit`/`object-position` do not apply to canvas *content* — the
+  cover-crop (incl. the `center 18%` vertical bias) is baked in by
+  `drawBannerCover`.
