@@ -1,5 +1,5 @@
 import { getTokens, saveTokens, Tokens } from '../storage'
-import { getCached, setCache, createCacheKey, invalidateCache, cachedFetch } from './cache'
+import { getCached, setCache, createCacheKey, invalidateCache, cachedFetch, withInflight } from './cache'
 
 const BASE_URL = 'https://api.service-kp.com'
 const CLIENT_ID = 'xbmc'
@@ -201,10 +201,11 @@ export interface ItemsParams {
   conditions?: string[]
 }
 
-/** Calendar month ago as unix seconds (matches ValeraGin dayjs().add(-1, 'month')). */
+/** Calendar month ago as unix seconds, floored to local midnight for stable cache keys. */
 export function monthAgoUnix(now = Date.now()): number {
   const d = new Date(now)
   d.setMonth(d.getMonth() - 1)
+  d.setHours(0, 0, 0, 0)
   return Math.floor(d.getTime() / 1000)
 }
 
@@ -438,19 +439,33 @@ export interface WatchingResponse {
 
 type ItemCardMeta = Pick<MovieItem, 'imdbRating' | 'kinopoiskRating' | 'ratingPercentage' | 'quality' | 'year'>
 
+function itemDetailsToMeta(item: Pick<MovieItem, 'imdbRating' | 'kinopoiskRating' | 'ratingPercentage' | 'quality' | 'year'>): ItemCardMeta {
+  return {
+    imdbRating: item.imdbRating,
+    kinopoiskRating: item.kinopoiskRating,
+    ratingPercentage: item.ratingPercentage,
+    quality: item.quality,
+    year: item.year
+  }
+}
+
 export async function fetchItemCardMeta(id: number): Promise<ItemCardMeta | null> {
+  const metaKey = createCacheKey('item-meta', id)
+  const cachedMeta = getCached<ItemCardMeta>(metaKey)
+  if (cachedMeta) return cachedMeta
+
+  const cachedItem = getCached<ItemDetails>(createCacheKey('item', 'nolinks', id))
+  if (cachedItem) {
+    const meta = itemDetailsToMeta(cachedItem)
+    setCache(metaKey, meta)
+    return meta
+  }
+
   try {
-    const response = await authFetch(`${BASE_URL}/v1/items/${id}`)
-    if (!response.ok) return null
-    const data = await response.json()
-    const item = (data.item || data) as Record<string, unknown>
-    return {
-      imdbRating: Number(item.imdb_rating) || 0,
-      kinopoiskRating: Number(item.kinopoisk_rating) || 0,
-      ratingPercentage: Number(item.rating_percentage) || 0,
-      quality: Number(item.quality) || 0,
-      year: Number(item.year) || 0
-    }
+    const details = await getItem(id)
+    const meta = itemDetailsToMeta(details)
+    setCache(metaKey, meta)
+    return meta
   } catch {
     return null
   }
@@ -549,27 +564,29 @@ export async function getItems(params: ItemsParams = {}): Promise<ItemsResponse>
   const cached = getCached<ItemsResponse>(cacheKey)
   if (cached) return cached
 
-  const query = buildItemsQuery(params)
-  const response = await authFetch(`${BASE_URL}/v1/items?${query}`)
+  return withInflight(cacheKey, async () => {
+    const query = buildItemsQuery(params)
+    const response = await authFetch(`${BASE_URL}/v1/items?${query}`)
 
-  if (!response.ok) {
-    throw new ApiError('Failed to fetch items', response.status)
-  }
-
-  const data = await response.json()
-
-  const result: ItemsResponse = {
-    items: data.items.map(mapToMovieItem),
-    pagination: {
-      current: data.pagination.current,
-      total: data.pagination.total,
-      totalItems: data.pagination.total_items,
-      perpage: data.pagination.perpage
+    if (!response.ok) {
+      throw new ApiError('Failed to fetch items', response.status)
     }
-  }
 
-  setCache(cacheKey, result)
-  return result
+    const data = await response.json()
+
+    const result: ItemsResponse = {
+      items: data.items.map(mapToMovieItem),
+      pagination: {
+        current: data.pagination.current,
+        total: data.pagination.total,
+        totalItems: data.pagination.total_items,
+        perpage: data.pagination.perpage
+      }
+    }
+
+    setCache(cacheKey, result)
+    return result
+  })
 }
 
 async function getItemsShortcut(
@@ -582,30 +599,33 @@ async function getItemsShortcut(
   const cached = getCached<ItemsResponse>(cacheKey)
   if (cached) return cached
 
-  const searchParams = new URLSearchParams()
-  if (type) searchParams.set('type', type)
-  searchParams.set('page', page.toString())
-  searchParams.set('perpage', perpage.toString())
+  return withInflight(cacheKey, async () => {
+    const searchParams = new URLSearchParams()
+    if (type) searchParams.set('type', type)
+    searchParams.set('page', page.toString())
+    searchParams.set('perpage', perpage.toString())
 
-  const response = await authFetch(`${BASE_URL}/v1/items/${path}?${searchParams}`)
+    const response = await authFetch(`${BASE_URL}/v1/items/${path}?${searchParams}`)
 
-  if (!response.ok) {
-    throw new ApiError(`Failed to fetch ${path} items`, response.status)
-  }
-
-  const data = await response.json()
-  const result: ItemsResponse = {
-    items: (data.items || []).map(mapToMovieItem),
-    pagination: {
-      current: data.pagination?.current ?? 0,
-      total: data.pagination?.total ?? 0,
-      totalItems: data.pagination?.total_items ?? 0,
-      perpage: data.pagination?.perpage ?? perpage
+    if (!response.ok) {
+      throw new ApiError(`Failed to fetch ${path} items`, response.status)
     }
-  }
 
-  setCache(cacheKey, result)
-  return result
+    const data = await response.json()
+
+    const result: ItemsResponse = {
+      items: (data.items || []).map(mapToMovieItem),
+      pagination: {
+        current: data.pagination?.current || page,
+        total: data.pagination?.total || 1,
+        totalItems: data.pagination?.total_items || 0,
+        perpage: data.pagination?.perpage || perpage
+      }
+    }
+
+    setCache(cacheKey, result)
+    return result
+  })
 }
 
 /** Shortcut used by Kinopub web for "Популярные ..." */
@@ -859,85 +879,88 @@ export async function getMediaLinks(mediaId: number | string): Promise<MediaLink
 }
 
 export async function getItem(id: number): Promise<ItemDetails> {
-  const cacheKey = createCacheKey('item', id)
+  const cacheKey = createCacheKey('item', 'nolinks', id)
   const cached = getCached<ItemDetails>(cacheKey)
   if (cached) return cached
 
-  const response = await authFetch(`${BASE_URL}/v1/items/${id}`)
+  return withInflight(cacheKey, async () => {
+    const response = await authFetch(`${BASE_URL}/v1/items/${id}?nolinks=1`)
 
-  if (!response.ok) {
-    throw new ApiError('Failed to fetch item', response.status)
-  }
+    if (!response.ok) {
+      throw new ApiError('Failed to fetch item', response.status)
+    }
 
-  const data = await response.json()
-  const item = data.item
+    const data = await response.json()
+    const item = data.item
 
-  const parsePersonsFromString = (str: unknown): Person[] => {
-    if (typeof str !== 'string' || !str) return []
-    return str.split(',').map((name, i) => ({
-      id: i,
-      name: name.trim()
-    })).filter(p => p.name)
-  }
+    const parsePersonsFromString = (str: unknown): Person[] => {
+      if (typeof str !== 'string' || !str) return []
+      return str.split(',').map((name, i) => ({
+        id: i,
+        name: name.trim()
+      })).filter(p => p.name)
+    }
 
-  const parsePersonsFromArray = (arr: unknown): Person[] => {
-    if (!Array.isArray(arr)) return []
-    return arr.map((p: Record<string, unknown>) => ({
-      id: p.id as number,
-      name: (p.name || p.title || '') as string
-    })).filter(p => p.name)
-  }
+    const parsePersonsFromArray = (arr: unknown): Person[] => {
+      if (!Array.isArray(arr)) return []
+      return arr.map((p: Record<string, unknown>) => ({
+        id: p.id as number,
+        name: (p.name || p.title || '') as string
+      })).filter(p => p.name)
+    }
 
-  const parseGenres = (arr: unknown): Genre[] => {
-    if (!Array.isArray(arr)) return []
-    return arr.map((g: Record<string, unknown>) => ({
-      id: g.id as number,
-      title: (g.title || g.name || '') as string,
-      type: (g.type || '') as string
-    })).filter(g => g.title)
-  }
+    const parseGenres = (arr: unknown): Genre[] => {
+      if (!Array.isArray(arr)) return []
+      return arr.map((g: Record<string, unknown>) => ({
+        id: g.id as number,
+        title: (g.title || g.name || '') as string,
+        type: (g.type || '') as string
+      })).filter(g => g.title)
+    }
 
-  const parseCountries = (arr: unknown): Country[] => {
-    if (!Array.isArray(arr)) return []
-    return arr.map((c: Record<string, unknown>) => ({
-      id: c.id as number,
-      title: (c.title || c.name || '') as string
-    })).filter(c => c.title)
-  }
+    const parseCountries = (arr: unknown): Country[] => {
+      if (!Array.isArray(arr)) return []
+      return arr.map((c: Record<string, unknown>) => ({
+        id: c.id as number,
+        title: (c.title || c.name || '') as string
+      })).filter(c => c.title)
+    }
 
-  const directors = typeof item.director === 'string'
-    ? parsePersonsFromString(item.director)
-    : parsePersonsFromArray(item.directors)
+    const directors = typeof item.director === 'string'
+      ? parsePersonsFromString(item.director)
+      : parsePersonsFromArray(item.directors)
 
-  const actors = typeof item.cast === 'string'
-    ? parsePersonsFromString(item.cast)
-    : parsePersonsFromArray(item.actors)
+    const actors = typeof item.cast === 'string'
+      ? parsePersonsFromString(item.cast)
+      : parsePersonsFromArray(item.actors)
 
-  const result: ItemDetails = {
-    id: item.id,
-    title: item.title,
-    type: item.type,
-    year: item.year,
-    plot: item.plot,
-    posters: item.posters,
-    rating: item.rating,
-    imdbRating: item.imdb_rating,
-    kinopoiskRating: item.kinopoisk_rating,
-    ratingPercentage: item.rating_percentage || 0,
-    quality: Number(item.quality) || 0,
-    views: item.views,
-    directors,
-    actors,
-    countries: parseCountries(item.countries),
-    genres: parseGenres(item.genres),
-    videos: item.videos,
-    seasons: item.seasons,
-    duration: item.duration,
-    trailer: item.trailer
-  }
+    const result: ItemDetails = {
+      id: item.id,
+      title: item.title,
+      type: item.type,
+      year: item.year,
+      plot: item.plot,
+      posters: item.posters,
+      rating: item.rating,
+      imdbRating: item.imdb_rating,
+      kinopoiskRating: item.kinopoisk_rating,
+      ratingPercentage: item.rating_percentage || 0,
+      quality: Number(item.quality) || 0,
+      views: item.views,
+      directors,
+      actors,
+      countries: parseCountries(item.countries),
+      genres: parseGenres(item.genres),
+      videos: item.videos,
+      seasons: item.seasons,
+      duration: item.duration,
+      trailer: item.trailer
+    }
 
-  setCache(cacheKey, result)
-  return result
+    setCache(cacheKey, result)
+    setCache(createCacheKey('item-meta', id), itemDetailsToMeta(result))
+    return result
+  })
 }
 
 export interface MarkTimeParams {

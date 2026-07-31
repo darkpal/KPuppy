@@ -7,7 +7,7 @@ import { useI18n } from '../i18n'
 import '../styles/category.css'
 
 interface NewEpisodesScreenProps {
-  onSelectItem: (itemId: number) => void
+  onSelectItem: (itemId: number, preview?: MovieItem) => void
   onNavigateToMenu: () => void
   isActive: boolean
 }
@@ -65,11 +65,11 @@ export function NewEpisodesScreen({ onSelectItem, onNavigateToMenu, isActive }: 
     onSelect: (index) => {
       const item = items[index]
       if (item) {
-        onSelectItem(item.id)
+        onSelectItem(item.id, cardMeta.get(item.id) || watchingToMovieItem(item))
       }
     },
     onLeftEdge: onNavigateToMenu
-  }), [items, focusedIndex, onNavigateToMenu, onSelectItem, itemsPerRow])
+  }), [items, focusedIndex, onNavigateToMenu, onSelectItem, itemsPerRow, cardMeta])
 
   useKeyboardNavigation(handlers, isActive && !loading)
 
@@ -79,11 +79,12 @@ export function NewEpisodesScreen({ onSelectItem, onNavigateToMenu, isActive }: 
       ? `${newEpisodes} ${t.newEpisodesCount}`
       : undefined
     const meta = cardMeta.get(item.id)
+    const movie = meta || watchingToMovieItem(item)
     return (
       <MovieCard
-        movie={meta || watchingToMovieItem(item)}
+        movie={movie}
         focused={focused}
-        onSelect={() => onSelectItem(item.id)}
+        onSelect={() => onSelectItem(item.id, movie)}
         badge={badge}
       />
     )

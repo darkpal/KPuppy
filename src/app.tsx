@@ -19,7 +19,7 @@ import { ALL_MENU_ITEMS_COUNT, getMenuIdByIndex } from './components/SideMenu'
 import { KEY_CODES } from './hooks'
 import { ScreenManager } from './components/ScreenManager'
 import { isAuthenticated, clearTokens, getTokens, getLocalSettings, saveReturnTo, getReturnTo, clearReturnTo, getContentTypesCache, saveContentTypesCache, getSavedAudioPreference, findAudioIndex, ReturnToState } from './storage'
-import { refreshAccessToken, getItem, getMediaLinks, setOnAuthError, getDeviceInfo, markTime, getWatchingProgress, getContentTypes, registerDevice, VideoFile, Audio, Subtitle } from './api/kinopub'
+import { refreshAccessToken, getItem, getMediaLinks, setOnAuthError, getDeviceInfo, markTime, getWatchingProgress, getContentTypes, registerDevice, VideoFile, Audio, Subtitle, MovieItem } from './api/kinopub'
 import { applyPreferredDeviceDefaultsOnce } from './preferredDefaults'
 import { saveTokens } from './storage'
 import { launchNativePlayer, getStreamUrl, withHlsAudioIndex, getAvailableQualities } from './webos/player'
@@ -70,6 +70,7 @@ interface AppState {
   authenticated: boolean
   selectedMenuId: string
   itemId: number | null
+  itemPreview: MovieItem | null
   seriesId: number | null
   focusArea: FocusArea
   menuFocusIndex: number
@@ -129,6 +130,7 @@ export function App() {
       authenticated: isAuthenticated(),
       selectedMenuId: 'home',
       itemId: null,
+      itemPreview: null,
       seriesId: null,
       focusArea: 'content',
       menuFocusIndex: 0,
@@ -228,20 +230,20 @@ export function App() {
     return () => setOnAuthError(null)
   }, [handleLogout])
 
-  const handleSelectItem = useCallback((itemId: number) => {
-    setState(prev => ({ ...prev, itemId }))
+  const handleSelectItem = useCallback((itemId: number, preview?: MovieItem) => {
+    setState(prev => ({ ...prev, itemId, itemPreview: preview ?? null }))
   }, [])
 
   const handleBackFromItem = useCallback(() => {
-    setState(prev => ({ ...prev, itemId: null, seriesId: null }))
+    setState(prev => ({ ...prev, itemId: null, seriesId: null, itemPreview: null }))
   }, [])
 
   const handleSelectSeries = useCallback((seriesId: number) => {
-    setState(prev => ({ ...prev, seriesId, itemId: null }))
+    setState(prev => ({ ...prev, seriesId, itemId: null, itemPreview: null }))
   }, [])
 
   const handleBackFromSeries = useCallback(() => {
-    setState(prev => ({ ...prev, itemId: prev.seriesId, seriesId: null }))
+    setState(prev => ({ ...prev, itemId: prev.seriesId, seriesId: null, itemPreview: null }))
   }, [])
 
   const handleFocusChange = useCallback((screenId: string, row: number, col: number) => {
@@ -260,6 +262,7 @@ export function App() {
       selectedMenuId: menuId,
       focusArea: 'content',
       itemId: null,
+      itemPreview: null,
       seriesId: null,
       // Drop search/category filters when leaving that section via the menu.
       searchState: menuId === 'search' ? prev.searchState : null,
@@ -706,38 +709,10 @@ export function App() {
 
   const isContentActive = state.focusArea === 'content'
   const isMenuFocused = state.focusArea === 'menu'
+  const overlayOpen = Boolean(state.itemId || state.seriesId)
+  const baseActive = isContentActive && !overlayOpen
 
-  const renderScreen = () => {
-    if (state.seriesId) {
-      return (
-        <SeasonsScreen
-          itemId={state.seriesId}
-          onBack={handleBackFromSeries}
-          onPlay={handlePlay}
-          onNavigateToMenu={handleNavigateToMenu}
-          isActive={isContentActive}
-        />
-      )
-    }
-
-    if (state.itemId) {
-      return (
-        <ItemScreen
-          itemId={state.itemId}
-          onBack={handleBackFromItem}
-          onPlay={handlePlay}
-          onPlayTrailer={handlePlayTrailer}
-          onSelectSeries={handleSelectSeries}
-          onSelectItem={handleSelectItem}
-          onSelectGenre={handleSelectGenre}
-          onSelectActor={handleSelectActor}
-          onSelectDirector={handleSelectDirector}
-          onNavigateToMenu={handleNavigateToMenu}
-          isActive={isContentActive}
-        />
-      )
-    }
-
+  const renderBaseScreen = () => {
     switch (state.selectedMenuId) {
       case 'home': {
         const homeFocus = state.screenFocus['home'] || { row: 0, col: 0 }
@@ -746,7 +721,7 @@ export function App() {
             onBack={handleNavigateToMenu}
             onSelectItem={handleSelectItem}
             onNavigateToMenu={handleNavigateToMenu}
-            isActive={isContentActive}
+            isActive={baseActive}
             initialFocusRow={homeFocus.row}
             initialFocusCol={homeFocus.col}
             onFocusChange={(row, col) => handleFocusChange('home', row, col)}
@@ -762,7 +737,7 @@ export function App() {
             exitDirectlyOnBack={state.searchReturnTarget !== null}
             onSelectItem={handleSelectItem}
             onNavigateToMenu={handleNavigateToMenu}
-            isActive={isContentActive}
+            isActive={baseActive}
             initialState={state.searchState}
             initialFocusIndex={searchFocus.row}
             onStateChange={handleSearchStateChange}
@@ -774,7 +749,7 @@ export function App() {
         return (
           <SettingsScreen
             onNavigateToMenu={handleNavigateToMenu}
-            isActive={isContentActive}
+            isActive={baseActive}
           />
         )
       case 'user':
@@ -782,7 +757,7 @@ export function App() {
           <UserScreen
             onNavigateToMenu={handleNavigateToMenu}
             onLogout={handleLogout}
-            isActive={isContentActive}
+            isActive={baseActive}
           />
         )
       case 'bookmarks':
@@ -790,7 +765,7 @@ export function App() {
           <BookmarksScreen
             onSelectItem={handleSelectItem}
             onNavigateToMenu={handleNavigateToMenu}
-            isActive={isContentActive}
+            isActive={baseActive}
             initialFolderId={state.bookmarksState?.folderId ?? null}
             initialFolderIndex={state.bookmarksState?.folderIndex ?? 0}
             initialItemIndex={state.bookmarksState?.itemIndex ?? 0}
@@ -802,7 +777,7 @@ export function App() {
           <CollectionsScreen
             onSelectItem={handleSelectItem}
             onNavigateToMenu={handleNavigateToMenu}
-            isActive={isContentActive}
+            isActive={baseActive}
           />
         )
       case 'history':
@@ -810,7 +785,7 @@ export function App() {
           <HistoryScreen
             onSelectItem={handleSelectItem}
             onNavigateToMenu={handleNavigateToMenu}
-            isActive={isContentActive}
+            isActive={baseActive}
           />
         )
       case 'watching':
@@ -818,7 +793,7 @@ export function App() {
           <NewEpisodesScreen
             onSelectItem={handleSelectItem}
             onNavigateToMenu={handleNavigateToMenu}
-            isActive={isContentActive}
+            isActive={baseActive}
           />
         )
       case 'livetv': {
@@ -827,7 +802,7 @@ export function App() {
           <LiveTVScreen
             onNavigateToMenu={handleNavigateToMenu}
             onPlayChannel={handlePlayTrailer}
-            isActive={isContentActive}
+            isActive={baseActive}
             initialFocusIndex={livetvFocus.row}
             onFocusChange={(index) => handleFocusChange('livetv', index, 0)}
           />
@@ -844,7 +819,7 @@ export function App() {
             title={title}
             onSelectItem={handleSelectItem}
             onNavigateToMenu={handleNavigateToMenu}
-            isActive={isContentActive}
+            isActive={baseActive}
             initialFocusIndex={categoryFocus.row}
             onFocusChange={(index) => handleFocusChange(state.selectedMenuId, index, 0)}
             initialGenreId={state.categoryGenreId}
@@ -856,6 +831,45 @@ export function App() {
     }
   }
 
+  const renderOverlay = () => {
+    if (state.seriesId) {
+      return (
+        <div class="screen-overlay">
+          <SeasonsScreen
+            itemId={state.seriesId}
+            onBack={handleBackFromSeries}
+            onPlay={handlePlay}
+            onNavigateToMenu={handleNavigateToMenu}
+            isActive={isContentActive}
+          />
+        </div>
+      )
+    }
+
+    if (state.itemId) {
+      return (
+        <div class="screen-overlay">
+          <ItemScreen
+            itemId={state.itemId}
+            preview={state.itemPreview}
+            onBack={handleBackFromItem}
+            onPlay={handlePlay}
+            onPlayTrailer={handlePlayTrailer}
+            onSelectSeries={handleSelectSeries}
+            onSelectItem={handleSelectItem}
+            onSelectGenre={handleSelectGenre}
+            onSelectActor={handleSelectActor}
+            onSelectDirector={handleSelectDirector}
+            onNavigateToMenu={handleNavigateToMenu}
+            isActive={isContentActive}
+          />
+        </div>
+      )
+    }
+
+    return null
+  }
+
   return (
     <>
       <ScreenManager
@@ -864,7 +878,15 @@ export function App() {
         isMenuFocused={isMenuFocused}
         onMenuSelect={handleMenuSelect}
       >
-        {renderScreen()}
+        <div class="screen-stack">
+          <div
+            class={`screen-base${overlayOpen ? ' is-hidden' : ''}`}
+            aria-hidden={overlayOpen}
+          >
+            {renderBaseScreen()}
+          </div>
+          {renderOverlay()}
+        </div>
       </ScreenManager>
       <RemoteDebugOverlay />
     </>

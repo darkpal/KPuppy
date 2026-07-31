@@ -9,7 +9,7 @@ import '../styles/category.css'
 import '../styles/bookmarks.css'
 
 interface BookmarksScreenProps {
-  onSelectItem: (itemId: number) => void
+  onSelectItem: (itemId: number, preview?: MovieItem) => void
   onNavigateToMenu: () => void
   isActive: boolean
   initialFolderId?: number | null
@@ -272,7 +272,7 @@ export function BookmarksScreen({
       onSelect: (index) => {
         const item = items[index]
         if (item) {
-          onSelectItem(item.id)
+          onSelectItem(item.id, item)
         }
       },
       onLeftEdge: onNavigateToMenu
@@ -300,7 +300,7 @@ export function BookmarksScreen({
     <MovieCard
       movie={item}
       focused={focused}
-      onSelect={() => onSelectItem(item.id)}
+      onSelect={() => onSelectItem(item.id, item)}
     />
   ), [onSelectItem])
 

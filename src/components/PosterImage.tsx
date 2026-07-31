@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks'
 
 const MAX_RETRIES = 3
-const STALL_MS = 3500
-const DECODE_TIMEOUT_MS = 2000
+const STALL_MS = 5000
 let retryRequestId = 0
 
 interface PosterImageProps {
@@ -19,14 +18,15 @@ function retrySource(src: string): string {
   const hashIndex = src.indexOf('#')
   const hash = hashIndex >= 0 ? src.slice(hashIndex) : ''
   const url = hashIndex >= 0 ? src.slice(0, hashIndex) : src
-  const separator = url.includes('?') ? '&' : '?'
-  return `${url}${separator}_kpuppy_retry=${retryRequestId}${hash}`
+  // Strip previous retry tokens so remounts can keep using a stable cacheable URL.
+  const cleanUrl = url.replace(/([?&])_kpuppy_retry=\d+/g, '$1').replace(/[?&]$/, '').replace(/\?&/, '?')
+  const separator = cleanUrl.includes('?') ? '&' : '?'
+  return `${cleanUrl}${separator}_kpuppy_retry=${retryRequestId}${hash}`
 }
 
 function reloadImage(img: HTMLImageElement, src: string): void {
   img.removeAttribute('src')
   void img.offsetWidth
-  // A unique URL avoids reusing an incomplete in-memory response on webOS.
   img.src = retrySource(src)
 }
 
@@ -53,7 +53,6 @@ export function PosterImage({
 
   const retryImage = useCallback((img: HTMLImageElement) => {
     if (retriesRef.current >= MAX_RETRIES) {
-      // Prefer a possibly incomplete frame over an endless blank hero.
       markReady()
       return
     }
@@ -86,6 +85,7 @@ export function PosterImage({
 
         const img = imgRef.current
         if (!img) return
+        // Already painted successfully — do not cache-bust.
         if (img.complete && img.naturalWidth > 0) {
           if (revealWhenDecoded) markReady()
           return
@@ -117,42 +117,9 @@ export function PosterImage({
       alt={alt}
       class={`${className || ''}${revealWhenDecoded ? ` poster-image-${isReady ? 'ready' : 'loading'}` : ''}`}
       loading={loading}
-      decoding={revealWhenDecoded ? 'sync' : 'async'}
-      onLoad={(event) => {
-        if (!revealWhenDecoded) return
-
-        const img = event.currentTarget
-        if (img.naturalWidth <= 0 || img.naturalHeight <= 0) {
-          retryImage(img)
-          return
-        }
-
-        const loadedSrc = img.src
-        const decode = img.decode
-        if (typeof decode !== 'function') {
-          markReady()
-          return
-        }
-
-        let settled = false
-        const finish = () => {
-          if (settled) return
-          settled = true
-          if (mountedRef.current && imgRef.current === img && img.src === loadedSrc) {
-            markReady()
-          }
-        }
-
-        const timer = window.setTimeout(finish, DECODE_TIMEOUT_MS)
-        decode.call(img).then(() => {
-          window.clearTimeout(timer)
-          finish()
-        }).catch(() => {
-          window.clearTimeout(timer)
-          if (mountedRef.current && imgRef.current === img && img.src === loadedSrc) {
-            retryImage(img)
-          }
-        })
+      decoding="async"
+      onLoad={() => {
+        if (revealWhenDecoded) markReady()
       }}
       onError={(event) => {
         retryImage(event.currentTarget)

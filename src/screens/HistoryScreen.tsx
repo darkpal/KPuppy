@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'preact/hooks'
-import { getHistory, clearHistoryForItem, HistoryItem } from '../api/kinopub'
+import { getHistory, clearHistoryForItem, HistoryItem, MovieItem } from '../api/kinopub'
 import { MovieCard } from '../components/MovieCard'
 import { VirtualGrid } from '../components/VirtualGrid'
 import { LoadingState } from '../components/LoadingSpinner'
@@ -8,7 +8,7 @@ import { useI18n } from '../i18n'
 import '../styles/category.css'
 
 interface HistoryScreenProps {
-  onSelectItem: (itemId: number) => void
+  onSelectItem: (itemId: number, preview?: MovieItem) => void
   onNavigateToMenu: () => void
   isActive: boolean
 }
@@ -77,7 +77,7 @@ export function HistoryScreen({ onSelectItem, onNavigateToMenu, isActive }: Hist
       onSelect: (index) => {
         const item = activeItems[index]
         if (item) {
-          onSelectItem(item.id)
+          onSelectItem(item.id, item)
         }
       },
       onLeftEdge: onNavigateToMenu,
@@ -106,7 +106,7 @@ export function HistoryScreen({ onSelectItem, onNavigateToMenu, isActive }: Hist
     <MovieCard
       movie={item}
       focused={focused}
-      onSelect={() => onSelectItem(item.id)}
+      onSelect={() => onSelectItem(item.id, item)}
       episodeInfo={item.episodeInfo}
     />
   ), [onSelectItem])
@@ -115,7 +115,7 @@ export function HistoryScreen({ onSelectItem, onNavigateToMenu, isActive }: Hist
     <MovieCard
       movie={item}
       focused={focused}
-      onSelect={() => onSelectItem(item.id)}
+      onSelect={() => onSelectItem(item.id, item)}
     />
   ), [onSelectItem])
 

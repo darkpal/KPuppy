@@ -12,7 +12,7 @@ import '../styles/collection-card.css'
 const COLLECTIONS_PER_PAGE = 40
 
 interface CollectionsScreenProps {
-  onSelectItem: (itemId: number) => void
+  onSelectItem: (itemId: number, preview?: MovieItem) => void
   onNavigateToMenu: () => void
   isActive: boolean
 }
@@ -140,7 +140,7 @@ export function CollectionsScreen({ onSelectItem, onNavigateToMenu, isActive }: 
       onSelect: (index) => {
         const item = items[index]
         if (item) {
-          onSelectItem(item.id)
+          onSelectItem(item.id, item)
         }
       },
       onLeftEdge: onNavigateToMenu
@@ -167,7 +167,7 @@ export function CollectionsScreen({ onSelectItem, onNavigateToMenu, isActive }: 
     <MovieCard
       movie={item}
       focused={focused}
-      onSelect={() => onSelectItem(item.id)}
+      onSelect={() => onSelectItem(item.id, item)}
     />
   ), [onSelectItem])
 

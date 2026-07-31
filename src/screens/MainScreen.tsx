@@ -10,7 +10,7 @@ import '../styles/main.css'
 
 interface MainScreenProps {
   onBack: () => void
-  onSelectItem: (itemId: number) => void
+  onSelectItem: (itemId: number, preview?: MovieItem) => void
   onNavigateToMenu: () => void
   isActive: boolean
   initialFocusRow?: number
@@ -131,6 +131,8 @@ export function MainScreen({ onBack, onSelectItem, onNavigateToMenu, isActive, i
   }, [focusedRow, focusedCol])
 
   useEffect(() => {
+    let cancelled = false
+
     async function loadRow(index: number) {
       const config = rowConfigs[index]
       try {
@@ -144,24 +146,36 @@ export function MainScreen({ onBack, onSelectItem, onNavigateToMenu, isActive, i
           const response = await getItems(config.params!)
           items = response.items
         }
+        if (cancelled) return
         setRows(prev => prev.map((row, i) =>
           i === index ? { ...row, items, loading: false } : row
         ))
       } catch (err) {
         if (import.meta.env.DEV) console.error(`Failed to load ${config.titleKey}:`, err)
+        if (cancelled) return
         setRows(prev => prev.map((row, i) =>
           i === index ? { ...row, loading: false } : row
         ))
       }
     }
 
-    async function loadRowsSequentially() {
-      for (let i = 0; i < rowConfigs.length; i++) {
-        await loadRow(i)
+    async function loadRowsWithConcurrency(limit = 3) {
+      let next = 0
+      async function worker() {
+        while (next < rowConfigs.length) {
+          const index = next
+          next += 1
+          await loadRow(index)
+        }
       }
+      const workers = Array.from({ length: Math.min(limit, rowConfigs.length) }, () => worker())
+      await Promise.all(workers)
     }
 
-    loadRowsSequentially()
+    loadRowsWithConcurrency()
+    return () => {
+      cancelled = true
+    }
   }, [rowConfigs])
 
   const focusByKeyboard = useCallback((update: () => void) => {
@@ -211,7 +225,7 @@ export function MainScreen({ onBack, onSelectItem, onNavigateToMenu, isActive, i
       onEnter: () => {
         const movie = currentRow?.items[focusedCol]
         if (movie) {
-          onSelectItem(movie.id)
+          onSelectItem(movie.id, movie)
         }
       },
       onBack
@@ -220,23 +234,23 @@ export function MainScreen({ onBack, onSelectItem, onNavigateToMenu, isActive, i
 
   useKeyboardNavigation(handlers, isActive)
 
-  const allLoading = rows.every(row => row.loading)
+  const anyReady = rows.some(row => !row.loading)
 
   useScrollToFocused({
     containerRef: rowsContainerRef,
     focusedIndex: focusedRow,
     itemSelector: '[data-row]',
-    itemCount: allLoading ? 0 : rows.length,
-    enabled: scrollWithFocus && !allLoading
+    itemCount: anyReady ? rows.length : 0,
+    enabled: scrollWithFocus && anyReady
   })
 
   useWheelScroll({
     containerRef: rowsContainerRef,
     direction: 'vertical',
-    enabled: !allLoading
+    enabled: anyReady
   })
 
-  if (allLoading) {
+  if (!anyReady) {
     return (
       <div class="main-screen">
         <LoadingState message={t.loadingContent} />
@@ -276,7 +290,7 @@ export function MainScreen({ onBack, onSelectItem, onNavigateToMenu, isActive, i
                 setFocusedRow(rowIndex)
                 setFocusedCol(colIndex)
                 const movie = row.items[colIndex]
-                if (movie) onSelectItem(movie.id)
+                if (movie) onSelectItem(movie.id, movie)
               }}
             />
           </div>

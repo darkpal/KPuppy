@@ -358,7 +358,7 @@ describe('kinopub API', () => {
       const result = await getItem(123)
 
       const call = mockFetch.mock.calls[0]
-      expect(call[0]).toBe('https://api.service-kp.com/v1/items/123')
+      expect(call[0]).toBe('https://api.service-kp.com/v1/items/123?nolinks=1')
       expect(call[1].headers['Authorization']).toBe('Bearer valid-token')
     })
 

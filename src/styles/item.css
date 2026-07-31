@@ -23,11 +23,11 @@
 }
 
 .item-banner-image.poster-image-loading {
-  visibility: hidden;
+  opacity: 0;
 }
 
 .item-banner-image.poster-image-ready {
-  visibility: visible;
+  opacity: 1;
 }
 
 /* Keep the poster visible while gradually strengthening contrast near the UI. */

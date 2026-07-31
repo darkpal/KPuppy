@@ -387,13 +387,63 @@ describe('App Navigation', () => {
       })
       fireEvent.click(screen.getByText('Second Movie'))
 
-      await waitFor(() => expect(screen.getAllByText('Second Movie')).toHaveLength(2))
+      await waitFor(() => {
+        expect(screen.getAllByText('Second Movie').length).toBeGreaterThanOrEqual(2)
+        expect(document.querySelector('.item-screen')).not.toBeNull()
+      })
       fireEvent.keyDown(document, { keyCode: 461 })
 
       await waitFor(() => expect(document.querySelector('.search-screen')).not.toBeNull())
       fireEvent.keyDown(document, { keyCode: 461 })
 
-      await waitFor(() => expect(screen.getAllByText('Original Movie')).toHaveLength(2))
+      await waitFor(() => {
+        expect(screen.getAllByText('Original Movie').length).toBeGreaterThanOrEqual(2)
+        expect(document.querySelector('.item-screen')).not.toBeNull()
+      })
+    })
+
+    it('keeps the base MainScreen mounted under the item overlay', async () => {
+      const movie = {
+        id: 42,
+        title: 'Keepalive Movie',
+        type: 'movie',
+        year: 2024,
+        plot: 'Plot',
+        posters: { small: '', medium: 'm.jpg', big: '' },
+        rating: 8,
+        imdbRating: 7,
+        kinopoiskRating: 8,
+        ratingPercentage: 80,
+        quality: 0,
+        views: 10,
+        genres: []
+      }
+      vi.mocked(kinopub.getWatching).mockResolvedValue([])
+      vi.mocked(kinopub.getItems).mockResolvedValue({
+        items: [movie],
+        pagination: { current: 1, total: 1, totalItems: 1, perpage: 20 }
+      })
+      vi.mocked(kinopub.getFreshItems).mockResolvedValue({
+        items: [],
+        pagination: { current: 1, total: 0, totalItems: 0, perpage: 20 }
+      })
+      vi.mocked(kinopub.getItem).mockImplementation(() => new Promise(() => {}))
+
+      renderApp()
+
+      await waitFor(() => {
+        expect(document.querySelector('.main-screen')).not.toBeNull()
+        expect(screen.getAllByText('Keepalive Movie').length).toBeGreaterThan(0)
+      })
+
+      fireEvent.click(screen.getAllByText('Keepalive Movie')[0])
+
+      await waitFor(() => {
+        expect(document.querySelector('.item-screen')).not.toBeNull()
+        expect(document.querySelector('.screen-base.is-hidden')).not.toBeNull()
+        expect(document.querySelector('.screen-overlay .item-screen')).not.toBeNull()
+        expect(document.querySelector('.main-screen')).not.toBeNull()
+      })
     })
   })
 

@@ -24,7 +24,7 @@ export const DEFAULT_SEARCH_STATE: SearchScreenState = {
 interface SearchScreenProps {
   onBack: () => void
   exitDirectlyOnBack?: boolean
-  onSelectItem: (itemId: number) => void
+  onSelectItem: (itemId: number, preview?: MovieItem) => void
   onNavigateToMenu: () => void
   isActive: boolean
   initialQuery?: string
@@ -319,7 +319,7 @@ export function SearchScreen({
         onSelect: (index) => {
           const item = results[index]
           if (item) {
-            onSelectItem(item.id)
+            onSelectItem(item.id, item)
           }
         },
         onLeftEdge: onNavigateToMenu,
@@ -476,7 +476,7 @@ export function SearchScreen({
                 <MovieCard
                   movie={item}
                   focused={focusArea === 'results' && resultIndex === index}
-                  onSelect={() => onSelectItem(item.id)}
+                  onSelect={() => onSelectItem(item.id, item)}
                 />
               </div>
             ))}

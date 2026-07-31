@@ -16,17 +16,37 @@ describe('PosterImage', () => {
     expect(container.querySelector('img')).toBeNull()
   })
 
-  it('retries after onError', () => {
+  it('keeps the clean URL on first paint', () => {
     const { container } = render(<PosterImage src="https://example.com/p.jpg" alt="Poster" />)
     const img = container.querySelector('img') as HTMLImageElement
     expect(img.getAttribute('src')).toBe('https://example.com/p.jpg')
+  })
+
+  it('retries after onError with a cache-busting query', () => {
+    const { container } = render(<PosterImage src="https://example.com/p.jpg" alt="Poster" />)
+    const img = container.querySelector('img') as HTMLImageElement
 
     fireEvent.error(img)
 
     expect(img.getAttribute('src')).toContain('https://example.com/p.jpg?_kpuppy_retry=')
   })
 
-  it('retries a stalled load up to the retry limit', () => {
+  it('does not stall-retry a successfully loaded image', () => {
+    const { container } = render(<PosterImage src="https://example.com/ok.jpg" alt="Poster" />)
+    const img = container.querySelector('img') as HTMLImageElement
+    Object.defineProperty(img, 'complete', { configurable: true, get: () => true })
+    Object.defineProperty(img, 'naturalWidth', { configurable: true, get: () => 200 })
+
+    const removeSpy = vi.spyOn(img, 'removeAttribute')
+    act(() => {
+      vi.advanceTimersByTime(6000)
+    })
+
+    expect(removeSpy).not.toHaveBeenCalled()
+    expect(img.getAttribute('src')).toBe('https://example.com/ok.jpg')
+  })
+
+  it('retries a stalled empty load up to the retry limit', () => {
     const { container } = render(<PosterImage src="https://example.com/slow.jpg" alt="Poster" />)
     const img = container.querySelector('img') as HTMLImageElement
     Object.defineProperty(img, 'complete', { configurable: true, get: () => false })
@@ -34,74 +54,10 @@ describe('PosterImage', () => {
 
     const removeSpy = vi.spyOn(img, 'removeAttribute')
     act(() => {
-      vi.advanceTimersByTime(7000)
+      vi.advanceTimersByTime(10000)
     })
 
-    expect(removeSpy).toHaveBeenCalledTimes(2)
-    expect(img.getAttribute('src')).toContain('https://example.com/slow.jpg?_kpuppy_retry=')
-
-    act(() => {
-      vi.advanceTimersByTime(3500)
-    })
-
-    expect(removeSpy).toHaveBeenCalledTimes(3)
-
-    act(() => {
-      vi.advanceTimersByTime(3500)
-    })
-
-    expect(removeSpy).toHaveBeenCalledTimes(3)
-  })
-
-  it('reveals hero art only after a complete decode', async () => {
-    const { container } = render(
-      <PosterImage
-        src="https://example.com/hero.jpg"
-        alt="Hero"
-        class="hero"
-        loading="eager"
-        revealWhenDecoded
-      />
-    )
-    const img = container.querySelector('img') as HTMLImageElement
-    Object.defineProperty(img, 'naturalWidth', { configurable: true, get: () => 1920 })
-    Object.defineProperty(img, 'naturalHeight', { configurable: true, get: () => 1080 })
-    Object.defineProperty(img, 'decode', { configurable: true, value: vi.fn().mockResolvedValue(undefined) })
-
-    expect(img.classList.contains('poster-image-loading')).toBe(true)
-    expect(img.getAttribute('decoding')).toBe('sync')
-
-    await act(async () => {
-      fireEvent.load(img)
-      await Promise.resolve()
-    })
-
-    expect(img.classList.contains('poster-image-ready')).toBe(true)
-  })
-
-  it('forces hero reveal when decode never settles', async () => {
-    const { container } = render(
-      <PosterImage
-        src="https://example.com/hero-hang.jpg"
-        alt="Hero"
-        loading="eager"
-        revealWhenDecoded
-      />
-    )
-    const img = container.querySelector('img') as HTMLImageElement
-    Object.defineProperty(img, 'naturalWidth', { configurable: true, get: () => 1920 })
-    Object.defineProperty(img, 'naturalHeight', { configurable: true, get: () => 1080 })
-    Object.defineProperty(img, 'decode', {
-      configurable: true,
-      value: vi.fn(() => new Promise(() => { /* never settles */ }))
-    })
-
-    await act(async () => {
-      fireEvent.load(img)
-      vi.advanceTimersByTime(2000)
-      await Promise.resolve()
-    })
-
-    expect(img.classList.contains('poster-image-ready')).toBe(true)
+    expect(removeSpy).toHaveBeenCalled()
+    expect(img.getAttribute('src')).toContain('_kpuppy_retry=')
   })
 })

@@ -18,13 +18,15 @@ describe('buildItemsQuery', () => {
 })
 
 describe('monthAgoUnix', () => {
-  it('subtracts one calendar month', () => {
-    // 15 Mar 2026 → 15 Feb 2026
-    const now = Date.UTC(2026, 2, 15, 12, 0, 0)
+  it('subtracts one calendar month and floors to local midnight', () => {
+    const now = new Date(2026, 2, 15, 12, 30, 45).getTime()
     const result = monthAgoUnix(now)
     const d = new Date(result * 1000)
-    expect(d.getUTCFullYear()).toBe(2026)
-    expect(d.getUTCMonth()).toBe(1)
-    expect(d.getUTCDate()).toBe(15)
+    expect(d.getFullYear()).toBe(2026)
+    expect(d.getMonth()).toBe(1)
+    expect(d.getDate()).toBe(15)
+    expect(d.getHours()).toBe(0)
+    expect(d.getMinutes()).toBe(0)
+    expect(d.getSeconds()).toBe(0)
   })
 })

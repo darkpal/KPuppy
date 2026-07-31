@@ -109,6 +109,31 @@ describe('ItemScreen', () => {
       expect(document.querySelector('.spinner')).not.toBeNull()
     })
 
+    it('paints preview immediately without a full-screen spinner', () => {
+      vi.mocked(kinopub.getItem).mockImplementation(() => new Promise(() => {}))
+      const preview = {
+        id: 1,
+        title: 'Preview Movie',
+        type: 'movie',
+        year: 2024,
+        plot: '',
+        posters: { small: '', medium: 'preview.jpg', big: '', wide: '' },
+        rating: 0,
+        imdbRating: 0,
+        kinopoiskRating: 0,
+        ratingPercentage: 0,
+        quality: 0,
+        views: 0,
+        genres: []
+      }
+
+      renderWithI18n(<ItemScreen {...mockProps} preview={preview} />)
+
+      expect(document.querySelector('.spinner')).toBeNull()
+      expect(screen.getAllByText('Preview Movie').length).toBeGreaterThan(0)
+      expect(document.querySelector('.item-banner-image')).not.toBeNull()
+    })
+
     it('renders the card without waiting for supplemental media links', async () => {
       vi.mocked(kinopub.getMediaLinks).mockImplementation(() => new Promise(() => {}))
 

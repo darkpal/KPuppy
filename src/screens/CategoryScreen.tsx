@@ -28,7 +28,7 @@ export const DEFAULT_CATEGORY_FILTERS: CategoryFilters = {
 interface CategoryScreenProps {
   categoryId: string
   title: string
-  onSelectItem: (itemId: number) => void
+  onSelectItem: (itemId: number, preview?: MovieItem) => void
   onNavigateToMenu: () => void
   isActive: boolean
   initialFocusIndex?: number
@@ -330,7 +330,7 @@ export function CategoryScreen({
       onSelect: (index) => {
         const item = items[index]
         if (item) {
-          onSelectItem(item.id)
+          onSelectItem(item.id, item)
         }
       },
       onLeftEdge: onNavigateToMenu,
@@ -463,7 +463,7 @@ export function CategoryScreen({
         <MovieCard
           movie={item}
           focused={focused}
-          onSelect={() => onSelectItem(item.id)}
+          onSelect={() => onSelectItem(item.id, item)}
         />
       )}
       getItemKey={(item) => item.id}

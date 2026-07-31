@@ -120,4 +120,29 @@
   flex: 1;
   height: 100%;
   overflow: hidden;
+  position: relative;
+}
+
+.screen-stack {
+  position: relative;
+  height: 100%;
+  width: 100%;
+}
+
+.screen-base {
+  height: 100%;
+  width: 100%;
+}
+
+.screen-base.is-hidden {
+  display: none;
+}
+
+.screen-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  height: 100%;
+  width: 100%;
+  background: #0a0a0a;
 }

@@ -4,6 +4,7 @@ interface CacheEntry<T> {
 }
 
 const cache = new Map<string, CacheEntry<unknown>>()
+const inflight = new Map<string, Promise<unknown>>()
 
 const DEFAULT_TTL = 5 * 60 * 1000
 
@@ -29,6 +30,7 @@ export function setCache<T>(key: string, data: T): void {
 export function invalidateCache(pattern?: string): void {
   if (!pattern) {
     cache.clear()
+    inflight.clear()
     return
   }
 
@@ -37,10 +39,27 @@ export function invalidateCache(pattern?: string): void {
       cache.delete(key)
     }
   }
+  for (const key of inflight.keys()) {
+    if (key.includes(pattern)) {
+      inflight.delete(key)
+    }
+  }
 }
 
 export function createCacheKey(...parts: (string | number | undefined)[]): string {
   return parts.filter(p => p !== undefined).join(':')
+}
+
+/** Share one in-flight Promise per key so parallel callers do not duplicate network. */
+export function withInflight<T>(key: string, fetchFn: () => Promise<T>): Promise<T> {
+  const existing = inflight.get(key)
+  if (existing) return existing as Promise<T>
+
+  const promise = fetchFn().finally(() => {
+    inflight.delete(key)
+  })
+  inflight.set(key, promise)
+  return promise
 }
 
 export async function cachedFetch<T>(
@@ -51,7 +70,9 @@ export async function cachedFetch<T>(
   const cached = getCached<T>(key, ttl)
   if (cached) return cached
 
-  const result = await fetchFn()
-  setCache(key, result)
-  return result
+  return withInflight(key, async () => {
+    const result = await fetchFn()
+    setCache(key, result)
+    return result
+  })
 }

@@ -7,7 +7,7 @@ interface SimilarItemsProps {
   focusedIndex: number
   isFocused: boolean
   onHoverItem?: (index: number) => void
-  onSelectItem: (id: number) => void
+  onSelectItem: (id: number, preview?: MovieItem) => void
 }
 
 export function SimilarItems({ items, focusedIndex, isFocused, onHoverItem, onSelectItem }: SimilarItemsProps) {
@@ -24,7 +24,7 @@ export function SimilarItems({ items, focusedIndex, isFocused, onHoverItem, onSe
             key={similar.id}
             class={`item-similar-card ${isFocused && focusedIndex === idx ? 'focused' : ''}`}
             onMouseEnter={() => onHoverItem?.(idx)}
-            onClick={() => onSelectItem(similar.id)}
+            onClick={() => onSelectItem(similar.id, similar)}
           >
             {similar.posters?.medium || similar.posters?.small ? (
               <PosterImage

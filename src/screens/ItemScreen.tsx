@@ -17,11 +17,12 @@ interface PlayOptions {
 
 interface ItemScreenProps {
   itemId: number
+  preview?: MovieItem | null
   onBack: () => void
   onPlay: (itemId: number, season?: number, episode?: number, options?: PlayOptions) => void
   onPlayTrailer: (url: string, title: string) => void
   onSelectSeries: (seriesId: number) => void
-  onSelectItem: (itemId: number) => void
+  onSelectItem: (itemId: number, preview?: MovieItem) => void
   onSelectGenre?: (genreId: number, itemType: string) => void
   onSelectActor?: (name: string) => void
   onSelectDirector?: (name: string) => void
@@ -152,7 +153,7 @@ function itemScreenReducer(state: ItemScreenState, action: ItemScreenAction): It
   }
 }
 
-export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeries, onSelectItem, onSelectGenre, onSelectActor, onSelectDirector, onNavigateToMenu, isActive }: ItemScreenProps) {
+export function ItemScreen({ itemId, preview = null, onBack, onPlay, onPlayTrailer, onSelectSeries, onSelectItem, onSelectGenre, onSelectActor, onSelectDirector, onNavigateToMenu, isActive }: ItemScreenProps) {
   const { t } = useI18n()
   const [state, dispatch] = useReducer(itemScreenReducer, initialState)
   const { item, loading, error, focusArea, selectedQuality, dropdownFocusIndex, similarItems, similarFocusIndex, metaFocusIndex, watchlistLoading, showFolderDialog, folders, itemFolderIds, folderFocusIndex, isWatching, watchingToggleLoading, detailsExpanded } = state
@@ -283,7 +284,13 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
   const availableQualities = getAvailableQualities(files)
 
   const handlePlayOrSelect = useCallback(() => {
-    if (!item) return
+    if (!item) {
+      if (!preview) return
+      const seriesLike = preview.type === 'serial' || preview.type === 'docuserial' || preview.type === 'tvshow'
+      if (seriesLike) onSelectSeries(itemId)
+      else onPlay(itemId)
+      return
+    }
     const hasSeries = item.seasons && item.seasons.length > 0
 
     if (focusArea === 'play') {
@@ -299,7 +306,7 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
     } else if (focusArea === 'seasons') {
       onSelectSeries(itemId)
     }
-  }, [item, focusArea, itemId, onPlay, onSelectSeries, selectedQuality])
+  }, [item, preview, focusArea, itemId, onPlay, onSelectSeries, selectedQuality])
 
   const handleOpenFolderDialog = useCallback(async () => {
     if (watchlistLoading) return
@@ -459,7 +466,8 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
         onDown: () => dispatch({ type: 'SET_FOCUS_AREA', area: primaryButton }),
         onEnter: () => {
           const genre = genres[metaFocusIndex]
-          if (genre && item) onSelectGenre?.(genre.id, item.type)
+          const type = item?.type || preview?.type
+          if (genre && type) onSelectGenre?.(genre.id, type)
         }
       }
     }
@@ -530,7 +538,7 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
         onEnter: () => {
           const selectedItem = similarItems[similarFocusIndex]
           if (selectedItem) {
-            onSelectItem(selectedItem.id)
+            onSelectItem(selectedItem.id, selectedItem)
           }
         }
       }
@@ -606,11 +614,21 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
       },
       onYellow: handleOpenFolderDialog
     }
-  }, [item, focusArea, availableQualities, dropdownFocusIndex, selectedQuality, onBack, onNavigateToMenu, handlePlayOrSelect, handleOpenFolderDialog, handleToggleFolder, handleToggleWatching, similarItems, similarFocusIndex, metaFocusIndex, genres, cast, activeCast, onSelectItem, onSelectGenre, onSelectActor, showFolderDialog, folders, folderFocusIndex, onPlayTrailer, t, itemId, detailsExpanded, openDetails, closeDetails, scrollDetailsBy, scrollDetailsToBottom, scrollDetailsToTop])
+  }, [item, preview, focusArea, availableQualities, dropdownFocusIndex, selectedQuality, onBack, onNavigateToMenu, handlePlayOrSelect, handleOpenFolderDialog, handleToggleFolder, handleToggleWatching, similarItems, similarFocusIndex, metaFocusIndex, genres, cast, activeCast, onSelectItem, onSelectGenre, onSelectActor, showFolderDialog, folders, folderFocusIndex, onPlayTrailer, t, itemId, detailsExpanded, openDetails, closeDetails, scrollDetailsBy, scrollDetailsToBottom, scrollDetailsToTop])
 
-  useKeyboardNavigation(handlers, isActive && !!item)
+  useKeyboardNavigation(handlers, isActive && !!(item || preview))
 
-  if (loading) {
+  const shell: ItemDetailsType | null = item || (preview
+    ? {
+        ...preview,
+        directors: [],
+        actors: [],
+        countries: [],
+        genres: []
+      }
+    : null)
+
+  if (loading && !shell) {
     return (
       <div class="item-screen">
         <LoadingState />
@@ -618,7 +636,7 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
     )
   }
 
-  if (error || !item) {
+  if ((error && !shell) || !shell) {
     return (
       <div class="item-screen">
         <div class="item-loading">
@@ -628,10 +646,15 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
     )
   }
 
-  const widePosterUrl = item.posters?.wide
-  const posterUrl = widePosterUrl || item.posters?.big || item.posters?.medium || item.posters?.small
-  const hasSeasons = item.seasons && item.seasons.length > 0
-  const durationMinutes = item.duration?.average
+  // Prefer list-cached medium/big first so home posters paint instantly; wide can wait.
+  const posterUrl =
+    shell.posters?.medium ||
+    shell.posters?.big ||
+    shell.posters?.wide ||
+    shell.posters?.small
+  const hasSeasons = Boolean(item?.seasons && item.seasons.length > 0) ||
+    (!item && (preview?.type === 'serial' || preview?.type === 'docuserial' || preview?.type === 'tvshow'))
+  const durationMinutes = item?.duration?.average
     ? item.duration.average > 300
       ? Math.floor(item.duration.average / 60)
       : item.duration.average
@@ -651,13 +674,13 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
     concert: t.typeConcert,
     '3D': t.type3D,
   }
-  const itemTypeLabel = itemTypeLabels[item.type] || item.type
+  const itemTypeLabel = itemTypeLabels[shell.type] || shell.type
 
-  const kpRating = Number(item.kinopoiskRating) || 0
-  const imdbRating = Number(item.imdbRating) || 0
-  const kinopubRating = Number(item.ratingPercentage) || 0
-  const directors = item.directors?.slice(0, 3) || []
-  const countries = item.countries?.slice(0, 3).map(c => c.title).join(', ')
+  const kpRating = Number(shell.kinopoiskRating) || 0
+  const imdbRating = Number(shell.imdbRating) || 0
+  const kinopubRating = Number(shell.ratingPercentage) || 0
+  const directors = item?.directors?.slice(0, 3) || []
+  const countries = item?.countries?.slice(0, 3).map(c => c.title).join(', ')
 
   return (
     <>
@@ -669,7 +692,6 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
             alt=""
             class="item-banner-image"
             loading="eager"
-            revealWhenDecoded
           />
         </div>
       )}
@@ -677,10 +699,10 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
       <div class={`item-content ${detailsExpanded ? 'details-expanded' : ''}`}>
         <section class="item-summary" aria-hidden={detailsExpanded}>
           <div class="item-summary-main">
-            <h1 class="item-title">{item.title}</h1>
+            <h1 class="item-title">{shell.title}</h1>
 
             <div class="item-meta">
-              <span class="item-year">{item.year}</span>
+              <span class="item-year">{shell.year}</span>
               {kpRating > 0 && (
                 <span class="item-rating item-rating-kp">
                   KP {kpRating.toFixed(1)}
@@ -712,7 +734,7 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
                       dispatch({ type: 'SET_FOCUS_AREA', area: 'genres' })
                       dispatch({ type: 'SET_META_FOCUS_INDEX', index })
                     }}
-                    onClick={() => onSelectGenre?.(genre.id, item.type)}
+                    onClick={() => onSelectGenre?.(genre.id, shell.type)}
                   >
                     {genre.title}
                   </button>
@@ -746,7 +768,9 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
                     onClick={handlePlayOrSelect}
                   >
                     <span class="item-button-icon">≡</span>
-                    {t.seasons} ({item.seasons!.length})
+                    {item?.seasons?.length
+                      ? `${t.seasons} (${item.seasons.length})`
+                      : t.seasons}
                   </button>
                 ) : (
                   <div class="item-play-container">
@@ -828,8 +852,8 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
                     class={`item-button item-button-secondary ${focusArea === 'trailer' ? 'focused' : ''}`}
                     onMouseEnter={() => dispatch({ type: 'SET_FOCUS_AREA', area: 'trailer' })}
                     onClick={() => {
-                      if (item.trailer?.url) {
-                        onPlayTrailer(item.trailer.url, `${item.title} - ${t.trailer}`)
+                      if (item?.trailer?.url) {
+                        onPlayTrailer(item.trailer.url, `${shell.title} - ${t.trailer}`)
                       }
                     }}
                   >
@@ -839,7 +863,7 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
                 )}
             </div>
 
-            {item.plot && <p class="item-plot-preview">{item.plot}</p>}
+            {item?.plot && <p class="item-plot-preview">{item.plot}</p>}
 
             <button
               type="button"
@@ -868,8 +892,8 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
 
           <div class="item-details-body">
             <div class="item-details-copy">
-              <h2 class="item-details-title">{item.title}</h2>
-              {item.plot && (
+              <h2 class="item-details-title">{shell.title}</h2>
+              {item?.plot && (
                 <>
                   <h3 class="item-details-section-title">{t.synopsis}</h3>
                   <p class="item-plot-full">{item.plot}</p>
