@@ -1,5 +1,6 @@
 import { MovieItem } from '../api/kinopub'
 import { useI18n } from '../i18n'
+import { PosterImage } from './PosterImage'
 
 interface SimilarItemsProps {
   items: MovieItem[]
@@ -26,7 +27,7 @@ export function SimilarItems({ items, focusedIndex, isFocused, onHoverItem, onSe
             onClick={() => onSelectItem(similar.id)}
           >
             {similar.posters?.medium || similar.posters?.small ? (
-              <img
+              <PosterImage
                 src={similar.posters.medium || similar.posters.small}
                 alt={similar.title}
                 class="item-similar-poster"

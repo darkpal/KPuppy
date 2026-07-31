@@ -533,7 +533,7 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
       {posterUrl && (
         <div
           class="item-banner"
-          style={{ backgroundImage: `url(${posterUrl})` }}
+          style={{ backgroundImage: `url("${posterUrl}")` }}
         />
       )}
 

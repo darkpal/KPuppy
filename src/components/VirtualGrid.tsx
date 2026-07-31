@@ -21,7 +21,7 @@ export function VirtualGrid<T>({
   focusedIndex,
   itemsPerRow,
   itemHeight = 360,
-  renderBuffer = 24,
+  renderBuffer = 48,
   renderItem,
   getItemKey,
   containerClass = 'category-grid',

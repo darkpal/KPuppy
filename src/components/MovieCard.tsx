@@ -1,5 +1,6 @@
 import { MovieItem } from '../api/kinopub'
 import { useI18n, Language } from '../i18n'
+import { PosterImage } from './PosterImage'
 import imdbIcon from '../assets/imdb.svg'
 import kinopoiskIcon from '../assets/kinopoisk.svg'
 import thumbUpIcon from '../assets/thumb-up.svg'
@@ -61,7 +62,7 @@ export function MovieCard({ movie, focused, onSelect, onHover, episodeInfo, badg
       onClick={onSelect}
     >
       <div class="movie-card-poster">
-        <img
+        <PosterImage
           src={imageSrc}
           alt={title}
           class="movie-card-image"
