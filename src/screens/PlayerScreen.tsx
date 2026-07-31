@@ -888,9 +888,7 @@ export function PlayerScreen({
                       playAdjacentEpisode(onPlayPreviousEpisode)
                     }}
                   >
-                    <span class="player-episode-button-icon" aria-hidden="true">‹</span>
-                    <span class="player-episode-button-label">{t.previousEpisode}</span>
-                    <span class="player-episode-button-number">S{previousEpisode.season}E{previousEpisode.episode}</span>
+                    <span class="player-episode-skip-icon player-episode-skip-icon-previous" aria-hidden="true" />
                   </button>
                 )}
                 <button
@@ -922,9 +920,7 @@ export function PlayerScreen({
                       playAdjacentEpisode(onPlayNextEpisode)
                     }}
                   >
-                    <span class="player-episode-button-label">{t.nextEpisode}</span>
-                    <span class="player-episode-button-number">S{nextEpisode.season}E{nextEpisode.episode}</span>
-                    <span class="player-episode-button-icon" aria-hidden="true">›</span>
+                    <span class="player-episode-skip-icon player-episode-skip-icon-next" aria-hidden="true" />
                   </button>
                 )}
               </div>

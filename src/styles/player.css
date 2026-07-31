@@ -166,23 +166,23 @@
 .player-episode-controls {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 28px;
 }
 
 .player-episode-button {
-  min-height: 52px;
-  padding: 8px 14px;
+  width: 64px;
+  height: 64px;
+  flex: 0 0 64px;
+  padding: 0;
   border: 2px solid rgba(99, 200, 132, 0.48);
   border-radius: 8px;
   background: rgba(8, 22, 14, 0.82);
   color: #fff;
   font: inherit;
-  font-size: 18px;
-  font-weight: 600;
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 7px;
+  justify-content: center;
   box-sizing: border-box;
 }
 
@@ -197,32 +197,39 @@
   box-shadow: 0 0 0 3px rgba(145, 229, 173, 0.24);
 }
 
-.player-episode-button-icon {
-  font-size: 28px;
-  font-weight: 400;
-  line-height: 0.8;
+.player-episode-skip-icon {
+  position: relative;
+  display: block;
+  width: 32px;
+  height: 28px;
+  color: currentColor;
 }
 
-.player-episode-button-label {
-  display: none;
+.player-episode-skip-icon::before {
+  content: '';
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  width: 0;
+  height: 0;
+  border-top: 13px solid transparent;
+  border-bottom: 13px solid transparent;
+  border-left: 20px solid currentColor;
 }
 
-.player-episode-button:hover .player-episode-button-label,
-.player-episode-button:focus .player-episode-button-label,
-.player-episode-button.focused .player-episode-button-label {
-  display: inline;
+.player-episode-skip-icon::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 1px;
+  width: 5px;
+  height: 28px;
+  border-radius: 1px;
+  background: currentColor;
 }
 
-.player-episode-button-number {
-  color: #91e5ad;
-  font-size: 14px;
-  font-weight: 700;
-}
-
-.player-episode-button:hover .player-episode-button-number,
-.player-episode-button:focus .player-episode-button-number,
-.player-episode-button.focused .player-episode-button-number {
-  color: #07120b;
+.player-episode-skip-icon-previous {
+  transform: scaleX(-1);
 }
 
 .player-state-button {

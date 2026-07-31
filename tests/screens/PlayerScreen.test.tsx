@@ -88,7 +88,7 @@ describe('PlayerScreen', () => {
       expect(document.querySelector('.player-state-button')).toBeDefined()
     })
 
-    it('renders previous and next episode buttons with episode numbers', () => {
+    it('renders icon-only previous and next episode buttons with accessible labels', () => {
       renderWithI18n(
         <PlayerScreen
           {...mockProps}
@@ -99,10 +99,11 @@ describe('PlayerScreen', () => {
         />
       )
 
-      expect(screen.getByText('Previous')).toBeDefined()
-      expect(screen.getByText('S1E2')).toBeDefined()
-      expect(screen.getByText('Next')).toBeDefined()
-      expect(screen.getByText('S1E4')).toBeDefined()
+      expect(screen.getByRole('button', { name: 'Previous S1E2' })).toBeDefined()
+      expect(screen.getByRole('button', { name: 'Next S1E4' })).toBeDefined()
+      expect(document.querySelectorAll('.player-episode-skip-icon')).toHaveLength(2)
+      expect(document.querySelector('.player-episode-button-label')).toBeNull()
+      expect(document.querySelector('.player-episode-button-number')).toBeNull()
     })
 
     it('supports remote navigation between episode controls', () => {
@@ -120,7 +121,7 @@ describe('PlayerScreen', () => {
       expect(document.querySelector('.player-state-button.focused')).not.toBeNull()
 
       fireEvent.keyDown(document, { keyCode: 39 })
-      expect(document.querySelector('.player-episode-button.focused')?.textContent).toContain('Next')
+      expect(document.querySelector('.player-episode-button.focused')?.getAttribute('aria-label')).toContain('Next')
     })
   })
 
