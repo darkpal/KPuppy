@@ -2,7 +2,7 @@
 
 Feed used by Homebrew Channel:
 
-`https://raw.githubusercontent.com/darkpal/KPuppy/develop/homebrew/apps.json`
+`https://raw.githubusercontent.com/darkpal/KPuppy/main/homebrew/apps.json`
 
 That file’s `manifestUrl` must point at the **current** release manifest. Updating only the GitHub Release is not enough if `apps.json` still pins an older tag.
 
@@ -28,10 +28,10 @@ SHA=$(shasum -a 256 "$IPK" | cut -d' ' -f1)
 
 git add package.json homebrew/apps.json src tests
 git commit -m "Release v0.0.X …"
-git push darkpal HEAD:develop
+git push darkpal HEAD:main
 
 gh release create v0.0.X "$IPK" com.kpuppy.app.manifest.json \
-  --repo darkpal/KPuppy --target develop --title "v0.0.X" --notes "…"
+  --repo darkpal/KPuppy --target main --title "v0.0.X" --notes "…"
 ```
 
 ## Common failure

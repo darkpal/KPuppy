@@ -532,7 +532,7 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
     <div class="item-screen">
       {posterUrl && (
         <div
-          class={`item-banner${widePosterUrl ? ' item-banner-wide' : ''}`}
+          class="item-banner"
           style={{ backgroundImage: `url(${posterUrl})` }}
         />
       )}

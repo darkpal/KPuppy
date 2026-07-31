@@ -16,9 +16,9 @@ When shipping a new version (user asks to release / «выложи» / «соб�
    `https://github.com/darkpal/KPuppy/releases/download/v0.0.X/com.kpuppy.app.manifest.json`
    Do **not** leave a previous version pinned. Prefer versioned URLs over `/releases/latest` (CDN can stick on old latest).
 5. Commit sources + `homebrew/apps.json` + `package.json` (not `.ipk` / local manifest if gitignored).
-6. Push `develop`, create GitHub release `v0.0.X` with IPK + manifest, `make_latest: true`.
+6. Push `main`, create GitHub release `v0.0.X` with IPK + manifest, `make_latest: true`.
 7. Verify:
-   - `raw.githubusercontent.com/darkpal/KPuppy/develop/homebrew/apps.json` points at `v0.0.X`
+   - `raw.githubusercontent.com/darkpal/KPuppy/main/homebrew/apps.json` points at `v0.0.X`
    - that manifest downloads and has `ipkHash.sha256`
 
 See also `docs/RELEASE.md`.

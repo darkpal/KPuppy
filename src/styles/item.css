@@ -1,38 +1,34 @@
 .item-screen {
   position: relative;
   height: 100%;
-  background: #141414;
+  background: #0a0a0a;
   overflow: hidden;
 }
 
-/* Landscape hero — prefer posters.wide; portrait fallback shows full art (contain) */
+/* Full-bleed backdrop — almost the entire screen */
 .item-banner {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 48%;
+  inset: 0;
   background-color: #0a0a0a;
-  background-size: contain;
+  background-size: cover;
   background-repeat: no-repeat;
-  background-position: center center;
+  background-position: center 18%;
   pointer-events: none;
 }
 
-.item-banner-wide {
-  background-size: cover;
-  background-position: center 20%;
-}
-
+/* Soft bottom darkness so title/plot stay readable over the poster */
 .item-banner::after {
   content: '';
   position: absolute;
   inset: 0;
   background: linear-gradient(
-    to bottom,
-    rgba(20, 20, 20, 0.15) 0%,
-    rgba(20, 20, 20, 0.45) 45%,
-    #141414 100%
+    to top,
+    rgba(10, 10, 10, 0.96) 0%,
+    rgba(10, 10, 10, 0.88) 22%,
+    rgba(10, 10, 10, 0.55) 48%,
+    rgba(10, 10, 10, 0.28) 68%,
+    rgba(10, 10, 10, 0.12) 85%,
+    rgba(10, 10, 10, 0.08) 100%
   );
 }
 
@@ -41,29 +37,33 @@
   height: 100%;
   display: flex;
   flex-direction: column;
-  padding: 36px 48px 28px;
+  justify-content: flex-end;
+  padding: 28px 48px 24px;
   z-index: 1;
   overflow: hidden;
   box-sizing: border-box;
 }
 
 .item-header {
-  flex: 1;
+  flex: 0 1 auto;
   min-height: 0;
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
   overflow: hidden;
 }
 
 .item-title {
-  font-size: 42px;
+  font-size: 40px;
   font-weight: 700;
   color: #ffffff;
-  margin-bottom: 12px;
-  text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.8);
+  margin: 0 0 12px;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.85);
   max-width: 100%;
   line-height: 1.2;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
 }
 
 .item-meta {
@@ -149,6 +149,8 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  max-height: 84px;
+  overflow: hidden;
 }
 
 .item-cast-list .item-chip {
@@ -158,30 +160,40 @@
 
 .item-two-columns {
   display: flex;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
+  min-height: 0;
 }
 
 .item-column-left {
   flex: 3;
+  min-width: 0;
   padding-right: 40px;
 }
 
 .item-column-right {
   flex: 1;
+  min-width: 0;
+  max-height: 220px;
+  overflow: hidden;
 }
 
 .item-plot {
   font-size: 22px;
-  color: #d2d2d2;
-  line-height: 1.5;
-  margin: 0 0 20px 0;
+  color: #e0e0e0;
+  line-height: 1.45;
+  margin: 0 0 18px 0;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.7);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
 }
 
 .item-detail {
-  font-size: 20px;
+  font-size: 18px;
   color: #d2d2d2;
-  margin: 0 0 10px 0;
-  line-height: 1.4;
+  margin: 0 0 8px 0;
+  line-height: 1.35;
 }
 
 .item-detail:last-child {
@@ -204,7 +216,7 @@
 
 .item-actions > * {
   margin-right: 12px;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .item-actions > *:last-child {
@@ -221,7 +233,7 @@
   border: none;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  height: 60px;
+  height: 56px;
   box-sizing: border-box;
 }
 
@@ -246,7 +258,7 @@
 }
 
 .item-button-secondary {
-  background: #4a4a4a;
+  background: rgba(74, 74, 74, 0.92);
   color: #ffffff;
   border: 2px solid transparent;
 }
@@ -376,8 +388,9 @@
 }
 
 .item-similar {
-  padding-top: 16px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .item-similar.active {
@@ -388,7 +401,8 @@
   font-size: 18px;
   font-weight: 600;
   color: #ffffff;
-  margin: 0 0 12px 0;
+  margin: 0 0 10px 0;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.8);
 }
 
 .item-similar-row {
@@ -400,8 +414,8 @@
 
 .item-similar-card {
   flex-shrink: 0;
-  width: 100px;
-  margin-right: 12px;
+  width: 118px;
+  margin-right: 14px;
   cursor: pointer;
   transition: transform 0.15s ease;
 }
@@ -411,13 +425,13 @@
 }
 
 .item-similar-card.focused {
-  transform: scale(1.1);
+  transform: scale(1.08);
   z-index: 10;
 }
 
 .item-similar-poster {
-  width: 100px;
-  height: 140px;
+  width: 118px;
+  height: 166px;
   object-fit: cover;
   border-radius: var(--radius-sm);
   background: rgba(255, 255, 255, 0.1);

@@ -21,12 +21,18 @@ describe('PlayerScreen', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.useFakeTimers()
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false,
+      status: 404,
+      arrayBuffer: async () => new ArrayBuffer(0)
+    }))
+    vi.useFakeTimers({ shouldAdvanceTime: true })
   })
 
   afterEach(() => {
     cleanup()
     vi.useRealTimers()
+    vi.unstubAllGlobals()
   })
 
   describe('rendering', () => {
@@ -121,7 +127,7 @@ describe('PlayerScreen', () => {
   })
 
   describe('subtitles', () => {
-    it('renders subtitle tracks as track elements', () => {
+    it('shows subtitle button immediately when subtitle URLs exist', () => {
       const subtitles = [{
         lang: 'en',
         shift: 0,
@@ -133,8 +139,7 @@ describe('PlayerScreen', () => {
 
       renderWithI18n(<PlayerScreen {...mockProps} subtitles={subtitles} />)
 
-      const video = document.querySelector('.player-video')
-      expect(video).toBeDefined()
+      expect(document.querySelector('.player-hint-subtitles')).not.toBeNull()
     })
   })
 

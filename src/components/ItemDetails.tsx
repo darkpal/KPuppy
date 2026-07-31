@@ -123,12 +123,13 @@ export function ItemDetails({
         <p class="item-detail">
           <span class="item-detail-label">{t.audio}:</span>
           <span class="item-detail-value">
-            {audios.map((audio, idx) => (
+            {audios.slice(0, 4).map((audio, idx, list) => (
               <span key={audio.id}>
                 {formatAudioLabel(audio)}
-                {idx < audios.length - 1 && ', '}
+                {idx < list.length - 1 && ', '}
               </span>
             ))}
+            {audios.length > 4 && ` +${audios.length - 4}`}
           </span>
         </p>
       )}
@@ -136,12 +137,13 @@ export function ItemDetails({
         <p class="item-detail">
           <span class="item-detail-label">{t.subtitles}:</span>
           <span class="item-detail-value">
-            {subtitles.map((sub, idx) => (
+            {subtitles.slice(0, 5).map((sub, idx, list) => (
               <span key={`${sub.lang}-${sub.forced ? 'f' : 'n'}-${idx}`}>
                 {formatSubtitleLabel(sub)}
-                {idx < subtitles.length - 1 && ', '}
+                {idx < list.length - 1 && ', '}
               </span>
             ))}
+            {subtitles.length > 5 && ` +${subtitles.length - 5}`}
           </span>
         </p>
       )}

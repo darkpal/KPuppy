@@ -1,38 +1,12 @@
-import { useState, useEffect, useRef, useCallback } from 'preact/hooks'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'preact/hooks'
 import type { JSX } from 'preact'
 import { Audio, Subtitle, VideoFile } from '../api/kinopub'
 import { withHlsAudioIndex, getStreamUrl, getAvailableQualities } from '../webos/player'
 import { saveAudioPreference } from '../storage'
 import { KEY_CODES } from '../hooks'
 import { useI18n } from '../i18n'
+import { convertSrtUrlToVtt, isSrtUrl } from '../utils/subtitles'
 import '../styles/player.css'
-
-function srtToVtt(srt: string): string {
-  let vtt = 'WEBVTT\n\n'
-  const lines = srt.trim().split(/\r?\n/)
-  let i = 0
-
-  while (i < lines.length) {
-    if (/^\d+$/.test(lines[i]?.trim())) {
-      i++
-    }
-
-    if (lines[i] && lines[i].includes('-->')) {
-      const timestamp = lines[i].replace(/,/g, '.')
-      vtt += timestamp + '\n'
-      i++
-
-      while (i < lines.length && lines[i]?.trim() !== '') {
-        vtt += lines[i] + '\n'
-        i++
-      }
-      vtt += '\n'
-    }
-    i++
-  }
-
-  return vtt
-}
 
 function IconAudio() {
   return (
@@ -111,11 +85,6 @@ interface ControlsState {
   selectedQuality: string | null
 }
 
-interface ConvertedSubtitle {
-  lang: string
-  url: string
-}
-
 export function PlayerScreen({
   url,
   title,
@@ -146,7 +115,9 @@ export function PlayerScreen({
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
   const [buffered, setBuffered] = useState(0)
-  const [convertedSubs, setConvertedSubs] = useState<ConvertedSubtitle[]>([])
+  const [subtitleLoading, setSubtitleLoading] = useState(false)
+  const vttCacheRef = useRef<Map<string, string>>(new Map())
+  const subtitleRequestRef = useRef(0)
   const [controls, setControls] = useState<ControlsState>({
     visible: true,
     activePanel: 'none',
@@ -156,6 +127,12 @@ export function PlayerScreen({
   })
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [hoverPreview, setHoverPreview] = useState<{ percent: number; time: number } | null>(null)
+
+  const selectableSubs = useMemo(
+    () => subtitles.filter(sub => Boolean(sub.url)),
+    [subtitles]
+  )
+  const hasSubtitles = selectableSubs.length > 0
 
   const flushTime = useCallback((time?: number) => {
     const video = videoRef.current
@@ -196,53 +173,22 @@ export function PlayerScreen({
   }, [])
 
   useEffect(() => {
-    const blobUrls: string[] = []
-
-    async function convertSubtitles() {
-      const converted: ConvertedSubtitle[] = []
-
-      for (let i = 0; i < subtitles.length; i++) {
-        const sub = subtitles[i]
-        if (!sub.url) continue
-        try {
-          const response = await fetch(sub.url)
-          if (!response.ok) {
-            if (import.meta.env.DEV) console.error('Subtitle fetch failed:', sub.lang, response.status)
-            continue
-          }
-
-          const buffer = await response.arrayBuffer()
-          let srtText = new TextDecoder('utf-8').decode(buffer)
-          // Fallback if UTF-8 looks broken (common for legacy SRTs)
-          if (srtText.includes('�')) {
-            try {
-              srtText = new TextDecoder('windows-1251').decode(buffer)
-            } catch {
-              // keep utf-8 result
-            }
-          }
-          const vttText = srtToVtt(srtText)
-          const blob = new Blob([vttText], { type: 'text/vtt' })
-          const blobUrl = URL.createObjectURL(blob)
-          blobUrls.push(blobUrl)
-          const label = sub.forced ? `${sub.lang}-forced` : sub.lang
-          converted.push({ lang: label || `sub${i + 1}`, url: blobUrl })
-        } catch (e) {
-          if (import.meta.env.DEV) console.error('Failed to convert subtitle:', sub.lang, e)
-        }
-      }
-
-      setConvertedSubs(converted)
-    }
-
-    if (subtitles.length > 0) {
-      convertSubtitles()
-    }
-
+    const cache = vttCacheRef.current
     return () => {
-      blobUrls.forEach(u => URL.revokeObjectURL(u))
+      cache.forEach(url => URL.revokeObjectURL(url))
+      cache.clear()
     }
-  }, [subtitles])
+  }, [])
+
+  const clearVideoTracks = useCallback((video: HTMLVideoElement) => {
+    while (video.firstChild) {
+      video.removeChild(video.lastChild!)
+    }
+    const tracks = video.textTracks
+    for (let i = 0; i < tracks.length; i++) {
+      tracks[i].mode = 'disabled'
+    }
+  }, [])
 
   const formatTime = (seconds: number): string => {
     if (!Number.isFinite(seconds) || seconds < 0) return '0:00'
@@ -415,16 +361,63 @@ export function PlayerScreen({
     reloadStream(nextSrc, video.currentTime, video.paused)
   }, [files, streamingType, controls.selectedQuality, controls.selectedAudioIndex, reloadStream])
 
-  const selectSubtitle = useCallback((index: number) => {
+  const selectSubtitle = useCallback(async (index: number) => {
     const video = videoRef.current
     setControls(prev => ({ ...prev, selectedSubtitleIndex: index }))
     if (!video) return
 
-    const tracks = video.textTracks
-    for (let i = 0; i < tracks.length; i++) {
-      tracks[i].mode = i === index ? 'showing' : 'hidden'
+    clearVideoTracks(video)
+
+    if (index < 0) {
+      setSubtitleLoading(false)
+      return
     }
-  }, [])
+
+    const sub = selectableSubs[index]
+    if (!sub?.url) return
+
+    const requestId = ++subtitleRequestRef.current
+    setSubtitleLoading(true)
+
+    try {
+      let src = sub.url
+      if (isSrtUrl(sub.url, sub.file)) {
+        const cached = vttCacheRef.current.get(sub.url)
+        if (cached) {
+          src = cached
+        } else {
+          const converted = await convertSrtUrlToVtt(sub.url)
+          if (requestId !== subtitleRequestRef.current) return
+          if (!converted) {
+            if (import.meta.env.DEV) console.error('Subtitle convert failed:', sub.lang)
+            return
+          }
+          vttCacheRef.current.set(sub.url, converted)
+          src = converted
+        }
+      }
+
+      if (requestId !== subtitleRequestRef.current) return
+
+      const track = document.createElement('track')
+      track.kind = 'subtitles'
+      track.src = src
+      track.srclang = sub.lang
+      track.label = formatPlayerSubtitleLabel(sub.forced ? `${sub.lang}-forced` : sub.lang)
+      track.default = true
+      video.appendChild(track)
+
+      const applyShowing = () => {
+        if (track.track) track.track.mode = 'showing'
+      }
+      track.addEventListener('load', applyShowing)
+      applyShowing()
+    } finally {
+      if (requestId === subtitleRequestRef.current) {
+        setSubtitleLoading(false)
+      }
+    }
+  }, [selectableSubs, clearVideoTracks])
 
   const openAudioPanel = useCallback(() => {
     if (audios.length === 0) return
@@ -437,14 +430,14 @@ export function PlayerScreen({
   }, [audios.length, showControls])
 
   const openSubtitlesPanel = useCallback(() => {
-    if (convertedSubs.length === 0) return
+    if (!hasSubtitles) return
     setControls(prev => ({
       ...prev,
       visible: true,
       activePanel: prev.activePanel === 'subtitles' ? 'none' : 'subtitles'
     }))
     showControls()
-  }, [convertedSubs.length, showControls])
+  }, [hasSubtitles, showControls])
 
   const openQualityPanel = useCallback(() => {
     if (availableQualities.length <= 1) return
@@ -578,7 +571,7 @@ export function PlayerScreen({
           return
         }
 
-        const items = controls.activePanel === 'audio' ? audios : convertedSubs
+        const items = controls.activePanel === 'audio' ? audios : selectableSubs
         const currentIndex = controls.activePanel === 'audio'
           ? controls.selectedAudioIndex
           : controls.selectedSubtitleIndex
@@ -681,7 +674,7 @@ export function PlayerScreen({
   }, [
     controls,
     audios,
-    convertedSubs,
+    selectableSubs,
     availableQualities,
     togglePlay,
     seek,
@@ -722,17 +715,7 @@ export function PlayerScreen({
         src={url}
         poster={poster}
         preload="metadata"
-      >
-        {convertedSubs.map((sub, idx) => (
-          <track
-            key={`${sub.lang}-${idx}`}
-            kind="subtitles"
-            src={sub.url}
-            srcLang={sub.lang}
-            label={formatPlayerSubtitleLabel(sub.lang)}
-          />
-        ))}
-      </video>
+      />
 
       {errorMessage && (
         <div class="player-error">
@@ -821,7 +804,7 @@ export function PlayerScreen({
                     <span class="player-hint-label">{t.audio}</span>
                   </button>
                 )}
-                {convertedSubs.length > 0 && (
+                {hasSubtitles && (
                   <button
                     type="button"
                     class="player-hint player-hint-subtitles"
@@ -876,10 +859,10 @@ export function PlayerScreen({
                 >
                   {t.subtitlesOff}
                 </button>
-                {convertedSubs.map((sub, idx) => (
+                {selectableSubs.map((sub, idx) => (
                   <button
                     type="button"
-                    key={`${sub.lang}-${idx}`}
+                    key={`${sub.lang}-${sub.url}-${idx}`}
                     class={`player-panel-item ${idx === controls.selectedSubtitleIndex ? 'selected' : ''}`}
                     onMouseEnter={() => showControls()}
                     onClick={(event) => {
@@ -887,7 +870,8 @@ export function PlayerScreen({
                       selectSubtitle(idx)
                     }}
                   >
-                    {formatPlayerSubtitleLabel(sub.lang)}
+                    {formatPlayerSubtitleLabel(sub.forced ? `${sub.lang}-forced` : sub.lang)}
+                    {subtitleLoading && idx === controls.selectedSubtitleIndex ? ` (${t.loading})` : ''}
                   </button>
                 ))}
               </div>

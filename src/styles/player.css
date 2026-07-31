@@ -393,6 +393,12 @@
   background: #f6121d;
 }
 
+.player-panel-item-muted {
+  opacity: 0.65;
+  pointer-events: none;
+  cursor: default;
+}
+
 .player-error {
   position: absolute;
   top: 50%;
