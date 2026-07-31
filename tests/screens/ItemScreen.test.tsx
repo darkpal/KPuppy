@@ -285,6 +285,7 @@ describe('ItemScreen', () => {
           (document.querySelector('.item-banner-image') as HTMLImageElement).getAttribute('src')
         ).toBe('wide.jpg')
       })
+      expect(document.querySelector('.item-banner-loading')).toBeNull()
     })
 
     it('does not fall back to medium when wide is missing', async () => {

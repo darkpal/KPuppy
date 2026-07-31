@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useMemo, useReducer, useRef, useState } from 'preact/hooks'
+import { useEffect, useCallback, useMemo, useReducer, useRef } from 'preact/hooks'
 import { getItem, getMediaLinks, getSimilarItems, getBookmarkFolders, getItemFolders, addToBookmark, removeFromBookmark, toggleWatchlist, isItemInWatchlist, ItemDetails as ItemDetailsType, MovieItem, VideoFile, BookmarkFolder } from '../api/kinopub'
 import { getLocalSettings } from '../storage'
 import { useEventListener, useKeyboardNavigation, useWheelScroll } from '../hooks'
@@ -160,19 +160,6 @@ export function ItemScreen({ itemId, preview = null, onBack, onPlay, onPlayTrail
   const detailsPageRef = useRef<HTMLElement>(null)
   // Landscape banner only — never use list medium/big (portrait) as full-bleed art.
   const posterUrl = (item?.posters?.wide || '').trim() || null
-  const [bannerReady, setBannerReady] = useState(false)
-
-  useEffect(() => {
-    setBannerReady(false)
-  }, [posterUrl, itemId])
-
-  // If decode callbacks never fire on webOS, still drop the spinner so the
-  // already-painted <img> (no opacity:0) can show without waiting for focus.
-  useEffect(() => {
-    if (!posterUrl || bannerReady) return
-    const timer = window.setTimeout(() => setBannerReady(true), 2000)
-    return () => window.clearTimeout(timer)
-  }, [posterUrl, bannerReady])
 
   useEffect(() => {
     let cancelled = false
@@ -661,10 +648,9 @@ export function ItemScreen({ itemId, preview = null, onBack, onPlay, onPlayTrail
     )
   }
 
-  // Full-bleed banner waits for landscape `wide` art; list thumbs stay out of the banner.
-  const bannerPending = posterUrl
-    ? !bannerReady
-    : (loading || (!!preview && !item))
+  // Spinner only while waiting for the wide URL from getItem — never gate on
+  // decode callbacks (webOS often needs a focus remount for those).
+  const bannerPending = !posterUrl && (loading || (!!preview && !item))
   const hasSeasons = Boolean(item?.seasons && item.seasons.length > 0) ||
     (!item && (preview?.type === 'serial' || preview?.type === 'docuserial' || preview?.type === 'tvshow'))
   const durationMinutes = item?.duration?.average
@@ -706,12 +692,13 @@ export function ItemScreen({ itemId, preview = null, onBack, onPlay, onPlayTrail
         )}
         {posterUrl && (
           <PosterImage
+            key={posterUrl}
             src={posterUrl}
             alt=""
             class="item-banner-image"
             loading="eager"
-            onReady={() => setBannerReady(true)}
-            onFailed={() => setBannerReady(true)}
+            retryOnStall={false}
+            forcePaintOnLoad
           />
         )}
       </div>

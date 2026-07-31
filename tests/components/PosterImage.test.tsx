@@ -85,12 +85,20 @@ describe('PosterImage', () => {
     expect(img.className).toContain(' ')
   })
 
-  it('keeps reveal class tokens separate from the base class', () => {
+  it('does not clear src on stall when retryOnStall is false', () => {
     const { container } = render(
-      <PosterImage src="https://example.com/p.jpg" alt="Poster" class="item-banner-image" revealWhenDecoded />
+      <PosterImage src="https://example.com/banner.jpg" alt="Poster" retryOnStall={false} />
     )
     const img = container.querySelector('img') as HTMLImageElement
-    expect(img.classList.contains('item-banner-image')).toBe(true)
-    expect(img.classList.contains('poster-image-loading')).toBe(true)
+    Object.defineProperty(img, 'complete', { configurable: true, get: () => false })
+    Object.defineProperty(img, 'naturalWidth', { configurable: true, get: () => 0 })
+    const removeSpy = vi.spyOn(img, 'removeAttribute')
+
+    act(() => {
+      vi.advanceTimersByTime(12000)
+    })
+
+    expect(removeSpy).not.toHaveBeenCalled()
+    expect(img.getAttribute('src')).toBe('https://example.com/banner.jpg')
   })
 })
