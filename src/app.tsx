@@ -67,6 +67,11 @@ interface AppState {
   searchState: SearchScreenState | null
   categoryGenreId: number | null
   categoryFilters: CategoryFilters | null
+  bookmarksState: {
+    folderId: number | null
+    folderIndex: number
+    itemIndex: number
+  } | null
 }
 
 const ITEM_TYPE_TO_CATEGORY: Record<string, string> = {
@@ -118,7 +123,8 @@ export function App() {
       player: null,
       searchState: null,
       categoryGenreId: null,
-      categoryFilters: null
+      categoryFilters: null,
+      bookmarksState: null
     }
 
     const savedReturnTo = getReturnTo()
@@ -239,6 +245,7 @@ export function App() {
       seriesId: null,
       // Drop search/category filters when leaving that section via the menu.
       searchState: menuId === 'search' ? prev.searchState : null,
+      bookmarksState: menuId === 'bookmarks' ? prev.bookmarksState : null,
       categoryGenreId: null,
       categoryFilters: null
     }))
@@ -268,6 +275,14 @@ export function App() {
 
   const handleSearchStateChange = useCallback((searchState: SearchScreenState) => {
     setState(prev => ({ ...prev, searchState }))
+  }, [])
+
+  const handleBookmarksStateChange = useCallback((bookmarksState: {
+    folderId: number | null
+    folderIndex: number
+    itemIndex: number
+  }) => {
+    setState(prev => ({ ...prev, bookmarksState }))
   }, [])
 
   const handleSelectActor = useCallback((name: string) => {
@@ -332,11 +347,6 @@ export function App() {
         initialAudioIndex: 0
       }
     }))
-  }, [])
-
-  const handleBeforeNativePlay = useCallback(() => {
-    const { itemId, seriesId, selectedMenuId, screenFocus } = stateRef.current
-    saveReturnTo({ itemId, seriesId, selectedMenuId, screenFocus })
   }, [])
 
   const handlePlay = useCallback(async (itemId: number, season?: number, episode?: number, options?: { quality?: string }) => {
@@ -674,6 +684,10 @@ export function App() {
             onSelectItem={handleSelectItem}
             onNavigateToMenu={handleNavigateToMenu}
             isActive={isContentActive}
+            initialFolderId={state.bookmarksState?.folderId ?? null}
+            initialFolderIndex={state.bookmarksState?.folderIndex ?? 0}
+            initialItemIndex={state.bookmarksState?.itemIndex ?? 0}
+            onStateChange={handleBookmarksStateChange}
           />
         )
       case 'collections':
@@ -692,12 +706,24 @@ export function App() {
             isActive={isContentActive}
           />
         )
+      case 'watching':
+        return (
+          <NewEpisodesScreen
+            onSelectItem={handleSelectItem}
+            onNavigateToMenu={handleNavigateToMenu}
+            isActive={isContentActive}
+            onlyNew={false}
+            titleKey="menuWatching"
+          />
+        )
       case 'newepisodes':
         return (
           <NewEpisodesScreen
             onSelectItem={handleSelectItem}
             onNavigateToMenu={handleNavigateToMenu}
             isActive={isContentActive}
+            onlyNew
+            titleKey="menuNewEpisodes"
           />
         )
       case 'livetv': {
@@ -705,7 +731,7 @@ export function App() {
         return (
           <LiveTVScreen
             onNavigateToMenu={handleNavigateToMenu}
-            onBeforePlay={handleBeforeNativePlay}
+            onPlayChannel={handlePlayTrailer}
             isActive={isContentActive}
             initialFocusIndex={livetvFocus.row}
             onFocusChange={(index) => handleFocusChange('livetv', index, 0)}

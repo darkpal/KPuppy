@@ -9,10 +9,6 @@ vi.mock('../../src/api/kinopub', () => ({
   getTVChannels: vi.fn(),
 }))
 
-vi.mock('../../src/webos/player', () => ({
-  launchNativePlayer: vi.fn(),
-}))
-
 function renderWithI18n(component: preact.ComponentChild) {
   return render(
     <I18nProvider>
@@ -31,7 +27,7 @@ const mockChannel = {
 describe('LiveTVScreen', () => {
   const mockProps = {
     onNavigateToMenu: vi.fn(),
-    onBeforePlay: vi.fn(),
+    onPlayChannel: vi.fn(),
     isActive: true,
   }
 
@@ -190,6 +186,21 @@ describe('LiveTVScreen', () => {
         const screen = document.querySelector('.livetv-screen')
         expect(screen).toBeDefined()
       })
+    })
+  })
+
+  describe('playback', () => {
+    it('plays channel via in-app player callback', async () => {
+      vi.mocked(kinopub.getTVChannels).mockResolvedValue([mockChannel])
+
+      renderWithI18n(<LiveTVScreen {...mockProps} />)
+
+      await waitFor(() => {
+        expect(document.querySelector('.livetv-card')).not.toBeNull()
+      })
+
+      ;(document.querySelector('.livetv-card') as HTMLElement).click()
+      expect(mockProps.onPlayChannel).toHaveBeenCalledWith(mockChannel.url, mockChannel.title)
     })
   })
 })

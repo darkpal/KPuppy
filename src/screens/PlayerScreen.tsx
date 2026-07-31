@@ -369,10 +369,6 @@ export function PlayerScreen({
     togglePlay()
   }, [togglePlay, controls.activePanel])
 
-  const closePanel = useCallback(() => {
-    setControls(prev => ({ ...prev, activePanel: 'none' }))
-  }, [])
-
   const selectAudio = useCallback((listIndex: number) => {
     const video = videoRef.current
     setControls(prev => ({ ...prev, selectedAudioIndex: listIndex }))

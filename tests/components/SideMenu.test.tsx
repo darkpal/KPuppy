@@ -182,7 +182,8 @@ describe('getMenuIdByIndex', () => {
     expect(getMenuIdByIndex(9)).toBe('livetv')
     expect(getMenuIdByIndex(10)).toBe('collections')
     expect(getMenuIdByIndex(11)).toBe('bookmarks')
-    expect(getMenuIdByIndex(12)).toBe('newepisodes')
+    expect(getMenuIdByIndex(12)).toBe('watching')
+    expect(getMenuIdByIndex(13)).toBe('newepisodes')
   })
 
   it('returns user for last index', () => {
@@ -200,10 +201,10 @@ describe('getMenuIdByIndex', () => {
 
 describe('menu constants', () => {
   it('MENU_ITEMS_COUNT does not include user', () => {
-    expect(MENU_ITEMS_COUNT).toBe(14)
+    expect(MENU_ITEMS_COUNT).toBe(15)
   })
 
   it('ALL_MENU_ITEMS_COUNT includes user', () => {
-    expect(ALL_MENU_ITEMS_COUNT).toBe(15)
+    expect(ALL_MENU_ITEMS_COUNT).toBe(16)
   })
 })

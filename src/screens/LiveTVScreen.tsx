@@ -3,18 +3,17 @@ import { getTVChannels, TVChannel } from '../api/kinopub'
 import { useKeyboardNavigation, useScrollToFocused, createGridNavigationHandlers } from '../hooks'
 import { LoadingState } from '../components/LoadingSpinner'
 import { useI18n } from '../i18n'
-import { launchNativePlayer } from '../webos/player'
 import '../styles/livetv.css'
 
 interface LiveTVScreenProps {
   onNavigateToMenu: () => void
-  onBeforePlay: () => void
+  onPlayChannel: (url: string, title: string) => void
   isActive: boolean
   initialFocusIndex?: number
   onFocusChange?: (index: number) => void
 }
 
-export function LiveTVScreen({ onNavigateToMenu, onBeforePlay, isActive, initialFocusIndex = 0, onFocusChange }: LiveTVScreenProps) {
+export function LiveTVScreen({ onNavigateToMenu, onPlayChannel, isActive, initialFocusIndex = 0, onFocusChange }: LiveTVScreenProps) {
   const { t } = useI18n()
   const [channels, setChannels] = useState<TVChannel[]>([])
   const [loading, setLoading] = useState(true)
@@ -40,32 +39,26 @@ export function LiveTVScreen({ onNavigateToMenu, onBeforePlay, isActive, initial
     onFocusChange?.(focusedIndex)
   }, [focusedIndex])
 
-  const handlePlayChannel = useCallback(async (channel: TVChannel) => {
+  const handlePlayChannel = useCallback((channel: TVChannel) => {
     if (!channel.url) return
-    onBeforePlay()
-    try {
-      await launchNativePlayer({
-        fullPath: channel.url,
-        fileName: channel.title,
-        thumbnail: channel.logo
-      })
-    } catch (err) {
-      if (import.meta.env.DEV) console.error('Failed to play channel:', err)
-    }
-  }, [onBeforePlay])
+    onPlayChannel(channel.url, channel.title)
+  }, [onPlayChannel])
 
-  const handlers = useMemo(() => createGridNavigationHandlers({
-    itemCount: channels.length,
-    itemsPerRow: 4,
-    focusedIndex,
-    setFocusedIndex,
-    onSelect: (index) => {
-      const channel = channels[index]
-      if (channel) {
-        handlePlayChannel(channel)
-      }
-    },
-    onLeftEdge: onNavigateToMenu
+  const handlers = useMemo(() => ({
+    ...createGridNavigationHandlers({
+      itemCount: channels.length,
+      itemsPerRow: 4,
+      focusedIndex,
+      setFocusedIndex,
+      onSelect: (index) => {
+        const channel = channels[index]
+        if (channel) {
+          handlePlayChannel(channel)
+        }
+      },
+      onLeftEdge: onNavigateToMenu
+    }),
+    onBack: onNavigateToMenu
   }), [channels, focusedIndex, onNavigateToMenu, handlePlayChannel])
 
   useKeyboardNavigation(handlers, isActive && !loading)

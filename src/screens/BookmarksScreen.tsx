@@ -12,26 +12,51 @@ interface BookmarksScreenProps {
   onSelectItem: (itemId: number) => void
   onNavigateToMenu: () => void
   isActive: boolean
+  initialFolderId?: number | null
+  initialFolderIndex?: number
+  initialItemIndex?: number
+  onStateChange?: (state: {
+    folderId: number | null
+    folderIndex: number
+    itemIndex: number
+  }) => void
 }
 
 type ViewMode = 'folders' | 'items'
 
-export function BookmarksScreen({ onSelectItem, onNavigateToMenu, isActive }: BookmarksScreenProps) {
+export function BookmarksScreen({
+  onSelectItem,
+  onNavigateToMenu,
+  isActive,
+  initialFolderId = null,
+  initialFolderIndex = 0,
+  initialItemIndex = 0,
+  onStateChange
+}: BookmarksScreenProps) {
   const { t } = useI18n()
   const [folders, setFolders] = useState<BookmarkFolder[]>([])
   const [items, setItems] = useState<MovieItem[]>([])
   const [loading, setLoading] = useState(true)
-  const [viewMode, setViewMode] = useState<ViewMode>('folders')
+  const [viewMode, setViewMode] = useState<ViewMode>(initialFolderId != null ? 'items' : 'folders')
   const [selectedFolder, setSelectedFolder] = useState<BookmarkFolder | null>(null)
-  const [focusedIndex, setFocusedIndex] = useState(0)
-  const [savedFolderIndex, setSavedFolderIndex] = useState(0)
+  const [focusedIndex, setFocusedIndex] = useState(
+    initialFolderId != null ? initialItemIndex : initialFolderIndex
+  )
+  const [savedFolderIndex, setSavedFolderIndex] = useState(initialFolderIndex)
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [newFolderName, setNewFolderName] = useState('')
   const [actionLoading, setActionLoading] = useState(false)
   const [dialogFocusIndex, setDialogFocusIndex] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
+  const onStateChangeRef = useRef(onStateChange)
+  onStateChangeRef.current = onStateChange
+  const restoredFolderRef = useRef(false)
   const { itemsPerRow, cardWidth } = useGridLayout('.category-grid', 240, [items.length, viewMode])
+
+  const emitState = useCallback((folderId: number | null, folderIndex: number, itemIndex: number) => {
+    onStateChangeRef.current?.({ folderId, folderIndex, itemIndex })
+  }, [])
 
   useEffect(() => {
     async function loadFolders() {
@@ -39,6 +64,31 @@ export function BookmarksScreen({ onSelectItem, onNavigateToMenu, isActive }: Bo
       try {
         const data = await getBookmarkFolders()
         setFolders(data)
+
+        if (!restoredFolderRef.current && initialFolderId != null) {
+          restoredFolderRef.current = true
+          const folder = data.find(f => f.id === initialFolderId) || null
+          const folderIndex = folder
+            ? Math.max(0, data.findIndex(f => f.id === initialFolderId))
+            : initialFolderIndex
+          if (folder) {
+            setSavedFolderIndex(folderIndex)
+            setSelectedFolder(folder)
+            setViewMode('items')
+            const folderItems = await getBookmarkItems(folder.id)
+            setItems(folderItems)
+            const safeItemIndex = Math.min(
+              Math.max(0, initialItemIndex),
+              Math.max(0, folderItems.length - 1)
+            )
+            setFocusedIndex(safeItemIndex)
+            emitState(folder.id, folderIndex, safeItemIndex)
+            return
+          }
+          setViewMode('folders')
+          setFocusedIndex(folderIndex)
+          emitState(null, folderIndex, 0)
+        }
       } catch (err) {
         if (import.meta.env.DEV) console.error('Failed to load bookmarks:', err)
       } finally {
@@ -46,7 +96,15 @@ export function BookmarksScreen({ onSelectItem, onNavigateToMenu, isActive }: Bo
       }
     }
     loadFolders()
-  }, [])
+  }, [initialFolderId, initialFolderIndex, initialItemIndex, emitState])
+
+  useEffect(() => {
+    if (viewMode === 'folders') {
+      emitState(null, focusedIndex, 0)
+    } else if (selectedFolder) {
+      emitState(selectedFolder.id, savedFolderIndex, focusedIndex)
+    }
+  }, [viewMode, focusedIndex, selectedFolder, savedFolderIndex, emitState])
 
   const loadFolderItems = useCallback(async (folder: BookmarkFolder, folderIndex: number) => {
     setLoading(true)
@@ -57,19 +115,21 @@ export function BookmarksScreen({ onSelectItem, onNavigateToMenu, isActive }: Bo
       setSelectedFolder(folder)
       setViewMode('items')
       setFocusedIndex(0)
+      emitState(folder.id, folderIndex, 0)
     } catch (err) {
       if (import.meta.env.DEV) console.error('Failed to load bookmark items:', err)
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [emitState])
 
   const goBackToFolders = useCallback(() => {
     setViewMode('folders')
     setSelectedFolder(null)
     setItems([])
     setFocusedIndex(savedFolderIndex)
-  }, [savedFolderIndex])
+    emitState(null, savedFolderIndex, 0)
+  }, [savedFolderIndex, emitState])
 
   const handleCreateFolder = useCallback(async () => {
     if (!newFolderName.trim() || actionLoading) return
