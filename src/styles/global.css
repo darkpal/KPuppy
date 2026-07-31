@@ -8,11 +8,11 @@
   --color-text-secondary: #b3b3b3;
   --color-text-muted: #666;
 
-  /* Muted Magic Remote RGBY (match physical buttons, not neon UI) */
-  --remote-red: #9a4540;
-  --remote-green: #4a6b52;
-  --remote-yellow: #c4a85a;
-  --remote-blue: #4a6b8c;
+  /* Magic Remote RGBY — slightly brighter than dusty plastic, still not neon */
+  --remote-red: #c45c55;
+  --remote-green: #5f8a68;
+  --remote-yellow: #d4b86a;
+  --remote-blue: #5a7fa8;
 
   --transition-fast: 150ms ease;
   --transition-normal: 200ms ease;

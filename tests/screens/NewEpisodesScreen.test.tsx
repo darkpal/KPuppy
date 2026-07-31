@@ -7,6 +7,7 @@ import * as kinopub from '../../src/api/kinopub'
 
 vi.mock('../../src/api/kinopub', () => ({
   getWatchingSerials: vi.fn(),
+  getWatching: vi.fn(),
   enrichMovieItemsMeta: vi.fn(async (items: unknown[]) => items),
 }))
 
@@ -40,6 +41,7 @@ describe('NewEpisodesScreen', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(kinopub.getWatchingSerials).mockResolvedValue([])
+    vi.mocked(kinopub.getWatching).mockResolvedValue([])
   })
 
   afterEach(() => {
@@ -102,6 +104,32 @@ describe('NewEpisodesScreen', () => {
       await waitFor(() => {
         expect(document.querySelector('.category-empty')).toBeDefined()
       })
+    })
+
+    it('loads continue-watching list for watching mode', async () => {
+      const movie = {
+        id: 9,
+        title: 'Continue Movie',
+        type: 'movie',
+        posters: { small: '', medium: '', big: '' },
+        year: 2024,
+        plot: '',
+        rating: 0,
+        imdbRating: 0,
+        kinopoiskRating: 0,
+        ratingPercentage: 0,
+        quality: 0,
+        views: 0
+      }
+      vi.mocked(kinopub.getWatching).mockResolvedValue([movie])
+
+      renderWithI18n(<NewEpisodesScreen {...mockProps} mode="watching" titleKey="menuWatching" />)
+
+      await waitFor(() => {
+        expect(kinopub.getWatching).toHaveBeenCalled()
+        expect(screen.getByText('Continue Movie')).toBeDefined()
+      })
+      expect(kinopub.getWatchingSerials).not.toHaveBeenCalled()
     })
   })
 

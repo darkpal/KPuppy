@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'preact/hooks'
 import { getCollections, getCollectionItems, Collection, MovieItem } from '../api/kinopub'
 import { MovieCard } from '../components/MovieCard'
 import { GridScreen } from '../components/GridScreen'
-import { useKeyboardNavigation, useGridLayout, createGridNavigationHandlers } from '../hooks'
+import { useKeyboardNavigation, useGridLayout, createGridNavigationHandlers, useScrollToFocused } from '../hooks'
 import { LoadingState } from '../components/LoadingSpinner'
 import { useI18n } from '../i18n'
 import '../styles/category.css'
@@ -101,6 +101,16 @@ export function CollectionsScreen({ onSelectItem, onNavigateToMenu, isActive }: 
     viewMode === 'collections' ? collectionsHandlers : itemsHandlers,
     isActive && !loading
   )
+
+  useScrollToFocused({
+    containerRef,
+    focusedIndex,
+    itemSelector: '.bookmarks-folder',
+    direction: 'vertical',
+    center: false,
+    itemCount: collections.length,
+    enabled: isActive && !loading && viewMode === 'collections'
+  })
 
   const renderItem = useCallback((item: MovieItem, _index: number, focused: boolean) => (
     <MovieCard

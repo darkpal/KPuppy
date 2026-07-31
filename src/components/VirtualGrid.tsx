@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks'
-import { ComponentChildren } from 'preact'
+import { ComponentChildren, RefObject } from 'preact'
 
 interface VirtualGridProps<T> {
   items: T[]
@@ -12,6 +12,8 @@ interface VirtualGridProps<T> {
   containerClass?: string
   emptyMessage?: string
   cardWidth?: number
+  /** Scrollable parent; falls back to closest .category-screen */
+  scrollContainerRef?: RefObject<HTMLElement>
 }
 
 export function VirtualGrid<T>({
@@ -24,7 +26,8 @@ export function VirtualGrid<T>({
   getItemKey,
   containerClass = 'category-grid',
   emptyMessage,
-  cardWidth
+  cardWidth,
+  scrollContainerRef
 }: VirtualGridProps<T>) {
   const [measuredRowHeight, setMeasuredRowHeight] = useState(0)
   const rowHeight = measuredRowHeight || itemHeight
@@ -41,9 +44,8 @@ export function VirtualGrid<T>({
   }, [focusedIndex, itemsPerRow, items.length, renderBuffer])
 
   useEffect(() => {
-    const container = document.querySelector('.category-screen') as HTMLElement
     const root = rootRef.current
-    if (!container || !root || items.length === 0) return
+    if (!root || items.length === 0) return
 
     const cells = root.querySelectorAll('[data-category-index]')
     if (cells.length > itemsPerRow) {
@@ -52,33 +54,40 @@ export function VirtualGrid<T>({
       const measured = secondRowTop - firstRowTop
       if (measured > 0 && Math.abs(measured - rowHeight) > 1) {
         setMeasuredRowHeight(measured)
-        return
       }
     } else if (cells.length > 0) {
       const measured = cells[0].getBoundingClientRect().height + 32
       if (measured > 32 && Math.abs(measured - rowHeight) > 1) {
         setMeasuredRowHeight(measured)
-        return
-      }
-    }
-
-    const focusedCell = root.querySelector(`[data-category-index="${focusedIndex}"]`) as HTMLElement
-    if (focusedCell) {
-      const containerTop = container.getBoundingClientRect().top
-      const cellRect = focusedCell.getBoundingClientRect()
-      const cellTop = cellRect.top - containerTop + container.scrollTop
-      const cellBottom = cellTop + cellRect.height
-      const viewTop = container.scrollTop
-      const viewBottom = viewTop + container.clientHeight
-      const pad = 24
-
-      if (cellTop < viewTop + pad) {
-        container.scrollTop = Math.max(0, cellTop - pad)
-      } else if (cellBottom > viewBottom - pad) {
-        container.scrollTop = cellBottom - container.clientHeight + pad
       }
     }
   }, [focusedIndex, itemsPerRow, rowHeight, items.length, cardWidth])
+
+  useEffect(() => {
+    const root = rootRef.current
+    if (!root || items.length === 0) return
+
+    const container = (scrollContainerRef?.current
+      || root.closest('.category-screen')) as HTMLElement | null
+    if (!container) return
+
+    const focusedCell = root.querySelector(`[data-category-index="${focusedIndex}"]`) as HTMLElement
+    if (!focusedCell) return
+
+    const containerTop = container.getBoundingClientRect().top
+    const cellRect = focusedCell.getBoundingClientRect()
+    const cellTop = cellRect.top - containerTop + container.scrollTop
+    const cellBottom = cellTop + cellRect.height
+    const viewTop = container.scrollTop
+    const viewBottom = viewTop + container.clientHeight
+    const pad = 24
+
+    if (cellTop < viewTop + pad) {
+      container.scrollTop = Math.max(0, cellTop - pad)
+    } else if (cellBottom > viewBottom - pad) {
+      container.scrollTop = cellBottom - container.clientHeight + pad
+    }
+  }, [focusedIndex, itemsPerRow, rowHeight, items.length, cardWidth, scrollContainerRef])
 
   if (items.length === 0 && emptyMessage) {
     return <div class="category-empty">{emptyMessage}</div>

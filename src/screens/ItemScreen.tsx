@@ -530,189 +530,192 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
     <>
     <div class="item-screen">
       {posterUrl && (
-        <>
-          <div
-            class="item-backdrop"
-            style={{ backgroundImage: `url(${posterUrl})` }}
-          />
-          <div class="item-poster-frame">
-            <img class="item-poster" src={posterUrl} alt="" />
-          </div>
-        </>
+        <div
+          class="item-backdrop"
+          style={{ backgroundImage: `url(${posterUrl})` }}
+        />
       )}
 
       <div class="item-content">
-        <div class="item-header">
-          <h1 class="item-title">{item.title}</h1>
-
-          <div class="item-meta">
-            <span class="item-year">{item.year}</span>
-            {kpRating > 0 && (
-              <span class="item-rating item-rating-kp">
-                KP {kpRating.toFixed(1)}
-              </span>
-            )}
-            {imdbRating > 0 && (
-              <span class="item-rating item-rating-imdb">
-                IMDb {imdbRating.toFixed(1)}
-              </span>
-            )}
-            {duration && <span class="item-duration">{duration}</span>}
-            <span class="item-type">{item.type}</span>
-          </div>
-
-          {genres.length > 0 && (
-            <div class="item-genres">
-              {genres.map((genre, index) => (
-                <button
-                  key={genre.id}
-                  type="button"
-                  class={`item-chip ${focusArea === 'genres' && metaFocusIndex === index ? 'focused' : ''}`}
-                  onMouseEnter={() => {
-                    dispatch({ type: 'SET_FOCUS_AREA', area: 'genres' })
-                    dispatch({ type: 'SET_META_FOCUS_INDEX', index })
-                  }}
-                  onClick={() => onSelectGenre?.(genre.id, item.type)}
-                >
-                  {genre.title}
-                </button>
-              ))}
+        <div class="item-hero">
+          {posterUrl && (
+            <div class="item-poster-frame">
+              <img class="item-poster" src={posterUrl} alt="" />
             </div>
           )}
 
-          <div class="item-two-columns">
-            <div class="item-column-left">
-              {item.plot && <p class="item-plot">{item.plot}</p>}
+          <div class="item-hero-body">
+            <h1 class="item-title">{item.title}</h1>
 
-              <div class="item-actions">
-                {hasSeasons ? (
+            <div class="item-meta">
+              <span class="item-year">{item.year}</span>
+              {kpRating > 0 && (
+                <span class="item-rating item-rating-kp">
+                  KP {kpRating.toFixed(1)}
+                </span>
+              )}
+              {imdbRating > 0 && (
+                <span class="item-rating item-rating-imdb">
+                  IMDb {imdbRating.toFixed(1)}
+                </span>
+              )}
+              {duration && <span class="item-duration">{duration}</span>}
+              <span class="item-type">{item.type}</span>
+            </div>
+
+            {genres.length > 0 && (
+              <div class="item-genres">
+                {genres.map((genre, index) => (
                   <button
+                    key={genre.id}
                     type="button"
-                    class={`item-button item-button-primary ${focusArea === 'seasons' ? 'focused' : ''}`}
-                    onMouseEnter={() => dispatch({ type: 'SET_FOCUS_AREA', area: 'seasons' })}
-                    onClick={handlePlayOrSelect}
+                    class={`item-chip ${focusArea === 'genres' && metaFocusIndex === index ? 'focused' : ''}`}
+                    onMouseEnter={() => {
+                      dispatch({ type: 'SET_FOCUS_AREA', area: 'genres' })
+                      dispatch({ type: 'SET_META_FOCUS_INDEX', index })
+                    }}
+                    onClick={() => onSelectGenre?.(genre.id, item.type)}
                   >
-                    <span class="item-button-icon">≡</span>
-                    {t.seasons} ({item.seasons!.length})
+                    {genre.title}
                   </button>
-                ) : (
-                  <div class="item-play-container">
+                ))}
+              </div>
+            )}
+
+            <div class="item-two-columns">
+              <div class="item-column-left">
+                {item.plot && <p class="item-plot">{item.plot}</p>}
+
+                <div class="item-actions">
+                  {hasSeasons ? (
                     <button
                       type="button"
-                      class={`item-button item-button-primary ${focusArea === 'play' || focusArea === 'qualitySelect' ? 'focused' : ''}`}
-                      onMouseEnter={() => dispatch({ type: 'SET_FOCUS_AREA', area: 'play' })}
+                      class={`item-button item-button-primary ${focusArea === 'seasons' ? 'focused' : ''}`}
+                      onMouseEnter={() => dispatch({ type: 'SET_FOCUS_AREA', area: 'seasons' })}
                       onClick={handlePlayOrSelect}
                     >
-                      <span class="item-button-icon">▶</span>
-                      {t.play}
-                      {selectedQuality && (
-                        <span class="item-quality-badge">{selectedQuality}</span>
-                      )}
-                      {availableQualities.length > 1 && (
-                        <span
-                          class="item-quality-hint"
-                          onClick={(event) => {
-                            event.stopPropagation()
-                            const currentIdx = availableQualities.indexOf(selectedQuality || '')
-                            dispatch({ type: 'SET_DROPDOWN_FOCUS_INDEX', index: Math.max(0, currentIdx) })
-                            dispatch({ type: 'SET_FOCUS_AREA', area: 'qualitySelect' })
-                          }}
-                        >
-                          ▲
-                        </span>
-                      )}
+                      <span class="item-button-icon">≡</span>
+                      {t.seasons} ({item.seasons!.length})
                     </button>
-                    {focusArea === 'qualitySelect' && (
-                      <>
-                        <div
-                          class="item-dropdown-backdrop"
-                          onClick={() => dispatch({ type: 'SET_FOCUS_AREA', area: 'play' })}
-                        />
-                        <div class="item-dropdown item-dropdown-quality">
-                          {availableQualities.map((q, idx) => (
-                            <div
-                              key={q}
-                              class={`item-dropdown-option ${dropdownFocusIndex === idx ? 'focused' : ''} ${selectedQuality === q ? 'selected' : ''}`}
-                              onMouseEnter={() => dispatch({ type: 'SET_DROPDOWN_FOCUS_INDEX', index: idx })}
-                              onClick={() => {
-                                dispatch({ type: 'SET_SELECTED_QUALITY', quality: q })
-                                dispatch({ type: 'SET_FOCUS_AREA', area: 'play' })
-                              }}
-                            >
-                              {q}
-                            </div>
-                          ))}
-                        </div>
-                      </>
-                    )}
-                  </div>
-                )}
-                {hasSeasons && (
+                  ) : (
+                    <div class="item-play-container">
+                      <button
+                        type="button"
+                        class={`item-button item-button-primary ${focusArea === 'play' || focusArea === 'qualitySelect' ? 'focused' : ''}`}
+                        onMouseEnter={() => dispatch({ type: 'SET_FOCUS_AREA', area: 'play' })}
+                        onClick={handlePlayOrSelect}
+                      >
+                        <span class="item-button-icon">▶</span>
+                        {t.play}
+                        {selectedQuality && (
+                          <span class="item-quality-badge">{selectedQuality}</span>
+                        )}
+                        {availableQualities.length > 1 && (
+                          <span
+                            class="item-quality-hint"
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              const currentIdx = availableQualities.indexOf(selectedQuality || '')
+                              dispatch({ type: 'SET_DROPDOWN_FOCUS_INDEX', index: Math.max(0, currentIdx) })
+                              dispatch({ type: 'SET_FOCUS_AREA', area: 'qualitySelect' })
+                            }}
+                          >
+                            ▲
+                          </span>
+                        )}
+                      </button>
+                      {focusArea === 'qualitySelect' && (
+                        <>
+                          <div
+                            class="item-dropdown-backdrop"
+                            onClick={() => dispatch({ type: 'SET_FOCUS_AREA', area: 'play' })}
+                          />
+                          <div class="item-dropdown item-dropdown-quality">
+                            {availableQualities.map((q, idx) => (
+                              <div
+                                key={q}
+                                class={`item-dropdown-option ${dropdownFocusIndex === idx ? 'focused' : ''} ${selectedQuality === q ? 'selected' : ''}`}
+                                onMouseEnter={() => dispatch({ type: 'SET_DROPDOWN_FOCUS_INDEX', index: idx })}
+                                onClick={() => {
+                                  dispatch({ type: 'SET_SELECTED_QUALITY', quality: q })
+                                  dispatch({ type: 'SET_FOCUS_AREA', area: 'play' })
+                                }}
+                              >
+                                {q}
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+                  {hasSeasons && (
+                    <button
+                      type="button"
+                      class={`item-button item-button-secondary ${focusArea === 'watching' ? 'focused' : ''}`}
+                      disabled={watchingToggleLoading}
+                      onMouseEnter={() => dispatch({ type: 'SET_FOCUS_AREA', area: 'watching' })}
+                      onClick={handleToggleWatching}
+                    >
+                      <span class="item-button-icon">{isWatching ? '−' : '+'}</span>
+                      {isWatching ? t.removeFromWatchlist : t.addToWatchlist}
+                    </button>
+                  )}
                   <button
                     type="button"
-                    class={`item-button item-button-secondary ${focusArea === 'watching' ? 'focused' : ''}`}
-                    disabled={watchingToggleLoading}
-                    onMouseEnter={() => dispatch({ type: 'SET_FOCUS_AREA', area: 'watching' })}
-                    onClick={handleToggleWatching}
+                    class={`item-button item-button-secondary ${focusArea === 'watchlist' ? 'focused' : ''}`}
+                    disabled={watchlistLoading}
+                    onMouseEnter={() => dispatch({ type: 'SET_FOCUS_AREA', area: 'watchlist' })}
+                    onClick={handleOpenFolderDialog}
                   >
-                    <span class="item-button-icon">{isWatching ? '−' : '+'}</span>
-                    {isWatching ? t.removeFromWatchlist : t.addToWatchlist}
+                    <span class="item-button-icon">★</span>
+                    {t.addToBookmarks}
                   </button>
-                )}
-                <button
-                  type="button"
-                  class={`item-button item-button-secondary ${focusArea === 'watchlist' ? 'focused' : ''}`}
-                  disabled={watchlistLoading}
-                  onMouseEnter={() => dispatch({ type: 'SET_FOCUS_AREA', area: 'watchlist' })}
-                  onClick={handleOpenFolderDialog}
-                >
-                  <span class="item-button-icon">★</span>
-                  {t.addToBookmarks}
-                </button>
-                {item?.trailer?.url && (
-                  <button
-                    type="button"
-                    class={`item-button item-button-secondary ${focusArea === 'trailer' ? 'focused' : ''}`}
-                    onMouseEnter={() => dispatch({ type: 'SET_FOCUS_AREA', area: 'trailer' })}
-                    onClick={() => {
-                      if (item.trailer?.url) {
-                        onPlayTrailer(item.trailer.url, `${item.title} - ${t.trailer}`)
-                      }
-                    }}
-                  >
-                    <span class="item-button-icon">▷</span>
-                    {t.trailer}
-                  </button>
-                )}
+                  {item?.trailer?.url && (
+                    <button
+                      type="button"
+                      class={`item-button item-button-secondary ${focusArea === 'trailer' ? 'focused' : ''}`}
+                      onMouseEnter={() => dispatch({ type: 'SET_FOCUS_AREA', area: 'trailer' })}
+                      onClick={() => {
+                        if (item.trailer?.url) {
+                          onPlayTrailer(item.trailer.url, `${item.title} - ${t.trailer}`)
+                        }
+                      }}
+                    >
+                      <span class="item-button-icon">▷</span>
+                      {t.trailer}
+                    </button>
+                  )}
+                </div>
               </div>
+              <ItemDetails
+                countries={countries}
+                directors={directors}
+                actors={cast}
+                audios={audios}
+                subtitles={subtitles}
+                focusedActorIndex={focusArea === 'cast' ? metaFocusIndex : null}
+                onHoverActor={(index) => {
+                  dispatch({ type: 'SET_FOCUS_AREA', area: 'cast' })
+                  dispatch({ type: 'SET_META_FOCUS_INDEX', index })
+                }}
+                onSelectActor={onSelectActor}
+                onSelectDirector={onSelectDirector}
+              />
             </div>
-            <ItemDetails
-              countries={countries}
-              directors={directors}
-              actors={cast}
-              audios={audios}
-              subtitles={subtitles}
-              focusedActorIndex={focusArea === 'cast' ? metaFocusIndex : null}
-              onHoverActor={(index) => {
-                dispatch({ type: 'SET_FOCUS_AREA', area: 'cast' })
-                dispatch({ type: 'SET_META_FOCUS_INDEX', index })
-              }}
-              onSelectActor={onSelectActor}
-              onSelectDirector={onSelectDirector}
-            />
           </div>
-
-          <SimilarItems
-            items={similarItems}
-            focusedIndex={similarFocusIndex}
-            isFocused={focusArea === 'similar'}
-            onHoverItem={(index) => {
-              dispatch({ type: 'SET_FOCUS_AREA', area: 'similar' })
-              dispatch({ type: 'SET_SIMILAR_FOCUS_INDEX', index })
-            }}
-            onSelectItem={onSelectItem}
-          />
         </div>
+
+        <SimilarItems
+          items={similarItems}
+          focusedIndex={similarFocusIndex}
+          isFocused={focusArea === 'similar'}
+          onHoverItem={(index) => {
+            dispatch({ type: 'SET_FOCUS_AREA', area: 'similar' })
+            dispatch({ type: 'SET_SIMILAR_FOCUS_INDEX', index })
+          }}
+          onSelectItem={onSelectItem}
+        />
       </div>
 
     </div>

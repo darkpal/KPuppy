@@ -1,4 +1,4 @@
-import { ComponentChildren, Ref } from 'preact'
+import { ComponentChildren, Ref, RefObject } from 'preact'
 import { VirtualGrid } from './VirtualGrid'
 import { LoadingState } from './LoadingSpinner'
 
@@ -52,6 +52,7 @@ export function GridScreen<T>({
         getItemKey={getItemKey}
         emptyMessage={emptyMessage}
         cardWidth={cardWidth}
+        scrollContainerRef={containerRef as RefObject<HTMLElement> | undefined}
       />
       {footer}
     </div>

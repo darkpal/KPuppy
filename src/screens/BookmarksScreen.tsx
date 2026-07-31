@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'preact/hooks'
 import { getBookmarkFolders, getBookmarkItems, createBookmarkFolder, deleteBookmarkFolder, removeFromBookmark, BookmarkFolder, MovieItem } from '../api/kinopub'
 import { MovieCard } from '../components/MovieCard'
 import { GridScreen } from '../components/GridScreen'
-import { useKeyboardNavigation, useGridLayout, createGridNavigationHandlers } from '../hooks'
+import { useKeyboardNavigation, useGridLayout, createGridNavigationHandlers, useScrollToFocused } from '../hooks'
 import { LoadingState } from '../components/LoadingSpinner'
 import { useI18n } from '../i18n'
 import '../styles/category.css'
@@ -285,6 +285,16 @@ export function BookmarksScreen({
     viewMode === 'folders' ? foldersHandlers : itemsHandlers,
     isActive && !loading
   )
+
+  useScrollToFocused({
+    containerRef,
+    focusedIndex,
+    itemSelector: '.bookmarks-folder',
+    direction: 'vertical',
+    center: false,
+    itemCount: folders.length + 1,
+    enabled: isActive && !loading && viewMode === 'folders'
+  })
 
   const renderItem = useCallback((item: MovieItem, _index: number, focused: boolean) => (
     <MovieCard

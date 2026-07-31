@@ -712,7 +712,7 @@ export function App() {
             onSelectItem={handleSelectItem}
             onNavigateToMenu={handleNavigateToMenu}
             isActive={isContentActive}
-            onlyNew={false}
+            mode="watching"
             titleKey="menuWatching"
           />
         )
@@ -722,7 +722,7 @@ export function App() {
             onSelectItem={handleSelectItem}
             onNavigateToMenu={handleNavigateToMenu}
             isActive={isContentActive}
-            onlyNew
+            mode="new"
             titleKey="menuNewEpisodes"
           />
         )
