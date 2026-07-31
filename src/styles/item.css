@@ -22,6 +22,15 @@
   object-position: center 18%;
 }
 
+.item-banner-image.poster-image-loading {
+  opacity: 0;
+}
+
+.item-banner-image.poster-image-ready {
+  opacity: 1;
+  transition: opacity 180ms ease;
+}
+
 /* Keep the poster visible while gradually strengthening contrast near the UI. */
 .item-banner::after {
   content: '';
@@ -252,6 +261,26 @@
   max-width: 42%;
 }
 
+.item-summary-details {
+  max-width: none;
+  margin: 0 0 7px;
+}
+
+.item-summary-details .item-detail {
+  font-size: 19px;
+  margin-bottom: 5px;
+}
+
+.item-summary-details .item-detail-topline {
+  margin-bottom: 3px;
+}
+
+.item-summary-details .item-person-chip {
+  font-size: 19px;
+  padding-top: 1px;
+  padding-bottom: 1px;
+}
+
 .item-plot-preview {
   font-size: 24px;
   color: #e0e0e0;
@@ -260,7 +289,7 @@
   text-shadow: 0 1px 8px rgba(0, 0, 0, 0.7);
   display: -webkit-box;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 3;
   overflow: hidden;
 }
 
@@ -327,15 +356,17 @@
 .item-scroll-hint,
 .item-details-back {
   appearance: none;
-  border: none;
-  background: transparent;
-  color: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(99, 200, 132, 0.52);
+  border-radius: 999px;
+  background: rgba(3, 18, 11, 0.5);
+  color: rgba(255, 255, 255, 0.92);
   display: inline-flex;
   align-items: center;
-  padding: 4px 8px 4px 0;
+  padding: 6px 14px;
   font: inherit;
   font-size: 18px;
   cursor: pointer;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.34);
 }
 
 .item-scroll-hint:hover,
@@ -345,10 +376,21 @@
 
 .item-scroll-hint-icon,
 .item-details-back-icon {
-  color: #63c884;
-  font-size: 28px;
-  line-height: 1;
-  margin-right: 8px;
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-right: 3px solid #63c884;
+  border-bottom: 3px solid #63c884;
+  margin-right: 12px;
+  box-sizing: border-box;
+}
+
+.item-scroll-hint-icon {
+  transform: rotate(45deg) translate(-2px, -2px);
+}
+
+.item-details-back-icon {
+  transform: rotate(225deg) translate(-2px, -2px);
 }
 
 .item-details-page {

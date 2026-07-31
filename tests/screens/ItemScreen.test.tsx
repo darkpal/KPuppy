@@ -210,6 +210,27 @@ describe('ItemScreen', () => {
         expect(screen.getByText('Action')).toBeDefined()
       })
     })
+
+    it('renders country, director, and cast in the main summary', async () => {
+      renderWithI18n(<ItemScreen {...mockProps} />)
+
+      await waitFor(() => {
+        const summaryDetails = document.querySelector('.item-summary-details')
+        expect(summaryDetails?.textContent).toContain('Country:USA')
+        expect(summaryDetails?.textContent).toContain('Director:Test Director')
+        expect(summaryDetails?.textContent).toContain('Cast:Test Actor')
+      })
+    })
+
+    it('uses a font-independent chevron for the full information indicator', async () => {
+      renderWithI18n(<ItemScreen {...mockProps} />)
+
+      await waitFor(() => {
+        const icon = document.querySelector('.item-scroll-hint-icon')
+        expect(icon).not.toBeNull()
+        expect(icon?.textContent).toBe('')
+      })
+    })
   })
 
   describe('series display', () => {

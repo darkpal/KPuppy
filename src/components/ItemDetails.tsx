@@ -3,6 +3,7 @@ import { getAudioTrackName } from '../storage'
 import { useI18n } from '../i18n'
 
 interface ItemDetailsProps {
+  className?: string
   countries?: string
   directors?: Person[]
   actors?: Person[]
@@ -20,6 +21,7 @@ function formatSubtitleLabel(sub: Subtitle): string {
 }
 
 export function ItemDetails({
+  className,
   countries,
   directors,
   actors,
@@ -36,7 +38,7 @@ export function ItemDetails({
   const visibleAudios = audios.slice(0, 6)
 
   return (
-    <div class="item-details-content">
+    <div class={`item-details-content ${className || ''}`}>
       {(countries || visibleDirectors.length > 0) && (
         <div class="item-detail-topline">
           {countries && (

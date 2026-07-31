@@ -622,6 +622,7 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
             alt=""
             class="item-banner-image"
             loading="eager"
+            revealWhenDecoded
           />
         </div>
       )}
@@ -670,6 +671,22 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
                   </button>
                 ))}
               </div>
+            )}
+
+            {(countries || directors.length > 0 || cast.length > 0) && (
+              <ItemDetails
+                className="item-summary-details"
+                countries={countries}
+                directors={directors}
+                actors={cast}
+                focusedActorIndex={!detailsExpanded && focusArea === 'cast' ? metaFocusIndex : null}
+                onHoverActor={(index) => {
+                  dispatch({ type: 'SET_FOCUS_AREA', area: 'cast' })
+                  dispatch({ type: 'SET_META_FOCUS_INDEX', index })
+                }}
+                onSelectActor={onSelectActor}
+                onSelectDirector={onSelectDirector}
+              />
             )}
 
             <div class="item-actions">
@@ -781,7 +798,7 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
               class="item-scroll-hint"
               onClick={openDetails}
             >
-              <span class="item-scroll-hint-icon">⌄</span>
+              <span class="item-scroll-hint-icon" aria-hidden="true" />
               <span>{t.fullInfo}</span>
             </button>
           </div>
@@ -797,7 +814,7 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
             class="item-details-back"
             onClick={closeDetails}
           >
-            <span class="item-details-back-icon">⌃</span>
+            <span class="item-details-back-icon" aria-hidden="true" />
             <span>{t.backToSummary}</span>
           </button>
 

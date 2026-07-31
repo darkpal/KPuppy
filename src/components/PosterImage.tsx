@@ -1,19 +1,32 @@
-import { useEffect, useRef } from 'preact/hooks'
+import { useCallback, useEffect, useRef, useState } from 'preact/hooks'
 
-const MAX_RETRIES = 2
+const MAX_RETRIES = 3
 const STALL_MS = 3500
+let retryRequestId = 0
 
 interface PosterImageProps {
   src?: string | null
   alt: string
   class?: string
   loading?: 'lazy' | 'eager'
+  /** Keep large hero art hidden until the browser confirms it is fully decoded. */
+  revealWhenDecoded?: boolean
+}
+
+function retrySource(src: string): string {
+  retryRequestId += 1
+  const hashIndex = src.indexOf('#')
+  const hash = hashIndex >= 0 ? src.slice(hashIndex) : ''
+  const url = hashIndex >= 0 ? src.slice(0, hashIndex) : src
+  const separator = url.includes('?') ? '&' : '?'
+  return `${url}${separator}_kpuppy_retry=${retryRequestId}${hash}`
 }
 
 function reloadImage(img: HTMLImageElement, src: string): void {
   img.removeAttribute('src')
   void img.offsetWidth
-  img.src = src
+  // A unique URL avoids reusing an incomplete in-memory response on webOS.
+  img.src = retrySource(src)
 }
 
 /**
@@ -24,15 +37,33 @@ export function PosterImage({
   src,
   alt,
   class: className,
-  loading = 'lazy'
+  loading = 'lazy',
+  revealWhenDecoded = false
 }: PosterImageProps) {
   const baseSrc = (src || '').trim()
   const imgRef = useRef<HTMLImageElement>(null)
   const retriesRef = useRef(0)
+  const mountedRef = useRef(true)
+  const [isReady, setIsReady] = useState(!revealWhenDecoded)
+
+  const retryImage = useCallback((img: HTMLImageElement) => {
+    if (retriesRef.current >= MAX_RETRIES) return
+    retriesRef.current += 1
+    if (revealWhenDecoded) setIsReady(false)
+    reloadImage(img, baseSrc)
+  }, [baseSrc, revealWhenDecoded])
+
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+    }
+  }, [])
 
   useEffect(() => {
     retriesRef.current = 0
-  }, [baseSrc])
+    if (revealWhenDecoded) setIsReady(false)
+  }, [baseSrc, revealWhenDecoded])
 
   useEffect(() => {
     if (!baseSrc) return
@@ -49,8 +80,7 @@ export function PosterImage({
         if (img.complete && img.naturalWidth > 0) return
         if (retriesRef.current >= MAX_RETRIES) return
 
-        retriesRef.current += 1
-        reloadImage(img, baseSrc)
+        retryImage(img)
         scheduleStallCheck()
       }, STALL_MS)
     }
@@ -61,7 +91,7 @@ export function PosterImage({
       disposed = true
       window.clearTimeout(timeoutId)
     }
-  }, [baseSrc])
+  }, [baseSrc, retryImage])
 
   if (!baseSrc) return null
 
@@ -70,13 +100,37 @@ export function PosterImage({
       ref={imgRef}
       src={baseSrc}
       alt={alt}
-      class={className}
+      class={`${className || ''}${revealWhenDecoded ? ` poster-image-${isReady ? 'ready' : 'loading'}` : ''}`}
       loading={loading}
-      decoding="async"
+      decoding={revealWhenDecoded ? 'sync' : 'async'}
+      onLoad={(event) => {
+        if (!revealWhenDecoded) return
+
+        const img = event.currentTarget
+        if (img.naturalWidth <= 0 || img.naturalHeight <= 0) {
+          retryImage(img)
+          return
+        }
+
+        const loadedSrc = img.src
+        const decode = img.decode
+        if (typeof decode !== 'function') {
+          setIsReady(true)
+          return
+        }
+
+        decode.call(img).then(() => {
+          if (mountedRef.current && imgRef.current === img && img.src === loadedSrc) {
+            setIsReady(true)
+          }
+        }).catch(() => {
+          if (mountedRef.current && imgRef.current === img && img.src === loadedSrc) {
+            retryImage(img)
+          }
+        })
+      }}
       onError={(event) => {
-        if (retriesRef.current >= MAX_RETRIES) return
-        retriesRef.current += 1
-        reloadImage(event.currentTarget, baseSrc)
+        retryImage(event.currentTarget)
       }}
     />
   )
