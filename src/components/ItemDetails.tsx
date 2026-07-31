@@ -4,6 +4,7 @@ import { useI18n } from '../i18n'
 
 interface ItemDetailsProps {
   className?: string
+  maxActors?: number
   countries?: string
   directors?: Person[]
   actors?: Person[]
@@ -22,6 +23,7 @@ function formatSubtitleLabel(sub: Subtitle): string {
 
 export function ItemDetails({
   className,
+  maxActors,
   countries,
   directors,
   actors,
@@ -33,7 +35,7 @@ export function ItemDetails({
   onSelectDirector
 }: ItemDetailsProps) {
   const { t } = useI18n()
-  const visibleActors = actors?.slice(0, 6) || []
+  const visibleActors = maxActors === undefined ? (actors || []) : (actors?.slice(0, maxActors) || [])
   const visibleDirectors = directors?.slice(0, 3) || []
   const visibleAudios = audios.slice(0, 6)
 

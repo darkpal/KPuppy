@@ -85,15 +85,15 @@
   background: #333;
   border: 2px solid transparent;
   border-radius: var(--radius-sm);
-  padding: 12px 16px;
+  padding: 14px 18px;
   cursor: pointer;
   min-width: 180px;
 }
 
 .search-filter-label {
   margin-right: 8px;
-  font-size: 16px;
-  color: #808080;
+  font-size: 19px;
+  color: #a8a8a8;
 }
 
 .search-filter-button:hover {
@@ -101,28 +101,28 @@
 }
 
 .search-filter-button.focused {
-  background: #e50914;
-  border-color: #ffffff;
+  background: rgba(99, 200, 132, 0.2);
+  border-color: #91e5ad;
 }
 
 .search-filter-button.focused .search-filter-label {
-  color: rgba(255, 255, 255, 0.8);
+  color: #c9f3d7;
 }
 
 .search-filter-value {
-  font-size: 18px;
+  font-size: 21px;
   color: #ffffff;
   font-weight: 500;
   flex: 1;
 }
 
 .search-filter-arrow {
-  font-size: 12px;
+  font-size: 15px;
   color: #808080;
 }
 
 .search-filter-button.focused .search-filter-arrow {
-  color: #ffffff;
+  color: #91e5ad;
 }
 
 .search-filter-dropdown {
@@ -133,7 +133,7 @@
   background: #2a2a2a;
   border-radius: var(--radius-sm);
   margin-top: 4px;
-  max-height: 300px;
+  max-height: 360px;
   overflow-y: auto;
   z-index: 100;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
@@ -142,8 +142,8 @@
 .search-filter-option {
   display: block;
   width: 100%;
-  padding: 12px 16px;
-  font-size: 16px;
+  padding: 14px 18px;
+  font-size: 20px;
   color: #ffffff;
   background: transparent;
   border: none;
@@ -156,15 +156,16 @@
 }
 
 .search-filter-option.focused {
-  background: #e50914;
+  background: #63c884;
+  color: #07120b;
 }
 
 .search-filter-option.selected {
-  color: #e50914;
+  color: #91e5ad;
 }
 
 .search-filter-option.focused.selected {
-  color: #ffffff;
+  color: #07120b;
 }
 
 .search-results {

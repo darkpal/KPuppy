@@ -23,12 +23,11 @@
 }
 
 .item-banner-image.poster-image-loading {
-  opacity: 0;
+  visibility: hidden;
 }
 
 .item-banner-image.poster-image-ready {
-  opacity: 1;
-  transition: opacity 180ms ease;
+  visibility: visible;
 }
 
 /* Keep the poster visible while gradually strengthening contrast near the UI. */
@@ -67,6 +66,22 @@
   transition: opacity 180ms ease, transform 220ms ease, visibility 220ms ease;
 }
 
+/* Add contrast only behind the copy, keeping the rest of bright artwork vivid. */
+.item-summary::before {
+  content: '';
+  position: absolute;
+  inset: -28px -44px -20px -32px;
+  z-index: 0;
+  border-radius: 12px;
+  background: linear-gradient(
+    90deg,
+    rgba(3, 7, 5, 0.66) 0%,
+    rgba(3, 7, 5, 0.5) 62%,
+    rgba(3, 7, 5, 0) 100%
+  );
+  pointer-events: none;
+}
+
 .item-content.details-expanded .item-summary {
   opacity: 0;
   visibility: hidden;
@@ -75,7 +90,7 @@
 }
 
 .item-title {
-  font-size: 42px;
+  font-size: 44px;
   font-weight: 700;
   color: #ffffff;
   margin: 0 0 8px;
@@ -95,13 +110,13 @@
 }
 
 .item-year {
-  font-size: 22px;
+  font-size: 23px;
   color: #ffffff;
   margin-right: 16px;
 }
 
 .item-rating {
-  font-size: 18px;
+  font-size: 19px;
   font-weight: 600;
   padding: 4px 10px;
   border-radius: var(--radius-sm);
@@ -133,13 +148,13 @@
 }
 
 .item-duration {
-  font-size: 20px;
+  font-size: 21px;
   color: #b3b3b3;
   margin-right: 12px;
 }
 
 .item-type {
-  font-size: 16px;
+  font-size: 17px;
   color: #b3b3b3;
   text-transform: uppercase;
   letter-spacing: 1px;
@@ -160,19 +175,19 @@
   border: 2px solid rgba(255, 255, 255, 0.35);
   background: transparent;
   color: #e8e8e8;
-  font-size: 20px;
+  font-size: 21px;
   line-height: 1.2;
   padding: 8px 14px;
-  border-radius: 999px;
+  border-radius: 8px;
   cursor: pointer;
   font-family: inherit;
 }
 
 .item-chip.focused,
 .item-chip:hover {
-  border-color: #ff2d95;
-  background: #ff2d95;
-  color: #ffffff;
+  border-color: #91e5ad;
+  background: #63c884;
+  color: #07120b;
 }
 
 .item-detail-inline,
@@ -220,7 +235,7 @@
   border: none;
   background: transparent;
   color: #63c884;
-  font-size: 20px;
+  font-size: 22px;
   line-height: 1.25;
   padding: 3px 6px;
   border-radius: 8px;
@@ -240,6 +255,8 @@
 }
 
 .item-summary-main {
+  position: relative;
+  z-index: 1;
   width: 100%;
 }
 
@@ -267,7 +284,7 @@
 }
 
 .item-summary-details .item-detail {
-  font-size: 19px;
+  font-size: 20px;
   margin-bottom: 5px;
 }
 
@@ -276,13 +293,13 @@
 }
 
 .item-summary-details .item-person-chip {
-  font-size: 19px;
+  font-size: 20px;
   padding-top: 1px;
   padding-bottom: 1px;
 }
 
 .item-plot-preview {
-  font-size: 24px;
+  font-size: 25px;
   color: #e0e0e0;
   line-height: 1.4;
   margin: 2px 0 4px;
@@ -294,7 +311,7 @@
 }
 
 .item-plot-full {
-  font-size: 24px;
+  font-size: 26px;
   color: #e0e0e0;
   line-height: 1.5;
   margin: 0;
@@ -302,7 +319,7 @@
 }
 
 .item-detail {
-  font-size: 21px;
+  font-size: 23px;
   color: #d2d2d2;
   margin: 0 0 10px 0;
   line-height: 1.3;
@@ -435,14 +452,14 @@
 
 .item-details-title {
   color: #ffffff;
-  font-size: 34px;
+  font-size: 36px;
   line-height: 1.2;
   margin: 0 0 20px;
 }
 
 .item-details-section-title {
   color: #63c884;
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 600;
   margin: 0 0 8px;
 }

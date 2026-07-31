@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, cleanup } from '@testing-library/preact'
+import { render, screen, cleanup, fireEvent } from '@testing-library/preact'
 import { h } from 'preact'
 import { PlayerScreen } from '../../src/screens/PlayerScreen'
 import { I18nProvider } from '../../src/i18n/context'
@@ -86,6 +86,73 @@ describe('PlayerScreen', () => {
       renderWithI18n(<PlayerScreen {...mockProps} />)
 
       expect(document.querySelector('.player-state-button')).toBeDefined()
+    })
+
+    it('renders previous and next episode buttons with episode numbers', () => {
+      renderWithI18n(
+        <PlayerScreen
+          {...mockProps}
+          previousEpisode={{ season: 1, episode: 2 }}
+          nextEpisode={{ season: 1, episode: 4 }}
+          onPlayPreviousEpisode={vi.fn()}
+          onPlayNextEpisode={vi.fn()}
+        />
+      )
+
+      expect(screen.getByText('Previous')).toBeDefined()
+      expect(screen.getByText('S1E2')).toBeDefined()
+      expect(screen.getByText('Next')).toBeDefined()
+      expect(screen.getByText('S1E4')).toBeDefined()
+    })
+
+    it('supports remote navigation between episode controls', () => {
+      renderWithI18n(
+        <PlayerScreen
+          {...mockProps}
+          previousEpisode={{ season: 1, episode: 2 }}
+          nextEpisode={{ season: 1, episode: 4 }}
+          onPlayPreviousEpisode={vi.fn()}
+          onPlayNextEpisode={vi.fn()}
+        />
+      )
+
+      fireEvent.keyDown(document, { keyCode: 40 })
+      expect(document.querySelector('.player-state-button.focused')).not.toBeNull()
+
+      fireEvent.keyDown(document, { keyCode: 39 })
+      expect(document.querySelector('.player-episode-button.focused')?.textContent).toContain('Next')
+    })
+  })
+
+  describe('episode completion', () => {
+    it('automatically starts the next episode once when playback ends', () => {
+      const onPlayNextEpisode = vi.fn()
+      renderWithI18n(
+        <PlayerScreen
+          {...mockProps}
+          nextEpisode={{ season: 2, episode: 1 }}
+          onPlayNextEpisode={onPlayNextEpisode}
+        />
+      )
+
+      const video = document.querySelector('.player-video') as HTMLVideoElement
+      Object.defineProperty(video, 'duration', { configurable: true, value: 2700 })
+
+      fireEvent.ended(video)
+      fireEvent.ended(video)
+
+      expect(onPlayNextEpisode).toHaveBeenCalledTimes(1)
+    })
+
+    it('stays in the player when there is no next episode', () => {
+      const onTimeUpdate = vi.fn()
+      renderWithI18n(<PlayerScreen {...mockProps} onTimeUpdate={onTimeUpdate} />)
+
+      const video = document.querySelector('.player-video') as HTMLVideoElement
+      Object.defineProperty(video, 'duration', { configurable: true, value: 2700 })
+      fireEvent.ended(video)
+
+      expect(document.querySelector('.player-screen')).not.toBeNull()
     })
   })
 

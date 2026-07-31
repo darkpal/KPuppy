@@ -24,6 +24,7 @@ import { saveTokens } from './storage'
 import { launchNativePlayer, getStreamUrl, withHlsAudioIndex, getAvailableQualities } from './webos/player'
 import { platformBack } from './webos/service'
 import { getResumeTime } from './utils/watching'
+import { getEpisodeNeighbors, type EpisodeNavigationTarget } from './utils/episodes'
 import { useI18n } from './i18n'
 import { Translations } from './i18n/translations'
 import './styles/global.css'
@@ -50,6 +51,8 @@ interface PlayerState {
   video: number
   season?: number
   episode?: number
+  previousEpisode?: EpisodeNavigationTarget
+  nextEpisode?: EpisodeNavigationTarget
   startTime: number
   initialAudioIndex: number
 }
@@ -365,6 +368,7 @@ export function App() {
 
     try {
       const item = await getItem(itemId)
+      const episodeNeighbors = getEpisodeNeighbors(item.seasons, season, episode)
 
       let files = item.videos?.[0]?.files
       let audios = item.videos?.[0]?.audios || []
@@ -452,6 +456,8 @@ export function App() {
             video: videoNumber,
             season,
             episode,
+            previousEpisode: episodeNeighbors.previousEpisode,
+            nextEpisode: episodeNeighbors.nextEpisode,
             startTime,
             initialAudioIndex
           }
@@ -595,6 +601,18 @@ export function App() {
         startTime={state.player.startTime}
         initialAudioIndex={state.player.initialAudioIndex}
         itemId={state.player.itemId}
+        previousEpisode={state.player.previousEpisode}
+        nextEpisode={state.player.nextEpisode}
+        onPlayPreviousEpisode={state.player.previousEpisode ? () => {
+          const player = stateRef.current.player
+          const target = player?.previousEpisode
+          if (player && target) void handlePlay(player.itemId, target.season, target.episode, { quality: player.initialQuality })
+        } : undefined}
+        onPlayNextEpisode={state.player.nextEpisode ? () => {
+          const player = stateRef.current.player
+          const target = player?.nextEpisode
+          if (player && target) void handlePlay(player.itemId, target.season, target.episode, { quality: player.initialQuality })
+        } : undefined}
         onBack={handleClosePlayer}
         onTimeUpdate={handleTimeUpdate}
       />

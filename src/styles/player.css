@@ -163,11 +163,73 @@
   justify-content: space-between;
 }
 
+.player-episode-controls {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.player-episode-button {
+  min-height: 52px;
+  padding: 8px 14px;
+  border: 2px solid rgba(99, 200, 132, 0.48);
+  border-radius: 8px;
+  background: rgba(8, 22, 14, 0.82);
+  color: #fff;
+  font: inherit;
+  font-size: 18px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  box-sizing: border-box;
+}
+
+.player-episode-button:hover,
+.player-episode-button:focus,
+.player-episode-button.focused,
+.player-state-button.focused {
+  border-color: #91e5ad;
+  background: #63c884;
+  color: #07120b;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(145, 229, 173, 0.24);
+}
+
+.player-episode-button-icon {
+  font-size: 28px;
+  font-weight: 400;
+  line-height: 0.8;
+}
+
+.player-episode-button-label {
+  display: none;
+}
+
+.player-episode-button:hover .player-episode-button-label,
+.player-episode-button:focus .player-episode-button-label,
+.player-episode-button.focused .player-episode-button-label {
+  display: inline;
+}
+
+.player-episode-button-number {
+  color: #91e5ad;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.player-episode-button:hover .player-episode-button-number,
+.player-episode-button:focus .player-episode-button-number,
+.player-episode-button.focused .player-episode-button-number {
+  color: #07120b;
+}
+
 .player-state-button {
   min-width: 64px;
   min-height: 64px;
   padding: 12px 16px;
-  border: 0;
+  border: 2px solid transparent;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.12);
   color: #fff;
@@ -181,6 +243,15 @@
 .player-state-button:focus {
   background: rgba(255, 255, 255, 0.22);
   outline: none;
+}
+
+.player-state-button.focused,
+.player-state-button.focused:hover,
+.player-state-button.focused:focus {
+  border-color: #91e5ad;
+  background: #63c884;
+  color: #07120b;
+  box-shadow: 0 0 0 3px rgba(145, 229, 173, 0.24);
 }
 
 .icon-play {

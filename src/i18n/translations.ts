@@ -62,6 +62,8 @@ export interface Translations {
   seasons: string
   season: string
   episode: string
+  previousEpisode: string
+  nextEpisode: string
   director: string
   cast: string
   country: string
@@ -241,6 +243,8 @@ const en: Translations = {
   seasons: 'Seasons',
   season: 'Season',
   episode: 'Episode',
+  previousEpisode: 'Previous',
+  nextEpisode: 'Next',
   director: 'Director',
   cast: 'Cast',
   country: 'Country',
@@ -405,6 +409,8 @@ const ru: Translations = {
   seasons: 'Сезоны',
   season: 'Сезон',
   episode: 'Серия',
+  previousEpisode: 'Предыдущая',
+  nextEpisode: 'Следующая',
   director: 'Режиссёр',
   cast: 'В ролях',
   country: 'Страна',
@@ -569,6 +575,8 @@ const de: Translations = {
   seasons: 'Staffeln',
   season: 'Staffel',
   episode: 'Folge',
+  previousEpisode: 'Vorherige',
+  nextEpisode: 'Nächste',
   director: 'Regisseur',
   cast: 'Besetzung',
   country: 'Land',

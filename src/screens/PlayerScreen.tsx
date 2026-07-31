@@ -6,6 +6,7 @@ import { saveAudioPreference, getAudioTrackName } from '../storage'
 import { KEY_CODES } from '../hooks'
 import { useI18n } from '../i18n'
 import { convertSrtUrlToVtt, isSrtUrl } from '../utils/subtitles'
+import type { EpisodeNavigationTarget } from '../utils/episodes'
 import '../styles/player.css'
 
 function IconAudio() {
@@ -73,6 +74,10 @@ export interface PlayerProps {
   startTime?: number
   initialAudioIndex?: number
   itemId?: number
+  previousEpisode?: EpisodeNavigationTarget
+  nextEpisode?: EpisodeNavigationTarget
+  onPlayPreviousEpisode?: () => void
+  onPlayNextEpisode?: () => void
   onBack: () => void
   onTimeUpdate?: (time: number) => void
 }
@@ -84,6 +89,8 @@ interface ControlsState {
   selectedSubtitleIndex: number
   selectedQuality: string | null
 }
+
+type PrimaryControl = 'previous' | 'play' | 'next'
 
 export function PlayerScreen({
   url,
@@ -97,6 +104,10 @@ export function PlayerScreen({
   startTime = 0,
   initialAudioIndex = 0,
   itemId = 0,
+  previousEpisode,
+  nextEpisode,
+  onPlayPreviousEpisode,
+  onPlayNextEpisode,
   onBack,
   onTimeUpdate
 }: PlayerProps) {
@@ -108,6 +119,7 @@ export function PlayerScreen({
   const isSeekingRef = useRef(false)
   const startTimeAppliedRef = useRef(false)
   const resumeAfterReloadRef = useRef<number | null>(null)
+  const endedNavigationRef = useRef(false)
 
   const availableQualities = getAvailableQualities(files)
 
@@ -127,12 +139,35 @@ export function PlayerScreen({
   })
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [hoverPreview, setHoverPreview] = useState<{ percent: number; time: number } | null>(null)
+  const [primaryControlsActive, setPrimaryControlsActive] = useState(false)
+  const [primaryControlFocus, setPrimaryControlFocus] = useState<PrimaryControl>('play')
 
   const selectableSubs = useMemo(
     () => subtitles.filter(sub => Boolean(sub.url)),
     [subtitles]
   )
   const hasSubtitles = selectableSubs.length > 0
+
+  useEffect(() => {
+    endedNavigationRef.current = false
+    startTimeAppliedRef.current = false
+    resumeAfterReloadRef.current = null
+    lastTimeRef.current = 0
+    setCurrentTime(0)
+    setDuration(0)
+    setBuffered(0)
+    setErrorMessage(null)
+    setControls(prev => ({
+      ...prev,
+      visible: true,
+      activePanel: 'none',
+      selectedAudioIndex: Math.max(0, Math.min(initialAudioIndex, Math.max(0, audios.length - 1))),
+      selectedSubtitleIndex: -1,
+      selectedQuality: initialQuality || availableQualities[0] || null
+    }))
+    setPrimaryControlsActive(false)
+    setPrimaryControlFocus('play')
+  }, [url, initialAudioIndex, audios.length, initialQuality, availableQualities[0]])
 
   const flushTime = useCallback((time?: number) => {
     const video = videoRef.current
@@ -209,6 +244,7 @@ export function PlayerScreen({
     controlsTimeoutRef.current = window.setTimeout(() => {
       if (isPlaying && !isSeekingRef.current) {
         setControls(prev => ({ ...prev, visible: false, activePanel: 'none' }))
+        setPrimaryControlsActive(false)
       }
     }, 5000)
   }, [isPlaying])
@@ -307,7 +343,7 @@ export function PlayerScreen({
   const handleSurfaceClick = useCallback((event: JSX.TargetedMouseEvent<HTMLDivElement>) => {
     const target = event.target as HTMLElement | null
     if (!target) return
-    if (target.closest('.player-progress-bar, .player-panel, .player-state-button, .player-hints')) {
+    if (target.closest('.player-progress-bar, .player-panel, .player-state-button, .player-episode-button, .player-hints')) {
       return
     }
     if (controls.activePanel !== 'none') {
@@ -316,6 +352,13 @@ export function PlayerScreen({
     }
     togglePlay()
   }, [togglePlay, controls.activePanel])
+
+  const playAdjacentEpisode = useCallback((callback?: () => void) => {
+    if (!callback) return
+    videoRef.current?.pause()
+    flushTime()
+    callback()
+  }, [flushTime])
 
   const selectAudio = useCallback((listIndex: number) => {
     const video = videoRef.current
@@ -458,6 +501,14 @@ export function PlayerScreen({
       setIsPlaying(false)
       flushTime(video.currentTime)
     }
+    const handleEnded = () => {
+      setIsPlaying(false)
+      flushTime(Number.isFinite(video.duration) ? video.duration : video.currentTime)
+      if (onPlayNextEpisode && !endedNavigationRef.current) {
+        endedNavigationRef.current = true
+        onPlayNextEpisode()
+      }
+    }
     const handleTimeUpdate = () => {
       setCurrentTime(video.currentTime)
       if (onTimeUpdate && Math.abs(video.currentTime - lastTimeRef.current) >= 10) {
@@ -498,6 +549,7 @@ export function PlayerScreen({
     video.addEventListener('play', handlePlay)
     video.addEventListener('error', handleError)
     video.addEventListener('pause', handlePause)
+    video.addEventListener('ended', handleEnded)
     video.addEventListener('timeupdate', handleTimeUpdate)
     video.addEventListener('durationchange', handleDurationChange)
     video.addEventListener('progress', handleProgress)
@@ -507,12 +559,13 @@ export function PlayerScreen({
       video.removeEventListener('play', handlePlay)
       video.removeEventListener('error', handleError)
       video.removeEventListener('pause', handlePause)
+      video.removeEventListener('ended', handleEnded)
       video.removeEventListener('timeupdate', handleTimeUpdate)
       video.removeEventListener('durationchange', handleDurationChange)
       video.removeEventListener('progress', handleProgress)
       video.removeEventListener('loadedmetadata', handleLoadedMetadata)
     }
-  }, [startTime, onTimeUpdate, flushTime])
+  }, [startTime, onTimeUpdate, onPlayNextEpisode, flushTime])
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -622,6 +675,45 @@ export function PlayerScreen({
         return
       }
 
+      if (primaryControlsActive) {
+        const availableControls: PrimaryControl[] = [
+          ...(onPlayPreviousEpisode ? ['previous' as const] : []),
+          'play',
+          ...(onPlayNextEpisode ? ['next' as const] : [])
+        ]
+        const currentIndex = Math.max(0, availableControls.indexOf(primaryControlFocus))
+
+        if (e.keyCode === KEY_CODES.LEFT) {
+          setPrimaryControlFocus(availableControls[Math.max(0, currentIndex - 1)])
+          e.preventDefault()
+          return
+        }
+        if (e.keyCode === KEY_CODES.RIGHT) {
+          setPrimaryControlFocus(availableControls[Math.min(availableControls.length - 1, currentIndex + 1)])
+          e.preventDefault()
+          return
+        }
+        if (e.keyCode === KEY_CODES.ENTER) {
+          if (primaryControlFocus === 'previous') playAdjacentEpisode(onPlayPreviousEpisode)
+          else if (primaryControlFocus === 'next') playAdjacentEpisode(onPlayNextEpisode)
+          else togglePlay()
+          e.preventDefault()
+          return
+        }
+        if (e.keyCode === KEY_CODES.UP) {
+          setPrimaryControlsActive(false)
+          e.preventDefault()
+          return
+        }
+        if (e.keyCode === KEY_CODES.DOWN) {
+          if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current)
+          setPrimaryControlsActive(false)
+          setControls(prev => ({ ...prev, visible: false, activePanel: 'none' }))
+          e.preventDefault()
+          return
+        }
+      }
+
       switch (e.keyCode) {
         case KEY_CODES.ENTER:
         case 32:
@@ -643,10 +735,16 @@ export function PlayerScreen({
           e.preventDefault()
           break
         case KEY_CODES.DOWN:
-          if (controlsTimeoutRef.current) {
-            clearTimeout(controlsTimeoutRef.current)
+          if (controls.visible && (onPlayPreviousEpisode || onPlayNextEpisode)) {
+            setPrimaryControlsActive(true)
+            setPrimaryControlFocus('play')
+            showControls()
+          } else {
+            if (controlsTimeoutRef.current) {
+              clearTimeout(controlsTimeoutRef.current)
+            }
+            setControls(prev => ({ ...prev, visible: false, activePanel: 'none' }))
           }
-          setControls(prev => ({ ...prev, visible: false, activePanel: 'none' }))
           e.preventDefault()
           break
         case KEY_CODES.BACK:
@@ -665,6 +763,12 @@ export function PlayerScreen({
         case KEY_CODES.YELLOW:
           openSubtitlesPanel()
           e.preventDefault()
+          break
+        case KEY_CODES.BLUE:
+          if (onPlayNextEpisode) {
+            playAdjacentEpisode(onPlayNextEpisode)
+            e.preventDefault()
+          }
           break
       }
     }
@@ -686,7 +790,12 @@ export function PlayerScreen({
     flushTime,
     openAudioPanel,
     openSubtitlesPanel,
-    openQualityPanel
+    openQualityPanel,
+    primaryControlsActive,
+    primaryControlFocus,
+    onPlayPreviousEpisode,
+    onPlayNextEpisode,
+    playAdjacentEpisode
   ])
 
   useEffect(() => {
@@ -764,17 +873,61 @@ export function PlayerScreen({
             </div>
 
             <div class="player-controls-row">
-              <button
-                type="button"
-                class="player-state-button"
-                onClick={(event) => {
-                  event.stopPropagation()
-                  togglePlay()
-                }}
-                aria-label={isPlaying ? 'Pause' : 'Play'}
-              >
-                {isPlaying ? <span class="icon-pause" /> : <span class="icon-play" />}
-              </button>
+              <div class="player-episode-controls">
+                {previousEpisode && onPlayPreviousEpisode && (
+                  <button
+                    type="button"
+                    class={`player-episode-button ${primaryControlsActive && primaryControlFocus === 'previous' ? 'focused' : ''}`}
+                    aria-label={`${t.previousEpisode} S${previousEpisode.season}E${previousEpisode.episode}`}
+                    onMouseEnter={() => {
+                      setPrimaryControlsActive(true)
+                      setPrimaryControlFocus('previous')
+                    }}
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      playAdjacentEpisode(onPlayPreviousEpisode)
+                    }}
+                  >
+                    <span class="player-episode-button-icon" aria-hidden="true">‹</span>
+                    <span class="player-episode-button-label">{t.previousEpisode}</span>
+                    <span class="player-episode-button-number">S{previousEpisode.season}E{previousEpisode.episode}</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  class={`player-state-button ${primaryControlsActive && primaryControlFocus === 'play' ? 'focused' : ''}`}
+                  onMouseEnter={() => {
+                    setPrimaryControlsActive(true)
+                    setPrimaryControlFocus('play')
+                  }}
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    togglePlay()
+                  }}
+                  aria-label={isPlaying ? 'Pause' : 'Play'}
+                >
+                  {isPlaying ? <span class="icon-pause" /> : <span class="icon-play" />}
+                </button>
+                {nextEpisode && onPlayNextEpisode && (
+                  <button
+                    type="button"
+                    class={`player-episode-button ${primaryControlsActive && primaryControlFocus === 'next' ? 'focused' : ''}`}
+                    aria-label={`${t.nextEpisode} S${nextEpisode.season}E${nextEpisode.episode}`}
+                    onMouseEnter={() => {
+                      setPrimaryControlsActive(true)
+                      setPrimaryControlFocus('next')
+                    }}
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      playAdjacentEpisode(onPlayNextEpisode)
+                    }}
+                  >
+                    <span class="player-episode-button-label">{t.nextEpisode}</span>
+                    <span class="player-episode-button-number">S{nextEpisode.season}E{nextEpisode.episode}</span>
+                    <span class="player-episode-button-icon" aria-hidden="true">›</span>
+                  </button>
+                )}
+              </div>
               <div class="player-hints">
                 {availableQualities.length > 1 && (
                   <button

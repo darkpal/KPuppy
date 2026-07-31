@@ -312,7 +312,9 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
   }, [folders, folderFocusIndex, itemFolderIds, itemId, watchlistLoading])
 
   const genres = item?.genres?.slice(0, 8) || []
-  const cast = item?.actors?.slice(0, 6) || []
+  const cast = item?.actors || []
+  const summaryCast = cast.slice(0, 6)
+  const activeCast = detailsExpanded ? cast : summaryCast
 
   const scrollDetailsToTop = useCallback(() => {
     if (detailsPageRef.current) detailsPageRef.current.scrollTop = 0
@@ -371,7 +373,7 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
     const hasSimilar = similarItems.length > 0
     const hasTrailer = !!item?.trailer?.url
     const hasGenres = genres.length > 0
-    const hasCast = cast.length > 0
+    const hasCast = activeCast.length > 0
     const primaryButton: FocusArea = hasSeries ? 'seasons' : 'play'
 
     if (showFolderDialog) {
@@ -427,7 +429,7 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
             onNavigateToMenu()
           }
         },
-        onRight: () => dispatch({ type: 'SET_META_FOCUS_INDEX', index: Math.min(cast.length - 1, metaFocusIndex + 1) }),
+        onRight: () => dispatch({ type: 'SET_META_FOCUS_INDEX', index: Math.min(activeCast.length - 1, metaFocusIndex + 1) }),
         onUp: () => {
           if (detailsExpanded) {
             closeDetails()
@@ -448,7 +450,7 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
           }
         },
         onEnter: () => {
-          const actor = cast[metaFocusIndex]
+          const actor = activeCast[metaFocusIndex]
           if (actor) onSelectActor?.(actor.name)
         }
       }
@@ -559,7 +561,7 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
       },
       onYellow: handleOpenFolderDialog
     }
-  }, [item, focusArea, availableQualities, dropdownFocusIndex, selectedQuality, onBack, onNavigateToMenu, handlePlayOrSelect, handleOpenFolderDialog, handleToggleFolder, handleToggleWatching, similarItems, similarFocusIndex, metaFocusIndex, genres, cast, onSelectItem, onSelectGenre, onSelectActor, showFolderDialog, folders, folderFocusIndex, onPlayTrailer, t, itemId, detailsExpanded, openDetails, closeDetails, scrollDetailsBy, scrollDetailsToBottom, scrollDetailsToTop])
+  }, [item, focusArea, availableQualities, dropdownFocusIndex, selectedQuality, onBack, onNavigateToMenu, handlePlayOrSelect, handleOpenFolderDialog, handleToggleFolder, handleToggleWatching, similarItems, similarFocusIndex, metaFocusIndex, genres, cast, activeCast, onSelectItem, onSelectGenre, onSelectActor, showFolderDialog, folders, folderFocusIndex, onPlayTrailer, t, itemId, detailsExpanded, openDetails, closeDetails, scrollDetailsBy, scrollDetailsToBottom, scrollDetailsToTop])
 
   useKeyboardNavigation(handlers, isActive && !!item)
 
@@ -673,12 +675,13 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
               </div>
             )}
 
-            {(countries || directors.length > 0 || cast.length > 0) && (
+            {(countries || directors.length > 0 || summaryCast.length > 0) && (
               <ItemDetails
                 className="item-summary-details"
                 countries={countries}
                 directors={directors}
-                actors={cast}
+                actors={summaryCast}
+                maxActors={6}
                 focusedActorIndex={!detailsExpanded && focusArea === 'cast' ? metaFocusIndex : null}
                 onHoverActor={(index) => {
                   dispatch({ type: 'SET_FOCUS_AREA', area: 'cast' })

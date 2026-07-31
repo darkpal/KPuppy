@@ -35,4 +35,27 @@ describe('ItemDetails', () => {
     expect(extraCount?.textContent).toBe('+2')
     expect(extraCount?.parentElement?.classList.contains('item-detail-list-item')).toBe(true)
   })
+
+  it('shows every actor in full details and respects an explicit summary limit', () => {
+    const actors = Array.from({ length: 9 }, (_, index) => ({
+      id: index + 1,
+      name: `Actor ${index + 1}`
+    }))
+
+    const { container, rerender } = render(
+      <I18nProvider>
+        <ItemDetails actors={actors} />
+      </I18nProvider>
+    )
+
+    expect(container.querySelectorAll('.item-person-chip')).toHaveLength(9)
+
+    rerender(
+      <I18nProvider>
+        <ItemDetails actors={actors} maxActors={6} />
+      </I18nProvider>
+    )
+
+    expect(container.querySelectorAll('.item-person-chip')).toHaveLength(6)
+  })
 })
