@@ -1,8 +1,8 @@
-import { useEffect, useCallback, useMemo, useReducer, useRef } from 'preact/hooks'
+import { useEffect, useCallback, useMemo, useReducer, useRef, useState } from 'preact/hooks'
 import { getItem, getMediaLinks, getSimilarItems, getBookmarkFolders, getItemFolders, addToBookmark, removeFromBookmark, toggleWatchlist, isItemInWatchlist, ItemDetails as ItemDetailsType, MovieItem, VideoFile, BookmarkFolder } from '../api/kinopub'
 import { getLocalSettings } from '../storage'
 import { useEventListener, useKeyboardNavigation, useWheelScroll } from '../hooks'
-import { LoadingState } from '../components/LoadingSpinner'
+import { LoadingState, LoadingSpinner } from '../components/LoadingSpinner'
 import { useI18n } from '../i18n'
 import { ItemDetails } from '../components/ItemDetails'
 import { SimilarItems } from '../components/SimilarItems'
@@ -158,6 +158,13 @@ export function ItemScreen({ itemId, preview = null, onBack, onPlay, onPlayTrail
   const [state, dispatch] = useReducer(itemScreenReducer, initialState)
   const { item, loading, error, focusArea, selectedQuality, dropdownFocusIndex, similarItems, similarFocusIndex, metaFocusIndex, watchlistLoading, showFolderDialog, folders, itemFolderIds, folderFocusIndex, isWatching, watchingToggleLoading, detailsExpanded } = state
   const detailsPageRef = useRef<HTMLElement>(null)
+  // Landscape banner only — never use list medium/big (portrait) as full-bleed art.
+  const posterUrl = (item?.posters?.wide || '').trim() || null
+  const [bannerReady, setBannerReady] = useState(false)
+
+  useEffect(() => {
+    setBannerReady(false)
+  }, [posterUrl, itemId])
 
   useEffect(() => {
     let cancelled = false
@@ -646,14 +653,10 @@ export function ItemScreen({ itemId, preview = null, onBack, onPlay, onPlayTrail
     )
   }
 
-  // Prefer wide once full item (or API) provides it; fall back to list-sized
-  // medium/big so preview paint can reuse home posters before wide arrives.
-  const posterUrl =
-    item?.posters?.wide ||
-    shell.posters?.wide ||
-    shell.posters?.big ||
-    shell.posters?.medium ||
-    shell.posters?.small
+  // Full-bleed banner waits for landscape `wide` art; list thumbs stay out of the banner.
+  const bannerPending = posterUrl
+    ? !bannerReady
+    : (loading || (!!preview && !item))
   const hasSeasons = Boolean(item?.seasons && item.seasons.length > 0) ||
     (!item && (preview?.type === 'serial' || preview?.type === 'docuserial' || preview?.type === 'tvshow'))
   const durationMinutes = item?.duration?.average
@@ -687,16 +690,25 @@ export function ItemScreen({ itemId, preview = null, onBack, onPlay, onPlayTrail
   return (
     <>
     <div class="item-screen">
-      {posterUrl && (
-        <div class="item-banner">
+      <div class="item-banner">
+        {bannerPending && (
+          <div class="item-banner-loading" aria-hidden="true">
+            <LoadingSpinner size="md" />
+          </div>
+        )}
+        {posterUrl && (
           <PosterImage
             src={posterUrl}
             alt=""
             class="item-banner-image"
             loading="eager"
+            revealWhenDecoded
+            minNaturalWidth={480}
+            onReady={() => setBannerReady(true)}
+            onFailed={() => setBannerReady(true)}
           />
-        </div>
-      )}
+        )}
+      </div>
 
       <div class={`item-content ${detailsExpanded ? 'details-expanded' : ''}`}>
         <section class="item-summary" aria-hidden={detailsExpanded}>

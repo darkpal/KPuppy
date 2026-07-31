@@ -36,7 +36,7 @@ const mockMovieDetails = {
   type: 'movie',
   year: 2024,
   plot: 'A test movie plot',
-  posters: { small: '', medium: 'poster.jpg', big: '' },
+  posters: { small: '', medium: 'poster.jpg', big: '', wide: 'wide.jpg' },
   rating: 8,
   imdbRating: 7.5,
   kinopoiskRating: 8.2,
@@ -129,9 +129,10 @@ describe('ItemScreen', () => {
 
       renderWithI18n(<ItemScreen {...mockProps} preview={preview} />)
 
-      expect(document.querySelector('.spinner')).toBeNull()
+      expect(document.querySelector('.loading-container .spinner')).toBeNull()
       expect(screen.getAllByText('Preview Movie').length).toBeGreaterThan(0)
-      expect(document.querySelector('.item-banner-image')).not.toBeNull()
+      expect(document.querySelector('.item-banner-image')).toBeNull()
+      expect(document.querySelector('.item-banner-loading .spinner')).not.toBeNull()
     })
 
     it('renders the card without waiting for supplemental media links', async () => {
@@ -142,7 +143,7 @@ describe('ItemScreen', () => {
       await waitFor(() => {
         expect(screen.getAllByText('Test Movie')).toHaveLength(2)
       })
-      expect(document.querySelector('.spinner')).toBeNull()
+      expect(document.querySelector('.loading-container .spinner')).toBeNull()
     })
   })
 
@@ -219,7 +220,7 @@ describe('ItemScreen', () => {
       await waitFor(() => {
         const backdrop = document.querySelector('.item-banner-image') as HTMLImageElement
         expect(backdrop).not.toBeNull()
-        expect(backdrop.getAttribute('src')).toBe('poster.jpg')
+        expect(backdrop.getAttribute('src')).toBe('wide.jpg')
         expect(backdrop.getAttribute('loading')).toBe('eager')
       })
     })
@@ -243,7 +244,7 @@ describe('ItemScreen', () => {
       })
     })
 
-    it('uses preview medium until wide arrives from getItem', async () => {
+    it('keeps list preview posters out of the banner until wide arrives', async () => {
       let resolveItem!: (value: typeof mockMovieDetails) => void
       vi.mocked(kinopub.getItem).mockImplementation(
         () => new Promise(resolve => { resolveItem = resolve })
@@ -266,9 +267,8 @@ describe('ItemScreen', () => {
 
       renderWithI18n(<ItemScreen {...mockProps} preview={preview} />)
 
-      expect(
-        (document.querySelector('.item-banner-image') as HTMLImageElement).getAttribute('src')
-      ).toBe('preview-medium.jpg')
+      expect(document.querySelector('.item-banner-image')).toBeNull()
+      expect(document.querySelector('.item-banner-loading .spinner')).not.toBeNull()
 
       resolveItem({
         ...mockMovieDetails,
@@ -285,6 +285,25 @@ describe('ItemScreen', () => {
           (document.querySelector('.item-banner-image') as HTMLImageElement).getAttribute('src')
         ).toBe('wide.jpg')
       })
+    })
+
+    it('does not fall back to medium when wide is missing', async () => {
+      vi.mocked(kinopub.getItem).mockResolvedValue({
+        ...mockMovieDetails,
+        posters: {
+          small: 'small.jpg',
+          medium: 'medium.jpg',
+          big: 'big.jpg',
+          wide: ''
+        }
+      })
+
+      renderWithI18n(<ItemScreen {...mockProps} />)
+
+      await waitFor(() => {
+        expect(screen.getAllByText('Test Movie').length).toBeGreaterThan(0)
+      })
+      expect(document.querySelector('.item-banner-image')).toBeNull()
     })
 
     it('renders play button for movies', async () => {
