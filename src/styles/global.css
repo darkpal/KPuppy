@@ -89,6 +89,24 @@ html, body {
   height: 100%;
 }
 
+.player-preparing-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.72);
+  box-sizing: border-box;
+}
+
+.player-preparing-overlay-alone {
+  background: #141414;
+}
+
 .hide-scrollbar {
   scrollbar-width: none;
 }

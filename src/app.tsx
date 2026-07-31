@@ -14,6 +14,7 @@ import { SeasonsScreen } from './screens/SeasonsScreen'
 import { NewEpisodesScreen } from './screens/NewEpisodesScreen'
 import { PlayerScreen } from './screens/PlayerScreen'
 import { RemoteDebugOverlay } from './components/RemoteDebugOverlay'
+import { LoadingState } from './components/LoadingSpinner'
 import { ALL_MENU_ITEMS_COUNT, getMenuIdByIndex } from './components/SideMenu'
 import { KEY_CODES } from './hooks'
 import { ScreenManager } from './components/ScreenManager'
@@ -76,6 +77,7 @@ interface AppState {
   returnToItemId: number | null
   returnToSeriesId: number | null
   player: PlayerState | null
+  playerPreparing: boolean
   searchState: SearchScreenState | null
   searchReturnTarget: SearchReturnTarget | null
   categoryGenreId: number | null
@@ -134,6 +136,7 @@ export function App() {
       returnToItemId: null,
       returnToSeriesId: null,
       player: null,
+      playerPreparing: false,
       searchState: null,
       searchReturnTarget: null,
       categoryGenreId: null,
@@ -151,6 +154,7 @@ export function App() {
   const [initializing, setInitializing] = useState(true)
   const stateRef = useRef(state)
   stateRef.current = state
+  const playInFlightRef = useRef(false)
 
   useEffect(() => {
     async function checkAndRefreshToken() {
@@ -390,12 +394,13 @@ export function App() {
   }, [])
 
   const handleClosePlayer = useCallback(() => {
-    setState(prev => ({ ...prev, player: null }))
+    setState(prev => ({ ...prev, player: null, playerPreparing: false }))
   }, [])
 
   const handlePlayTrailer = useCallback((url: string, title: string) => {
     setState(prev => ({
       ...prev,
+      playerPreparing: false,
       player: {
         url,
         title,
@@ -411,7 +416,11 @@ export function App() {
   }, [])
 
   const handlePlay = useCallback(async (itemId: number, season?: number, episode?: number, options?: { quality?: string }) => {
+    if (playInFlightRef.current) return
+    playInFlightRef.current = true
+
     const localSettings = getLocalSettings()
+    setState(prev => ({ ...prev, playerPreparing: true }))
 
     if (localSettings.playerType === 'native') {
       const { itemId: currentItemId, seriesId, selectedMenuId, screenFocus } = stateRef.current
@@ -450,33 +459,33 @@ export function App() {
         }
       }
 
-      if (mediaId) {
-        try {
-          const links = await getMediaLinks(mediaId)
-          if (links.files.length > 0) files = links.files
-          if (links.subtitles.length > 0) subtitles = links.subtitles
-        } catch (err) {
-          if (import.meta.env.DEV) console.error('getMediaLinks failed:', err)
-        }
-      }
+      const needProgress = startTime <= 0
+      const [linksResult, progressResult, deviceResult] = await Promise.all([
+        mediaId
+          ? getMediaLinks(mediaId).catch(err => {
+              if (import.meta.env.DEV) console.error('getMediaLinks failed:', err)
+              return null
+            })
+          : Promise.resolve(null),
+        needProgress
+          ? getWatchingProgress(itemId, videoNumber, season).catch(() => null)
+          : Promise.resolve(null),
+        getDeviceInfo().catch(() => null)
+      ])
 
-      if (startTime <= 0) {
-        try {
-          const progress = await getWatchingProgress(itemId, videoNumber, season)
-          startTime = getResumeTime(progress)
-        } catch {
-        }
+      if (linksResult) {
+        if (linksResult.files.length > 0) files = linksResult.files
+        if (linksResult.subtitles.length > 0) subtitles = linksResult.subtitles
+      }
+      if (progressResult) {
+        startTime = getResumeTime(progressResult)
       }
 
       const preferredQuality = options?.quality || (localSettings.defaultQuality === 'auto' ? undefined : localSettings.defaultQuality)
 
       let streamingType: string | undefined
-      try {
-        const deviceInfo = await getDeviceInfo()
-        const selectedType = deviceInfo.settings.streamingType?.find(t => t.selected === 1)
-        streamingType = selectedType?.label?.toLowerCase()
-      } catch {
-      }
+      const selectedType = deviceResult?.settings.streamingType?.find(t => t.selected === 1)
+      streamingType = selectedType?.label?.toLowerCase()
 
       let streamUrl = getStreamUrl(
         files || [],
@@ -500,6 +509,7 @@ export function App() {
 
         setState(prev => ({
           ...prev,
+          playerPreparing: false,
           player: {
             url: streamUrl,
             title,
@@ -528,6 +538,9 @@ export function App() {
         })
       }
     } catch {
+    } finally {
+      playInFlightRef.current = false
+      setState(prev => (prev.playerPreparing ? { ...prev, playerPreparing: false } : prev))
     }
   }, [])
 
@@ -646,33 +659,48 @@ export function App() {
 
   if (state.player) {
     return (
-      <PlayerScreen
-        url={state.player.url}
-        title={state.player.title}
-        poster={state.player.poster}
-        audios={state.player.audios}
-        subtitles={state.player.subtitles}
-        files={state.player.files}
-        streamingType={state.player.streamingType}
-        initialQuality={state.player.initialQuality}
-        startTime={state.player.startTime}
-        initialAudioIndex={state.player.initialAudioIndex}
-        itemId={state.player.itemId}
-        previousEpisode={state.player.previousEpisode}
-        nextEpisode={state.player.nextEpisode}
-        onPlayPreviousEpisode={state.player.previousEpisode ? () => {
-          const player = stateRef.current.player
-          const target = player?.previousEpisode
-          if (player && target) void handlePlay(player.itemId, target.season, target.episode, { quality: player.initialQuality })
-        } : undefined}
-        onPlayNextEpisode={state.player.nextEpisode ? () => {
-          const player = stateRef.current.player
-          const target = player?.nextEpisode
-          if (player && target) void handlePlay(player.itemId, target.season, target.episode, { quality: player.initialQuality })
-        } : undefined}
-        onBack={handleClosePlayer}
-        onTimeUpdate={handleTimeUpdate}
-      />
+      <>
+        <PlayerScreen
+          url={state.player.url}
+          title={state.player.title}
+          poster={state.player.poster}
+          audios={state.player.audios}
+          subtitles={state.player.subtitles}
+          files={state.player.files}
+          streamingType={state.player.streamingType}
+          initialQuality={state.player.initialQuality}
+          startTime={state.player.startTime}
+          initialAudioIndex={state.player.initialAudioIndex}
+          itemId={state.player.itemId}
+          previousEpisode={state.player.previousEpisode}
+          nextEpisode={state.player.nextEpisode}
+          onPlayPreviousEpisode={state.player.previousEpisode ? () => {
+            const player = stateRef.current.player
+            const target = player?.previousEpisode
+            if (player && target) void handlePlay(player.itemId, target.season, target.episode, { quality: player.initialQuality })
+          } : undefined}
+          onPlayNextEpisode={state.player.nextEpisode ? () => {
+            const player = stateRef.current.player
+            const target = player?.nextEpisode
+            if (player && target) void handlePlay(player.itemId, target.season, target.episode, { quality: player.initialQuality })
+          } : undefined}
+          onBack={handleClosePlayer}
+          onTimeUpdate={handleTimeUpdate}
+        />
+        {state.playerPreparing && (
+          <div class="player-preparing-overlay" role="status" aria-live="polite">
+            <LoadingState size="lg" message={t.loading} className="loading-container-fullheight" />
+          </div>
+        )}
+      </>
+    )
+  }
+
+  if (state.playerPreparing) {
+    return (
+      <div class="player-preparing-overlay player-preparing-overlay-alone" role="status" aria-live="polite">
+        <LoadingState size="lg" message={t.loading} className="loading-container-fullheight" />
+      </div>
     )
   }
 

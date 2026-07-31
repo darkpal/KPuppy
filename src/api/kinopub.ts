@@ -675,6 +675,10 @@ export interface DeviceInfo {
 }
 
 export async function getDeviceInfo(): Promise<DeviceInfo> {
+  const cacheKey = createCacheKey('device', 'info')
+  const cached = getCached<DeviceInfo>(cacheKey)
+  if (cached) return cached
+
   const response = await authFetch(`${BASE_URL}/v1/device/info`)
 
   if (!response.ok) {
@@ -684,7 +688,7 @@ export async function getDeviceInfo(): Promise<DeviceInfo> {
   const data = await response.json()
   const device = data.device
 
-  return {
+  const result: DeviceInfo = {
     id: device.id,
     settings: {
       support4k: device.settings?.support4k?.value ?? 0,
@@ -696,6 +700,8 @@ export async function getDeviceInfo(): Promise<DeviceInfo> {
       streamingType: device.settings?.streamingType?.value || []
     }
   }
+  setCache(cacheKey, result)
+  return result
 }
 
 export interface UpdateSettingsParams {
@@ -720,6 +726,7 @@ export async function updateDeviceSettings(deviceId: number, settings: UpdateSet
   }
 
   await response.json()
+  invalidateCache('device:info')
 }
 
 function getWebOSVersion(): string {

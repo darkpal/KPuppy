@@ -166,7 +166,11 @@
 .player-episode-controls {
   display: flex;
   align-items: center;
-  gap: 28px;
+}
+
+/* flex gap unsupported on webOS Chrome 53 */
+.player-episode-controls > * + * {
+  margin-left: 28px;
 }
 
 .player-episode-button {
@@ -174,9 +178,9 @@
   height: 64px;
   flex: 0 0 64px;
   padding: 0;
-  border: 2px solid rgba(99, 200, 132, 0.48);
+  border: 2px solid transparent;
   border-radius: 8px;
-  background: rgba(8, 22, 14, 0.82);
+  background: rgba(255, 255, 255, 0.12);
   color: #fff;
   font: inherit;
   cursor: pointer;
@@ -184,17 +188,6 @@
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
-}
-
-.player-episode-button:hover,
-.player-episode-button:focus,
-.player-episode-button.focused,
-.player-state-button.focused {
-  border-color: #91e5ad;
-  background: #63c884;
-  color: #07120b;
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(145, 229, 173, 0.24);
 }
 
 .player-episode-skip-icon {
@@ -233,9 +226,12 @@
 }
 
 .player-state-button {
+  width: 64px;
+  height: 64px;
+  flex: 0 0 64px;
   min-width: 64px;
   min-height: 64px;
-  padding: 12px 16px;
+  padding: 0;
   border: 2px solid transparent;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.12);
@@ -244,21 +240,22 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  box-sizing: border-box;
 }
 
+.player-episode-button:hover,
+.player-episode-button:focus,
+.player-episode-button.focused,
 .player-state-button:hover,
-.player-state-button:focus {
-  background: rgba(255, 255, 255, 0.22);
-  outline: none;
-}
-
+.player-state-button:focus,
 .player-state-button.focused,
 .player-state-button.focused:hover,
 .player-state-button.focused:focus {
-  border-color: #91e5ad;
-  background: #63c884;
-  color: #07120b;
-  box-shadow: 0 0 0 3px rgba(145, 229, 173, 0.24);
+  border-color: rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.28);
+  color: #fff;
+  outline: none;
+  box-shadow: none;
 }
 
 .icon-play {
@@ -353,8 +350,8 @@
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.15);
 }
 
-.player-hint-key-dots.dots-2 {
-  gap: 5px;
+.player-hint-key-dots.dots-2 .player-hint-key-dot + .player-hint-key-dot {
+  margin-left: 5px;
 }
 
 .player-hint-key-dots.dots-3 {
