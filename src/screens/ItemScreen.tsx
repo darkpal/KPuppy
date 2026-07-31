@@ -646,11 +646,13 @@ export function ItemScreen({ itemId, preview = null, onBack, onPlay, onPlayTrail
     )
   }
 
-  // Prefer list-cached medium/big first so home posters paint instantly; wide can wait.
+  // Prefer wide once full item (or API) provides it; fall back to list-sized
+  // medium/big so preview paint can reuse home posters before wide arrives.
   const posterUrl =
-    shell.posters?.medium ||
-    shell.posters?.big ||
+    item?.posters?.wide ||
     shell.posters?.wide ||
+    shell.posters?.big ||
+    shell.posters?.medium ||
     shell.posters?.small
   const hasSeasons = Boolean(item?.seasons && item.seasons.length > 0) ||
     (!item && (preview?.type === 'serial' || preview?.type === 'docuserial' || preview?.type === 'tvshow'))

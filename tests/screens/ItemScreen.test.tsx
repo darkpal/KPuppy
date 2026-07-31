@@ -224,6 +224,69 @@ describe('ItemScreen', () => {
       })
     })
 
+    it('prefers the wide poster once the full item is loaded', async () => {
+      vi.mocked(kinopub.getItem).mockResolvedValue({
+        ...mockMovieDetails,
+        posters: {
+          small: 'small.jpg',
+          medium: 'medium.jpg',
+          big: 'big.jpg',
+          wide: 'wide.jpg'
+        }
+      })
+
+      renderWithI18n(<ItemScreen {...mockProps} />)
+
+      await waitFor(() => {
+        const backdrop = document.querySelector('.item-banner-image') as HTMLImageElement
+        expect(backdrop.getAttribute('src')).toBe('wide.jpg')
+      })
+    })
+
+    it('uses preview medium until wide arrives from getItem', async () => {
+      let resolveItem!: (value: typeof mockMovieDetails) => void
+      vi.mocked(kinopub.getItem).mockImplementation(
+        () => new Promise(resolve => { resolveItem = resolve })
+      )
+      const preview = {
+        id: 1,
+        title: 'Preview Movie',
+        type: 'movie',
+        year: 2024,
+        plot: '',
+        posters: { small: '', medium: 'preview-medium.jpg', big: '', wide: '' },
+        rating: 0,
+        imdbRating: 0,
+        kinopoiskRating: 0,
+        ratingPercentage: 0,
+        quality: 0,
+        views: 0,
+        genres: []
+      }
+
+      renderWithI18n(<ItemScreen {...mockProps} preview={preview} />)
+
+      expect(
+        (document.querySelector('.item-banner-image') as HTMLImageElement).getAttribute('src')
+      ).toBe('preview-medium.jpg')
+
+      resolveItem({
+        ...mockMovieDetails,
+        posters: {
+          small: 'small.jpg',
+          medium: 'medium.jpg',
+          big: 'big.jpg',
+          wide: 'wide.jpg'
+        }
+      })
+
+      await waitFor(() => {
+        expect(
+          (document.querySelector('.item-banner-image') as HTMLImageElement).getAttribute('src')
+        ).toBe('wide.jpg')
+      })
+    })
+
     it('renders play button for movies', async () => {
       renderWithI18n(<ItemScreen {...mockProps} />)
 
