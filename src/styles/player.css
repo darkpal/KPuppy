@@ -234,15 +234,15 @@
 }
 
 .player-hint-quality {
-  background: rgba(229, 57, 53, 0.95);
+  background: rgba(214, 69, 65, 0.95);
 }
 
 .player-hint-audio {
-  background: rgba(67, 160, 71, 0.95);
+  background: rgba(61, 154, 72, 0.95);
 }
 
 .player-hint-subtitles {
-  background: rgba(251, 192, 45, 0.96);
+  background: rgba(232, 176, 32, 0.96);
   color: #1a1a1a;
 }
 

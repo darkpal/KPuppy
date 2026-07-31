@@ -1,12 +1,15 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'preact/hooks'
 import { getCollections, getCollectionItems, Collection, MovieItem } from '../api/kinopub'
 import { MovieCard } from '../components/MovieCard'
+import { CollectionCard } from '../components/CollectionCard'
 import { GridScreen } from '../components/GridScreen'
 import { useKeyboardNavigation, useGridLayout, createGridNavigationHandlers, useScrollToFocused } from '../hooks'
 import { LoadingState } from '../components/LoadingSpinner'
 import { useI18n } from '../i18n'
 import '../styles/category.css'
-import '../styles/bookmarks.css'
+import '../styles/collection-card.css'
+
+const COLLECTIONS_PER_PAGE = 40
 
 interface CollectionsScreenProps {
   onSelectItem: (itemId: number) => void
@@ -21,27 +24,57 @@ export function CollectionsScreen({ onSelectItem, onNavigateToMenu, isActive }: 
   const [collections, setCollections] = useState<Collection[]>([])
   const [items, setItems] = useState<MovieItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [hasMore, setHasMore] = useState(true)
   const [viewMode, setViewMode] = useState<ViewMode>('collections')
   const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null)
   const [focusedIndex, setFocusedIndex] = useState(0)
   const [savedCollectionIndex, setSavedCollectionIndex] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
-  const { itemsPerRow, cardWidth } = useGridLayout('.category-grid', 240, [items.length, viewMode])
+  const gridDeps = viewMode === 'collections' ? [collections.length] : [items.length]
+  const { itemsPerRow, cardWidth } = useGridLayout('.category-grid', 240, gridDeps)
+
+  const loadCollectionsPage = useCallback(async (page: number, append: boolean) => {
+    if (page > 1) {
+      setLoadingMore(true)
+    } else {
+      setLoading(true)
+    }
+
+    try {
+      const response = await getCollections(page, COLLECTIONS_PER_PAGE)
+      if (append) {
+        setCollections(prev => {
+          const seen = new Set(prev.map(c => c.id))
+          return [...prev, ...response.items.filter(c => !seen.has(c.id))]
+        })
+      } else {
+        setCollections(response.items)
+      }
+      setHasMore(page < response.pagination.total)
+      setCurrentPage(page)
+    } catch (err) {
+      if (import.meta.env.DEV) console.error('Failed to load collections:', err)
+      if (!append) {
+        setCollections([])
+        setHasMore(false)
+      }
+    } finally {
+      setLoading(false)
+      setLoadingMore(false)
+    }
+  }, [])
 
   useEffect(() => {
-    async function loadCollections() {
-      setLoading(true)
-      try {
-        const data = await getCollections()
-        setCollections(data)
-      } catch (err) {
-        if (import.meta.env.DEV) console.error('Failed to load collections:', err)
-      } finally {
-        setLoading(false)
-      }
+    loadCollectionsPage(1, false)
+  }, [loadCollectionsPage])
+
+  const loadMore = useCallback(() => {
+    if (!loadingMore && hasMore) {
+      loadCollectionsPage(currentPage + 1, true)
     }
-    loadCollections()
-  }, [])
+  }, [loadingMore, hasMore, currentPage, loadCollectionsPage])
 
   const loadCollectionItems = useCallback(async (collection: Collection, collectionIndex: number) => {
     setLoading(true)
@@ -67,18 +100,36 @@ export function CollectionsScreen({ onSelectItem, onNavigateToMenu, isActive }: 
   }, [savedCollectionIndex])
 
   const collectionsHandlers = useMemo(() => {
-    return {
-      onLeft: onNavigateToMenu,
-      onUp: () => setFocusedIndex(prev => Math.max(0, prev - 1)),
-      onDown: () => setFocusedIndex(prev => Math.min(collections.length - 1, prev + 1)),
-      onEnter: () => {
-        const collection = collections[focusedIndex]
+    const currentRow = Math.floor(focusedIndex / itemsPerRow)
+    const totalRows = Math.ceil(collections.length / itemsPerRow)
+
+    const gridHandlers = createGridNavigationHandlers({
+      itemCount: collections.length,
+      itemsPerRow,
+      focusedIndex,
+      setFocusedIndex,
+      onSelect: (index) => {
+        const collection = collections[index]
         if (collection) {
-          loadCollectionItems(collection, focusedIndex)
+          loadCollectionItems(collection, index)
+        }
+      },
+      onLeftEdge: onNavigateToMenu,
+      onBottomEdge: () => {
+        if (hasMore) loadMore()
+      }
+    })
+
+    return {
+      ...gridHandlers,
+      onDown: () => {
+        gridHandlers.onDown?.()
+        if (currentRow >= totalRows - 2 && hasMore) {
+          loadMore()
         }
       }
     }
-  }, [collections, focusedIndex, onNavigateToMenu, loadCollectionItems])
+  }, [collections, focusedIndex, itemsPerRow, onNavigateToMenu, loadCollectionItems, hasMore, loadMore])
 
   const itemsHandlers = useMemo(() => ({
     ...createGridNavigationHandlers({
@@ -105,11 +156,11 @@ export function CollectionsScreen({ onSelectItem, onNavigateToMenu, isActive }: 
   useScrollToFocused({
     containerRef,
     focusedIndex,
-    itemSelector: '.bookmarks-folder',
+    itemSelector: viewMode === 'collections' ? '.collection-card' : '.movie-card',
     direction: 'vertical',
     center: false,
-    itemCount: collections.length,
-    enabled: isActive && !loading && viewMode === 'collections'
+    itemCount: viewMode === 'collections' ? collections.length : items.length,
+    enabled: isActive && !loading
   })
 
   const renderItem = useCallback((item: MovieItem, _index: number, focused: boolean) => (
@@ -120,10 +171,19 @@ export function CollectionsScreen({ onSelectItem, onNavigateToMenu, isActive }: 
     />
   ), [onSelectItem])
 
-  if (loading) {
+  if (loading && collections.length === 0 && viewMode === 'collections') {
     return (
       <div class="category-screen">
         <h1 class="category-title">{t.menuCollections}</h1>
+        <LoadingState />
+      </div>
+    )
+  }
+
+  if (loading && viewMode === 'items') {
+    return (
+      <div class="category-screen">
+        <h1 class="category-title">{selectedCollection?.title || t.menuCollections}</h1>
         <LoadingState />
       </div>
     )
@@ -149,17 +209,24 @@ export function CollectionsScreen({ onSelectItem, onNavigateToMenu, isActive }: 
   return (
     <div class="category-screen" ref={containerRef}>
       <h1 class="category-title">{t.menuCollections}</h1>
-      <div class="bookmarks-folders">
-        {collections.map((collection, index) => (
-          <div
-            key={collection.id}
-            class={`bookmarks-folder ${focusedIndex === index ? 'focused' : ''}`}
-            onClick={() => loadCollectionItems(collection, index)}
-          >
-            <div class="bookmarks-folder-title">{collection.title}</div>
-          </div>
-        ))}
+      <div class="category-grid-container">
+        <div class="category-grid" style={{ '--card-width': `${cardWidth}px` } as preact.JSX.CSSProperties}>
+          {collections.map((collection, index) => (
+            <CollectionCard
+              key={collection.id}
+              collection={collection}
+              focused={focusedIndex === index}
+              onHover={() => setFocusedIndex(index)}
+              onSelect={() => loadCollectionItems(collection, index)}
+            />
+          ))}
+        </div>
       </div>
+      {loadingMore && (
+        <div class="category-loading-more">
+          <LoadingState />
+        </div>
+      )}
       {collections.length === 0 && (
         <div class="category-empty">{t.errorNoItems}</div>
       )}

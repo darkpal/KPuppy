@@ -5,16 +5,23 @@
   overflow: hidden;
 }
 
-/* Landscape hero like ValeraGin — crop portrait art as a wide banner */
+/* Landscape hero — prefer posters.wide; portrait fallback shows full art (contain) */
 .item-banner {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   height: 48%;
+  background-color: #0a0a0a;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center center;
+  pointer-events: none;
+}
+
+.item-banner-wide {
   background-size: cover;
   background-position: center 20%;
-  pointer-events: none;
 }
 
 .item-banner::after {

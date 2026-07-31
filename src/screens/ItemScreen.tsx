@@ -508,7 +508,8 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
     )
   }
 
-  const posterUrl = item.posters?.big || item.posters?.medium || item.posters?.small
+  const widePosterUrl = item.posters?.wide
+  const posterUrl = widePosterUrl || item.posters?.big || item.posters?.medium || item.posters?.small
   const hasSeasons = item.seasons && item.seasons.length > 0
   const durationMinutes = item.duration?.average
     ? item.duration.average > 300
@@ -531,7 +532,7 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
     <div class="item-screen">
       {posterUrl && (
         <div
-          class="item-banner"
+          class={`item-banner${widePosterUrl ? ' item-banner-wide' : ''}`}
           style={{ backgroundImage: `url(${posterUrl})` }}
         />
       )}

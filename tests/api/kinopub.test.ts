@@ -1673,20 +1673,21 @@ describe('kinopub API', () => {
       localStorage.setItem('kpuppy_tokens', JSON.stringify(tokens))
     })
 
-    it('fetches collections', async () => {
+    it('fetches collections with pagination', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({
           items: [
             { id: 1, title: 'Best Movies 2023', count: 50, posters: { small: 'http://s.jpg' } }
-          ]
+          ],
+          pagination: { current: 1, total: 12, total_items: 480, perpage: 40 }
         })
       })
 
-      await getCollections()
+      await getCollections(1, 40)
 
       const call = mockFetch.mock.calls[0]
-      expect(call[0]).toBe('https://api.service-kp.com/v1/collections')
+      expect(call[0]).toBe('https://api.service-kp.com/v1/collections?page=1&perpage=40')
       expect(call[1].headers['Authorization']).toBe('Bearer valid-token')
     })
 
@@ -1697,28 +1698,30 @@ describe('kinopub API', () => {
           items: [
             { id: 1, title: 'Best Movies 2023', count: 50, posters: { small: 'http://s.jpg' } },
             { id: 2, title: 'Classic Films', count: 100, posters: { small: 'http://s2.jpg' } }
-          ]
+          ],
+          pagination: { current: 1, total: 12, total_items: 480, perpage: 40 }
         })
       })
 
       const result = await getCollections()
 
-      expect(result).toHaveLength(2)
-      expect(result[0].id).toBe(1)
-      expect(result[0].title).toBe('Best Movies 2023')
-      expect(result[0].count).toBe(50)
-      expect(result[1].id).toBe(2)
+      expect(result.items).toHaveLength(2)
+      expect(result.items[0].id).toBe(1)
+      expect(result.items[0].title).toBe('Best Movies 2023')
+      expect(result.items[0].count).toBe(50)
+      expect(result.items[1].id).toBe(2)
+      expect(result.pagination.total).toBe(12)
     })
 
     it('handles empty collections', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ items: [] })
+        json: async () => ({ items: [], pagination: { current: 1, total: 0, total_items: 0, perpage: 40 } })
       })
 
       const result = await getCollections()
 
-      expect(result).toHaveLength(0)
+      expect(result.items).toHaveLength(0)
     })
 
     it('throws ApiError on failure', async () => {

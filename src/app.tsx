@@ -39,6 +39,7 @@ interface ScreenFocusState {
 interface PlayerState {
   url: string
   title: string
+  poster?: string
   audios: Audio[]
   subtitles: Subtitle[]
   files: VideoFile[]
@@ -441,6 +442,7 @@ export function App() {
           player: {
             url: streamUrl,
             title,
+            poster: item.posters?.wide || item.posters?.big || item.posters?.medium,
             audios,
             subtitles,
             files: files || [],
@@ -458,7 +460,7 @@ export function App() {
         await launchNativePlayer({
           fullPath: streamUrl,
           fileName: title,
-          thumbnail: item.posters?.medium,
+          thumbnail: item.posters?.wide || item.posters?.medium,
           lastPlayPosition: startTime > 0 ? startTime : -1
         })
       }
@@ -584,6 +586,7 @@ export function App() {
       <PlayerScreen
         url={state.player.url}
         title={state.player.title}
+        poster={state.player.poster}
         audios={state.player.audios}
         subtitles={state.player.subtitles}
         files={state.player.files}

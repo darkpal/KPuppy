@@ -18,9 +18,20 @@ function renderWithI18n(component: preact.ComponentChild) {
   )
 }
 
+const emptyPage = {
+  items: [] as kinopub.Collection[],
+  pagination: { current: 1, total: 0, totalItems: 0, perpage: 40 }
+}
+
 const mockCollection = {
   id: 1,
   title: 'Best of 2024',
+  count: 12,
+  posters: {
+    small: 'http://s.jpg',
+    medium: 'http://m.jpg',
+    big: 'http://b.jpg'
+  }
 }
 
 const mockItem = {
@@ -47,7 +58,7 @@ describe('CollectionsScreen', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(kinopub.getCollections).mockResolvedValue([])
+    vi.mocked(kinopub.getCollections).mockResolvedValue(emptyPage)
     vi.mocked(kinopub.getCollectionItems).mockResolvedValue([])
   })
 
@@ -78,22 +89,29 @@ describe('CollectionsScreen', () => {
       renderWithI18n(<CollectionsScreen {...mockProps} />)
 
       await waitFor(() => {
-        expect(kinopub.getCollections).toHaveBeenCalled()
+        expect(kinopub.getCollections).toHaveBeenCalledWith(1, 40)
       })
     })
 
-    it('renders collections list after loading', async () => {
-      vi.mocked(kinopub.getCollections).mockResolvedValue([mockCollection])
+    it('renders collections grid after loading', async () => {
+      vi.mocked(kinopub.getCollections).mockResolvedValue({
+        items: [mockCollection],
+        pagination: { current: 1, total: 1, totalItems: 1, perpage: 40 }
+      })
 
       renderWithI18n(<CollectionsScreen {...mockProps} />)
 
       await waitFor(() => {
-        expect(document.querySelector('.bookmarks-folders')).toBeDefined()
+        expect(document.querySelector('.category-grid')).toBeDefined()
+        expect(document.querySelector('.collection-card')).toBeDefined()
       })
     })
 
     it('renders collection title', async () => {
-      vi.mocked(kinopub.getCollections).mockResolvedValue([mockCollection])
+      vi.mocked(kinopub.getCollections).mockResolvedValue({
+        items: [mockCollection],
+        pagination: { current: 1, total: 1, totalItems: 1, perpage: 40 }
+      })
 
       renderWithI18n(<CollectionsScreen {...mockProps} />)
 
@@ -103,18 +121,21 @@ describe('CollectionsScreen', () => {
     })
 
     it('shows focused state on first collection', async () => {
-      vi.mocked(kinopub.getCollections).mockResolvedValue([mockCollection])
+      vi.mocked(kinopub.getCollections).mockResolvedValue({
+        items: [mockCollection],
+        pagination: { current: 1, total: 1, totalItems: 1, perpage: 40 }
+      })
 
       renderWithI18n(<CollectionsScreen {...mockProps} />)
 
       await waitFor(() => {
-        const focusedCollection = document.querySelector('.bookmarks-folder.focused')
+        const focusedCollection = document.querySelector('.collection-card.focused')
         expect(focusedCollection).toBeDefined()
       })
     })
 
     it('shows empty message when no collections', async () => {
-      vi.mocked(kinopub.getCollections).mockResolvedValue([])
+      vi.mocked(kinopub.getCollections).mockResolvedValue(emptyPage)
 
       renderWithI18n(<CollectionsScreen {...mockProps} />)
 
@@ -131,8 +152,8 @@ describe('CollectionsScreen', () => {
       renderWithI18n(<CollectionsScreen {...mockProps} />)
 
       await waitFor(() => {
-        const screen = document.querySelector('.category-screen')
-        expect(screen).toBeDefined()
+        const screenEl = document.querySelector('.category-screen')
+        expect(screenEl).toBeDefined()
       })
     })
   })

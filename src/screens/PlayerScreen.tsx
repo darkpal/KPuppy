@@ -90,6 +90,7 @@ function playVideo(video: HTMLVideoElement | null | undefined): void {
 export interface PlayerProps {
   url: string
   title: string
+  poster?: string
   audios?: Audio[]
   subtitles?: Subtitle[]
   files?: VideoFile[]
@@ -118,6 +119,7 @@ interface ConvertedSubtitle {
 export function PlayerScreen({
   url,
   title,
+  poster,
   audios = [],
   subtitles = [],
   files = [],
@@ -718,6 +720,7 @@ export function PlayerScreen({
         ref={videoRef}
         class="player-video"
         src={url}
+        poster={poster}
         preload="metadata"
       >
         {convertedSubs.map((sub, idx) => (

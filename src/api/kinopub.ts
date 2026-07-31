@@ -36,6 +36,8 @@ export interface Poster {
   small: string
   medium: string
   big: string
+  /** Landscape banner when Kinopub provides one (ValeraGin: posters.wide). */
+  wide?: string
 }
 
 export interface MovieItem {
@@ -1151,12 +1153,22 @@ export interface Collection {
   posters: Poster
 }
 
-export async function getCollections(): Promise<Collection[]> {
-  const cacheKey = 'collections'
-  const cached = getCached<Collection[]>(cacheKey)
+export interface CollectionsResponse {
+  items: Collection[]
+  pagination: Pagination
+}
+
+/** Kinopub collections list — website uses ~40 per page across many pages. */
+export async function getCollections(page = 1, perpage = 40): Promise<CollectionsResponse> {
+  const cacheKey = createCacheKey('collections', page, perpage)
+  const cached = getCached<CollectionsResponse>(cacheKey)
   if (cached) return cached
 
-  const response = await authFetch(`${BASE_URL}/v1/collections`)
+  const searchParams = new URLSearchParams()
+  searchParams.set('page', page.toString())
+  searchParams.set('perpage', perpage.toString())
+
+  const response = await authFetch(`${BASE_URL}/v1/collections?${searchParams}`)
 
   if (!response.ok) {
     throw new ApiError('Failed to fetch collections', response.status)
@@ -1164,12 +1176,20 @@ export async function getCollections(): Promise<Collection[]> {
 
   const data = await response.json()
 
-  const result: Collection[] = (data.items || []).map((item: Record<string, unknown>) => ({
-    id: item.id as number,
-    title: item.title as string,
-    count: (item.count || item.total || item.items_count || 0) as number,
-    posters: item.posters as Poster
-  }))
+  const result: CollectionsResponse = {
+    items: (data.items || []).map((item: Record<string, unknown>) => ({
+      id: item.id as number,
+      title: item.title as string,
+      count: (item.count || item.total || item.items_count || 0) as number,
+      posters: item.posters as Poster
+    })),
+    pagination: {
+      current: data.pagination?.current ?? page,
+      total: data.pagination?.total ?? 0,
+      totalItems: data.pagination?.total_items ?? 0,
+      perpage: data.pagination?.perpage ?? perpage
+    }
+  }
 
   setCache(cacheKey, result)
   return result
