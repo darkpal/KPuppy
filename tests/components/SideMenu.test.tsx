@@ -183,7 +183,7 @@ describe('getMenuIdByIndex', () => {
     expect(getMenuIdByIndex(10)).toBe('collections')
     expect(getMenuIdByIndex(11)).toBe('bookmarks')
     expect(getMenuIdByIndex(12)).toBe('watching')
-    expect(getMenuIdByIndex(13)).toBe('newepisodes')
+    expect(getMenuIdByIndex(13)).toBe('settings')
   })
 
   it('returns user for last index', () => {
@@ -201,10 +201,10 @@ describe('getMenuIdByIndex', () => {
 
 describe('menu constants', () => {
   it('MENU_ITEMS_COUNT does not include user', () => {
-    expect(MENU_ITEMS_COUNT).toBe(15)
+    expect(MENU_ITEMS_COUNT).toBe(14)
   })
 
   it('ALL_MENU_ITEMS_COUNT includes user', () => {
-    expect(ALL_MENU_ITEMS_COUNT).toBe(16)
+    expect(ALL_MENU_ITEMS_COUNT).toBe(15)
   })
 })

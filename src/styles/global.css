@@ -8,11 +8,11 @@
   --color-text-secondary: #b3b3b3;
   --color-text-muted: #666;
 
-  /* Magic Remote RGBY — slightly brighter than dusty plastic, still not neon */
-  --remote-red: #c45c55;
-  --remote-green: #5f8a68;
-  --remote-yellow: #d4b86a;
-  --remote-blue: #5a7fa8;
+  /* LG Magic Remote RGBY — saturated plastic, not muted pastel */
+  --remote-red: #e53935;
+  --remote-green: #43a047;
+  --remote-yellow: #fbc02d;
+  --remote-blue: #1e88e5;
 
   --transition-fast: 150ms ease;
   --transition-normal: 200ms ease;

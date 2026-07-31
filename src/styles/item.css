@@ -5,28 +5,26 @@
   overflow: hidden;
 }
 
-.item-backdrop {
+/* Landscape hero like ValeraGin — crop portrait art as a wide banner */
+.item-banner {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
-  height: 70%;
+  height: 48%;
   background-size: cover;
-  background-position: center top;
-  filter: blur(48px) brightness(0.35) saturate(0.85);
-  transform: scale(1.12);
-  transform-origin: center top;
+  background-position: center 20%;
   pointer-events: none;
 }
 
-.item-backdrop::after {
+.item-banner::after {
   content: '';
   position: absolute;
   inset: 0;
   background: linear-gradient(
     to bottom,
-    rgba(20, 20, 20, 0.25) 0%,
-    rgba(20, 20, 20, 0.7) 55%,
+    rgba(20, 20, 20, 0.15) 0%,
+    rgba(20, 20, 20, 0.45) 45%,
     #141414 100%
   );
 }
@@ -42,33 +40,8 @@
   box-sizing: border-box;
 }
 
-.item-hero {
+.item-header {
   flex: 1;
-  min-height: 0;
-  display: flex;
-  align-items: flex-start;
-  gap: 36px;
-}
-
-.item-poster-frame {
-  flex: 0 0 auto;
-  width: min(18vw, 260px);
-  pointer-events: none;
-}
-
-.item-poster {
-  display: block;
-  width: 100%;
-  aspect-ratio: 2 / 3;
-  object-fit: cover;
-  border-radius: var(--radius-md);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
-  background: #1f1f1f;
-}
-
-.item-hero-body {
-  flex: 1;
-  min-width: 0;
   min-height: 0;
   display: flex;
   flex-direction: column;

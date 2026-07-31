@@ -712,18 +712,6 @@ export function App() {
             onSelectItem={handleSelectItem}
             onNavigateToMenu={handleNavigateToMenu}
             isActive={isContentActive}
-            mode="watching"
-            titleKey="menuWatching"
-          />
-        )
-      case 'newepisodes':
-        return (
-          <NewEpisodesScreen
-            onSelectItem={handleSelectItem}
-            onNavigateToMenu={handleNavigateToMenu}
-            isActive={isContentActive}
-            mode="new"
-            titleKey="menuNewEpisodes"
           />
         )
       case 'livetv': {
