@@ -1,13 +1,14 @@
-import { useEffect, useCallback, useMemo, useReducer } from 'preact/hooks'
+import { useEffect, useCallback, useMemo, useReducer, useRef } from 'preact/hooks'
 import { getItem, getMediaLinks, getSimilarItems, getBookmarkFolders, getItemFolders, addToBookmark, removeFromBookmark, toggleWatchlist, isItemInWatchlist, ItemDetails as ItemDetailsType, MovieItem, VideoFile, BookmarkFolder } from '../api/kinopub'
 import { getLocalSettings } from '../storage'
-import { useKeyboardNavigation } from '../hooks'
+import { useEventListener, useKeyboardNavigation, useWheelScroll } from '../hooks'
 import { LoadingState } from '../components/LoadingSpinner'
 import { useI18n } from '../i18n'
 import { ItemDetails } from '../components/ItemDetails'
 import { SimilarItems } from '../components/SimilarItems'
 import { FolderDialog } from '../components/FolderDialog'
 import { PosterImage } from '../components/PosterImage'
+import thumbUpIcon from '../assets/thumb-up.svg'
 import '../styles/item.css'
 
 interface PlayOptions {
@@ -28,7 +29,7 @@ interface ItemScreenProps {
   isActive: boolean
 }
 
-type FocusArea = 'play' | 'watching' | 'watchlist' | 'trailer' | 'seasons' | 'qualitySelect' | 'genres' | 'cast' | 'similar'
+type FocusArea = 'play' | 'watching' | 'watchlist' | 'trailer' | 'seasons' | 'qualitySelect' | 'genres' | 'details' | 'cast' | 'similar'
 
 const QUALITY_ORDER = ['2160p', '1080p', '720p', '480p']
 
@@ -54,6 +55,7 @@ interface ItemScreenState {
   folderFocusIndex: number
   isWatching: boolean
   watchingToggleLoading: boolean
+  detailsExpanded: boolean
 }
 
 type ItemScreenAction =
@@ -74,6 +76,8 @@ type ItemScreenAction =
   | { type: 'SET_WATCHLIST_LOADING'; value: boolean }
   | { type: 'SET_WATCHING_TOGGLE_LOADING'; value: boolean }
   | { type: 'TOGGLE_WATCHING' }
+  | { type: 'OPEN_DETAILS'; focusArea: FocusArea }
+  | { type: 'CLOSE_DETAILS'; focusArea: FocusArea }
 
 const initialState: ItemScreenState = {
   item: null,
@@ -92,6 +96,7 @@ const initialState: ItemScreenState = {
   folderFocusIndex: 0,
   isWatching: false,
   watchingToggleLoading: false,
+  detailsExpanded: false,
 }
 
 function itemScreenReducer(state: ItemScreenState, action: ItemScreenAction): ItemScreenState {
@@ -130,6 +135,10 @@ function itemScreenReducer(state: ItemScreenState, action: ItemScreenAction): It
       return { ...state, watchingToggleLoading: action.value }
     case 'TOGGLE_WATCHING':
       return { ...state, isWatching: !state.isWatching, watchingToggleLoading: false }
+    case 'OPEN_DETAILS':
+      return { ...state, detailsExpanded: true, focusArea: action.focusArea }
+    case 'CLOSE_DETAILS':
+      return { ...state, detailsExpanded: false, focusArea: action.focusArea }
     default:
       return state
   }
@@ -138,7 +147,8 @@ function itemScreenReducer(state: ItemScreenState, action: ItemScreenAction): It
 export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeries, onSelectItem, onSelectGenre, onSelectActor, onSelectDirector, onNavigateToMenu, isActive }: ItemScreenProps) {
   const { t } = useI18n()
   const [state, dispatch] = useReducer(itemScreenReducer, initialState)
-  const { item, loading, error, focusArea, selectedQuality, dropdownFocusIndex, similarItems, similarFocusIndex, metaFocusIndex, watchlistLoading, showFolderDialog, folders, itemFolderIds, folderFocusIndex, isWatching, watchingToggleLoading } = state
+  const { item, loading, error, focusArea, selectedQuality, dropdownFocusIndex, similarItems, similarFocusIndex, metaFocusIndex, watchlistLoading, showFolderDialog, folders, itemFolderIds, folderFocusIndex, isWatching, watchingToggleLoading, detailsExpanded } = state
+  const detailsPageRef = useRef<HTMLElement>(null)
 
   useEffect(() => {
     async function loadItem() {
@@ -304,6 +314,58 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
   const genres = item?.genres?.slice(0, 8) || []
   const cast = item?.actors?.slice(0, 6) || []
 
+  const scrollDetailsToTop = useCallback(() => {
+    if (detailsPageRef.current) detailsPageRef.current.scrollTop = 0
+  }, [])
+
+  const scrollDetailsToBottom = useCallback(() => {
+    const page = detailsPageRef.current
+    if (page) page.scrollTop = Math.max(0, page.scrollHeight - page.clientHeight)
+  }, [])
+
+  const scrollDetailsBy = useCallback((delta: number) => {
+    const page = detailsPageRef.current
+    if (page) page.scrollTop = Math.max(0, page.scrollTop + delta)
+  }, [])
+
+  const openDetails = useCallback(() => {
+    const nextFocus: FocusArea = cast.length > 0
+      ? 'cast'
+      : 'details'
+
+    dispatch({ type: 'OPEN_DETAILS', focusArea: nextFocus })
+    if (nextFocus === 'cast') dispatch({ type: 'SET_META_FOCUS_INDEX', index: 0 })
+  }, [cast.length])
+
+  const closeDetails = useCallback(() => {
+    const primaryButton: FocusArea = item?.seasons?.length ? 'seasons' : 'play'
+    dispatch({ type: 'CLOSE_DETAILS', focusArea: primaryButton })
+  }, [item?.seasons?.length])
+
+  useEffect(() => {
+    if (detailsExpanded) scrollDetailsToTop()
+  }, [detailsExpanded, scrollDetailsToTop])
+
+  useWheelScroll({
+    containerRef: detailsPageRef,
+    enabled: isActive && detailsExpanded && !showFolderDialog,
+  })
+
+  useEventListener('wheel', (event) => {
+    if (Math.abs(event.deltaY) < 24) return
+
+    if (!detailsExpanded && event.deltaY > 0) {
+      event.preventDefault()
+      openDetails()
+      return
+    }
+
+    if (detailsExpanded && event.deltaY < 0 && (detailsPageRef.current?.scrollTop || 0) <= 0) {
+      event.preventDefault()
+      closeDetails()
+    }
+  }, isActive && !!item && !showFolderDialog && focusArea !== 'qualitySelect')
+
   const handlers = useMemo(() => {
     const hasSeries = item?.seasons && item.seasons.length > 0
     const hasSimilar = similarItems.length > 0
@@ -311,12 +373,6 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
     const hasGenres = genres.length > 0
     const hasCast = cast.length > 0
     const primaryButton: FocusArea = hasSeries ? 'seasons' : 'play'
-
-    const focusBelowActions = (): FocusArea => {
-      if (hasGenres) return 'genres'
-      if (hasCast) return 'cast'
-      return 'similar'
-    }
 
     if (showFolderDialog) {
       return {
@@ -353,15 +409,7 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
         },
         onRight: () => dispatch({ type: 'SET_META_FOCUS_INDEX', index: Math.min(genres.length - 1, metaFocusIndex + 1) }),
         onUp: () => dispatch({ type: 'SET_FOCUS_AREA', area: primaryButton }),
-        onDown: () => {
-          if (hasCast) {
-            dispatch({ type: 'SET_FOCUS_AREA', area: 'cast' })
-            dispatch({ type: 'SET_META_FOCUS_INDEX', index: 0 })
-          } else if (hasSimilar) {
-            dispatch({ type: 'SET_FOCUS_AREA', area: 'similar' })
-            dispatch({ type: 'SET_SIMILAR_FOCUS_INDEX', index: 0 })
-          }
-        },
+        onDown: () => dispatch({ type: 'SET_FOCUS_AREA', area: primaryButton }),
         onEnter: () => {
           const genre = genres[metaFocusIndex]
           if (genre && item) onSelectGenre?.(genre.id, item.type)
@@ -371,7 +419,7 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
 
     if (focusArea === 'cast') {
       return {
-        onBack,
+        onBack: detailsExpanded ? closeDetails : onBack,
         onLeft: () => {
           if (metaFocusIndex > 0) {
             dispatch({ type: 'SET_META_FOCUS_INDEX', index: metaFocusIndex - 1 })
@@ -381,7 +429,9 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
         },
         onRight: () => dispatch({ type: 'SET_META_FOCUS_INDEX', index: Math.min(cast.length - 1, metaFocusIndex + 1) }),
         onUp: () => {
-          if (hasGenres) {
+          if (detailsExpanded) {
+            closeDetails()
+          } else if (hasGenres) {
             dispatch({ type: 'SET_FOCUS_AREA', area: 'genres' })
             dispatch({ type: 'SET_META_FOCUS_INDEX', index: 0 })
           } else {
@@ -392,6 +442,9 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
           if (hasSimilar) {
             dispatch({ type: 'SET_FOCUS_AREA', area: 'similar' })
             dispatch({ type: 'SET_SIMILAR_FOCUS_INDEX', index: 0 })
+            scrollDetailsToBottom()
+          } else {
+            scrollDetailsBy(260)
           }
         },
         onEnter: () => {
@@ -403,7 +456,7 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
 
     if (focusArea === 'similar') {
       return {
-        onBack,
+        onBack: detailsExpanded ? closeDetails : onBack,
         onLeft: () => {
           if (similarFocusIndex > 0) {
             dispatch({ type: 'SET_SIMILAR_FOCUS_INDEX', index: similarFocusIndex - 1 })
@@ -416,6 +469,10 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
           if (hasCast) {
             dispatch({ type: 'SET_FOCUS_AREA', area: 'cast' })
             dispatch({ type: 'SET_META_FOCUS_INDEX', index: 0 })
+            scrollDetailsToTop()
+          } else if (detailsExpanded) {
+            dispatch({ type: 'SET_FOCUS_AREA', area: 'details' })
+            scrollDetailsToTop()
           } else if (hasGenres) {
             dispatch({ type: 'SET_FOCUS_AREA', area: 'genres' })
             dispatch({ type: 'SET_META_FOCUS_INDEX', index: 0 })
@@ -432,6 +489,28 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
       }
     }
 
+    if (focusArea === 'details') {
+      return {
+        onBack: closeDetails,
+        onUp: () => {
+          if ((detailsPageRef.current?.scrollTop || 0) > 0) {
+            scrollDetailsBy(-260)
+          } else {
+            closeDetails()
+          }
+        },
+        onDown: () => {
+          if (hasSimilar) {
+            dispatch({ type: 'SET_FOCUS_AREA', area: 'similar' })
+            dispatch({ type: 'SET_SIMILAR_FOCUS_INDEX', index: 0 })
+            scrollDetailsToBottom()
+          } else {
+            scrollDetailsBy(260)
+          }
+        }
+      }
+    }
+
     return {
       onBack,
       onUp: () => {
@@ -439,19 +518,12 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
           const currentIdx = availableQualities.indexOf(selectedQuality || '')
           dispatch({ type: 'SET_DROPDOWN_FOCUS_INDEX', index: Math.max(0, currentIdx) })
           dispatch({ type: 'SET_FOCUS_AREA', area: 'qualitySelect' })
+        } else if (hasGenres) {
+          dispatch({ type: 'SET_FOCUS_AREA', area: 'genres' })
+          dispatch({ type: 'SET_META_FOCUS_INDEX', index: 0 })
         }
       },
-      onDown: () => {
-        if (hasGenres || hasCast || hasSimilar) {
-          const next = focusBelowActions()
-          dispatch({ type: 'SET_FOCUS_AREA', area: next })
-          if (next === 'similar') {
-            dispatch({ type: 'SET_SIMILAR_FOCUS_INDEX', index: 0 })
-          } else {
-            dispatch({ type: 'SET_META_FOCUS_INDEX', index: 0 })
-          }
-        }
-      },
+      onDown: openDetails,
       onLeft: () => {
         if (focusArea === 'trailer') {
           dispatch({ type: 'SET_FOCUS_AREA', area: 'watchlist' })
@@ -487,7 +559,7 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
       },
       onYellow: handleOpenFolderDialog
     }
-  }, [item, focusArea, availableQualities, dropdownFocusIndex, selectedQuality, onBack, onNavigateToMenu, handlePlayOrSelect, handleOpenFolderDialog, handleToggleFolder, handleToggleWatching, similarItems, similarFocusIndex, metaFocusIndex, genres, cast, onSelectItem, onSelectGenre, onSelectActor, showFolderDialog, folders, folderFocusIndex, onPlayTrailer, t, itemId])
+  }, [item, focusArea, availableQualities, dropdownFocusIndex, selectedQuality, onBack, onNavigateToMenu, handlePlayOrSelect, handleOpenFolderDialog, handleToggleFolder, handleToggleWatching, similarItems, similarFocusIndex, metaFocusIndex, genres, cast, onSelectItem, onSelectGenre, onSelectActor, showFolderDialog, folders, folderFocusIndex, onPlayTrailer, t, itemId, detailsExpanded, openDetails, closeDetails, scrollDetailsBy, scrollDetailsToBottom, scrollDetailsToTop])
 
   useKeyboardNavigation(handlers, isActive && !!item)
 
@@ -519,12 +591,24 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
     : null
   const duration = durationMinutes
     ? durationMinutes >= 60
-      ? `${Math.floor(durationMinutes / 60)}h ${durationMinutes % 60}m`
-      : `${durationMinutes}m`
+      ? `${Math.floor(durationMinutes / 60)} ${t.hourShort}${durationMinutes % 60 ? ` ${durationMinutes % 60} ${t.minuteShort}` : ''}`
+      : `${durationMinutes} ${t.minuteShort}`
     : null
+
+  const itemTypeLabels: Record<string, string> = {
+    movie: t.typeMovie,
+    serial: t.typeSeries,
+    documovie: t.typeDocumentary,
+    docuserial: t.typeDocuseries,
+    tvshow: t.typeTvShow,
+    concert: t.typeConcert,
+    '3D': t.type3D,
+  }
+  const itemTypeLabel = itemTypeLabels[item.type] || item.type
 
   const kpRating = Number(item.kinopoiskRating) || 0
   const imdbRating = Number(item.imdbRating) || 0
+  const kinopubRating = Number(item.ratingPercentage) || 0
   const directors = item.directors?.slice(0, 3) || []
   const countries = item.countries?.slice(0, 3).map(c => c.title).join(', ')
 
@@ -542,9 +626,9 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
         </div>
       )}
 
-      <div class="item-content">
-        <div class="item-info-panel">
-          <div class="item-column-left">
+      <div class={`item-content ${detailsExpanded ? 'details-expanded' : ''}`}>
+        <section class="item-summary" aria-hidden={detailsExpanded}>
+          <div class="item-summary-main">
             <h1 class="item-title">{item.title}</h1>
 
             <div class="item-meta">
@@ -559,8 +643,14 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
                   IMDb {imdbRating.toFixed(1)}
                 </span>
               )}
+              {kinopubRating > 0 && (
+                <span class="item-rating item-rating-kinopub">
+                  <img src={thumbUpIcon} alt="" class="item-rating-icon" />
+                  {kinopubRating}%
+                </span>
+              )}
               {duration && <span class="item-duration">{duration}</span>}
-              <span class="item-type">{item.type}</span>
+              <span class="item-type">{itemTypeLabel}</span>
             </div>
 
             {genres.length > 0 && (
@@ -581,8 +671,6 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
                 ))}
               </div>
             )}
-
-            {item.plot && <p class="item-plot">{item.plot}</p>}
 
             <div class="item-actions">
                 {hasSeasons ? (
@@ -685,33 +773,71 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
                   </button>
                 )}
             </div>
-          </div>
-          <ItemDetails
-            countries={countries}
-            directors={directors}
-            actors={cast}
-            audios={audios}
-            subtitles={subtitles}
-            focusedActorIndex={focusArea === 'cast' ? metaFocusIndex : null}
-            onHoverActor={(index) => {
-              dispatch({ type: 'SET_FOCUS_AREA', area: 'cast' })
-              dispatch({ type: 'SET_META_FOCUS_INDEX', index })
-            }}
-            onSelectActor={onSelectActor}
-            onSelectDirector={onSelectDirector}
-          />
-        </div>
 
-        <SimilarItems
-          items={similarItems}
-          focusedIndex={similarFocusIndex}
-          isFocused={focusArea === 'similar'}
-          onHoverItem={(index) => {
-            dispatch({ type: 'SET_FOCUS_AREA', area: 'similar' })
-            dispatch({ type: 'SET_SIMILAR_FOCUS_INDEX', index })
-          }}
-          onSelectItem={onSelectItem}
-        />
+            {item.plot && <p class="item-plot-preview">{item.plot}</p>}
+
+            <button
+              type="button"
+              class="item-scroll-hint"
+              onClick={openDetails}
+            >
+              <span class="item-scroll-hint-icon">⌄</span>
+              <span>{t.fullInfo}</span>
+            </button>
+          </div>
+        </section>
+
+        <section
+          ref={detailsPageRef}
+          class="item-details-page"
+          aria-hidden={!detailsExpanded}
+        >
+          <button
+            type="button"
+            class="item-details-back"
+            onClick={closeDetails}
+          >
+            <span class="item-details-back-icon">⌃</span>
+            <span>{t.backToSummary}</span>
+          </button>
+
+          <div class="item-details-body">
+            <div class="item-details-copy">
+              <h2 class="item-details-title">{item.title}</h2>
+              {item.plot && (
+                <>
+                  <h3 class="item-details-section-title">{t.synopsis}</h3>
+                  <p class="item-plot-full">{item.plot}</p>
+                </>
+              )}
+            </div>
+            <ItemDetails
+              countries={countries}
+              directors={directors}
+              actors={cast}
+              audios={audios}
+              subtitles={subtitles}
+              focusedActorIndex={focusArea === 'cast' ? metaFocusIndex : null}
+              onHoverActor={(index) => {
+                dispatch({ type: 'SET_FOCUS_AREA', area: 'cast' })
+                dispatch({ type: 'SET_META_FOCUS_INDEX', index })
+              }}
+              onSelectActor={onSelectActor}
+              onSelectDirector={onSelectDirector}
+            />
+          </div>
+
+          <SimilarItems
+            items={similarItems}
+            focusedIndex={similarFocusIndex}
+            isFocused={focusArea === 'similar'}
+            onHoverItem={(index) => {
+              dispatch({ type: 'SET_FOCUS_AREA', area: 'similar' })
+              dispatch({ type: 'SET_SIMILAR_FOCUS_INDEX', index })
+            }}
+            onSelectItem={onSelectItem}
+          />
+        </section>
       </div>
 
     </div>

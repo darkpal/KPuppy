@@ -65,6 +65,18 @@ export interface Translations {
   director: string
   cast: string
   country: string
+  fullInfo: string
+  backToSummary: string
+  synopsis: string
+  hourShort: string
+  minuteShort: string
+  typeMovie: string
+  typeSeries: string
+  typeDocumentary: string
+  typeDocuseries: string
+  typeTvShow: string
+  typeConcert: string
+  type3D: string
 
   // Settings
   settings: string
@@ -232,6 +244,18 @@ const en: Translations = {
   director: 'Director',
   cast: 'Cast',
   country: 'Country',
+  fullInfo: 'Full information',
+  backToSummary: 'Back to overview',
+  synopsis: 'Synopsis',
+  hourShort: 'h',
+  minuteShort: 'min',
+  typeMovie: 'Movie',
+  typeSeries: 'Series',
+  typeDocumentary: 'Documentary',
+  typeDocuseries: 'Docuseries',
+  typeTvShow: 'TV show',
+  typeConcert: 'Concert',
+  type3D: '3D',
 
   settings: 'Settings',
   clientSettings: 'Streaming',
@@ -384,6 +408,18 @@ const ru: Translations = {
   director: 'Режиссёр',
   cast: 'В ролях',
   country: 'Страна',
+  fullInfo: 'Полная информация',
+  backToSummary: 'К основному экрану',
+  synopsis: 'Описание',
+  hourShort: 'ч',
+  minuteShort: 'мин',
+  typeMovie: 'Фильм',
+  typeSeries: 'Сериал',
+  typeDocumentary: 'Документальный фильм',
+  typeDocuseries: 'Документальный сериал',
+  typeTvShow: 'ТВ-шоу',
+  typeConcert: 'Концерт',
+  type3D: '3D',
 
   settings: 'Настройки',
   clientSettings: 'Воспроизведение',
@@ -536,6 +572,18 @@ const de: Translations = {
   director: 'Regisseur',
   cast: 'Besetzung',
   country: 'Land',
+  fullInfo: 'Vollständige Informationen',
+  backToSummary: 'Zurück zur Übersicht',
+  synopsis: 'Handlung',
+  hourShort: 'Std.',
+  minuteShort: 'Min.',
+  typeMovie: 'Film',
+  typeSeries: 'Serie',
+  typeDocumentary: 'Dokumentarfilm',
+  typeDocuseries: 'Dokuserie',
+  typeTvShow: 'TV-Show',
+  typeConcert: 'Konzert',
+  type3D: '3D',
 
   settings: 'Einstellungen',
   clientSettings: 'Streaming',

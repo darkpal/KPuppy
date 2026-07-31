@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, waitFor, cleanup } from '@testing-library/preact'
+import { render, screen, waitFor, cleanup, fireEvent } from '@testing-library/preact'
 import { h } from 'preact'
 import { ItemScreen } from '../../src/screens/ItemScreen'
 import { I18nProvider } from '../../src/i18n/context'
@@ -40,7 +40,7 @@ const mockMovieDetails = {
   rating: 8,
   imdbRating: 7.5,
   kinopoiskRating: 8.2,
-  ratingPercentage: 0,
+  ratingPercentage: 84,
   quality: 0,
   views: 1000,
   directors: [{ id: 1, name: 'Test Director' }],
@@ -122,7 +122,7 @@ describe('ItemScreen', () => {
       renderWithI18n(<ItemScreen {...mockProps} />)
 
       await waitFor(() => {
-        expect(screen.getByText('Test Movie')).toBeDefined()
+        expect(screen.getAllByText('Test Movie')).toHaveLength(2)
       })
     })
 
@@ -138,8 +138,42 @@ describe('ItemScreen', () => {
       renderWithI18n(<ItemScreen {...mockProps} />)
 
       await waitFor(() => {
-        expect(screen.getByText('A test movie plot')).toBeDefined()
+        expect(screen.getAllByText('A test movie plot')).toHaveLength(2)
       })
+    })
+
+    it('localizes duration and item type', async () => {
+      renderWithI18n(<ItemScreen {...mockProps} />)
+
+      await waitFor(() => {
+        expect(screen.getByText('2 h')).toBeDefined()
+        expect(screen.getByText('Movie')).toBeDefined()
+      })
+    })
+
+    it('opens full information with Down and returns with Up', async () => {
+      renderWithI18n(<ItemScreen {...mockProps} />)
+
+      await waitFor(() => expect(screen.getByText('Full information')).toBeDefined())
+
+      fireEvent.keyDown(document, { keyCode: 40 })
+      expect(document.querySelector('.item-content')?.classList.contains('details-expanded')).toBe(true)
+      expect(document.querySelector('.item-details-page')?.getAttribute('aria-hidden')).toBe('false')
+
+      fireEvent.keyDown(document, { keyCode: 38 })
+      expect(document.querySelector('.item-content')?.classList.contains('details-expanded')).toBe(false)
+    })
+
+    it('opens full information with the Magic Remote wheel', async () => {
+      renderWithI18n(<ItemScreen {...mockProps} />)
+
+      await waitFor(() => expect(screen.getByText('Full information')).toBeDefined())
+
+      fireEvent.wheel(document, { deltaY: 120 })
+      expect(document.querySelector('.item-content')?.classList.contains('details-expanded')).toBe(true)
+
+      fireEvent.wheel(document, { deltaY: -120 })
+      expect(document.querySelector('.item-content')?.classList.contains('details-expanded')).toBe(false)
     })
 
     it('loads the backdrop through the retryable poster image', async () => {
@@ -238,6 +272,16 @@ describe('ItemScreen', () => {
       await waitFor(() => {
         const ratingElement = document.querySelector('.item-rating-imdb')
         expect(ratingElement).toBeDefined()
+      })
+    })
+
+    it('shows KinoPub rating from the same field as home cards', async () => {
+      renderWithI18n(<ItemScreen {...mockProps} />)
+
+      await waitFor(() => {
+        const ratingElement = document.querySelector('.item-rating-kinopub')
+        expect(ratingElement?.textContent).toContain('84%')
+        expect(ratingElement?.querySelector('.item-rating-icon')).not.toBeNull()
       })
     })
   })

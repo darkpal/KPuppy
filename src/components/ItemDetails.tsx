@@ -36,28 +36,32 @@ export function ItemDetails({
   const visibleAudios = audios.slice(0, 6)
 
   return (
-    <div class="item-column-right">
-      {countries && (
-        <p class="item-detail">
-          <span class="item-detail-label">{t.country}:</span>
-          <span class="item-detail-value">{countries}</span>
-        </p>
-      )}
-      {visibleDirectors.length > 0 && (
-        <div class="item-detail item-detail-inline">
-          <span class="item-detail-label">{t.director}:</span>
-          <div class="item-cast-list">
-            {visibleDirectors.map((director) => (
-              <button
-                key={`dir-${director.id}-${director.name}`}
-                type="button"
-                class="item-person-chip"
-                onClick={() => onSelectDirector?.(director.name)}
-              >
-                {director.name}
-              </button>
-            ))}
-          </div>
+    <div class="item-details-content">
+      {(countries || visibleDirectors.length > 0) && (
+        <div class="item-detail-topline">
+          {countries && (
+            <p class="item-detail item-detail-country">
+              <span class="item-detail-label">{t.country}:</span>
+              <span class="item-detail-value">{countries}</span>
+            </p>
+          )}
+          {visibleDirectors.length > 0 && (
+            <div class="item-detail item-detail-inline item-detail-director">
+              <span class="item-detail-label">{t.director}:</span>
+              <div class="item-cast-list">
+                {visibleDirectors.map((director) => (
+                  <button
+                    key={`dir-${director.id}-${director.name}`}
+                    type="button"
+                    class="item-person-chip"
+                    onClick={() => onSelectDirector?.(director.name)}
+                  >
+                    {director.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
       {visibleActors.length > 0 && (
@@ -82,14 +86,14 @@ export function ItemDetails({
         <div class="item-detail item-detail-block">
           <span class="item-detail-label">{t.audio}:</span>
           <div class="item-detail-list">
-            {visibleAudios.map((audio) => (
+            {visibleAudios.map((audio, index) => (
               <span key={audio.id} class="item-detail-list-item">
                 {getAudioTrackName(audio)}
+                {index === visibleAudios.length - 1 && audios.length > visibleAudios.length && (
+                  <span class="item-detail-more">+{audios.length - visibleAudios.length}</span>
+                )}
               </span>
             ))}
-            {audios.length > visibleAudios.length && (
-              <span class="item-detail-list-item">+{audios.length - visibleAudios.length}</span>
-            )}
           </div>
         </div>
       )}
