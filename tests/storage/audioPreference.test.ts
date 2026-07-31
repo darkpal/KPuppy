@@ -6,6 +6,20 @@ describe('audio preference', () => {
     localStorage.clear()
   })
 
+  it('formats audio labels like ValeraGin', () => {
+    expect(getAudioTrackName({
+      lang: 'rus',
+      type: { title: 'Многоголосый' },
+      author: { title: 'Jask' }
+    })).toBe('Многоголосый, Jask (RUS)')
+
+    expect(getAudioTrackName({
+      lang: 'eng',
+      type: { title: 'Оригинал' },
+      author: null
+    })).toBe('Оригинал (ENG)')
+  })
+
   it('saves and restores audio preference by item id', () => {
     saveAudioPreference(42, {
       id: 7,

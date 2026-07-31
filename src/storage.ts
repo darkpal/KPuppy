@@ -167,28 +167,25 @@ export interface SavedAudioPreference {
   name: string
 }
 
-/** Stable label for matching озвучка across episodes of the same title. */
+/** Display / preference label: «Многоголосый, Jask (RUS)». */
 export function getAudioTrackName(audio: {
   lang?: string
   type?: { title?: string } | null
   author?: { title?: string } | null
 }): string {
-  const typeTitle = audio.type?.title || ''
-  const authorTitle = audio.author?.title || ''
+  const typeTitle = (audio.type?.title || '').trim()
+  const authorTitle = (audio.author?.title || '').trim()
   const lang = (audio.lang || '').toUpperCase()
-  const parts: string[] = []
   if (typeTitle && authorTitle) {
-    parts.push(`${typeTitle}.`)
-  } else if (typeTitle) {
-    parts.push(typeTitle)
+    return `${typeTitle}, ${authorTitle}${lang ? ` (${lang})` : ''}`
   }
-  if (authorTitle) parts.push(authorTitle)
-  if (typeTitle || authorTitle) {
-    if (lang) parts.push(`(${lang})`)
-  } else if (lang) {
-    parts.push(lang)
+  if (typeTitle) {
+    return `${typeTitle}${lang ? ` (${lang})` : ''}`
   }
-  return parts.join(' ').trim()
+  if (authorTitle) {
+    return `${authorTitle}${lang ? ` (${lang})` : ''}`
+  }
+  return lang
 }
 
 export function getSavedAudioPreference(itemId: number): SavedAudioPreference | null {

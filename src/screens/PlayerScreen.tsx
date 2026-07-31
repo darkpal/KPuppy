@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'preact/hooks'
 import type { JSX } from 'preact'
 import { Audio, Subtitle, VideoFile } from '../api/kinopub'
 import { withHlsAudioIndex, getStreamUrl, getAvailableQualities } from '../webos/player'
-import { saveAudioPreference } from '../storage'
+import { saveAudioPreference, getAudioTrackName } from '../storage'
 import { KEY_CODES } from '../hooks'
 import { useI18n } from '../i18n'
 import { convertSrtUrlToVtt, isSrtUrl } from '../utils/subtitles'
@@ -837,7 +837,7 @@ export function PlayerScreen({
                       selectAudio(idx)
                     }}
                   >
-                    {audio.author?.title || audio.type?.title || audio.lang}
+                    {getAudioTrackName(audio)}
                   </button>
                 ))}
               </div>
