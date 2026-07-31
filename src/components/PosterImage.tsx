@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'preact/hooks'
 
 const MAX_RETRIES = 3
 const STALL_MS = 5000
+const READY_POLL_MS = 100
+const READY_POLL_MAX = 40
 let retryRequestId = 0
 
 interface PosterImageProps {
@@ -11,7 +13,7 @@ interface PosterImageProps {
   loading?: 'lazy' | 'eager'
   /** Keep large hero art hidden until the browser confirms it is fully decoded. */
   revealWhenDecoded?: boolean
-  /** Ignore tiny/corrupt frames (common when a list thumb is stretched as a banner). */
+  /** Ignore empty/corrupt frames. Prefer 1 for banners — webOS often reports 0 until paint. */
   minNaturalWidth?: number
   onReady?: () => void
   onFailed?: () => void
@@ -54,6 +56,7 @@ export function PosterImage({
   const baseSrc = (src || '').trim()
   const imgRef = useRef<HTMLImageElement>(null)
   const retriesRef = useRef(0)
+  const readyRef = useRef(false)
   const mountedRef = useRef(true)
   const onReadyRef = useRef(onReady)
   const onFailedRef = useRef(onFailed)
@@ -62,7 +65,8 @@ export function PosterImage({
   const [isReady, setIsReady] = useState(!revealWhenDecoded)
 
   const markReady = useCallback(() => {
-    if (!mountedRef.current) return
+    if (!mountedRef.current || readyRef.current) return
+    readyRef.current = true
     setIsReady(true)
     onReadyRef.current?.()
   }, [])
@@ -74,7 +78,8 @@ export function PosterImage({
   }, [revealWhenDecoded])
 
   const tryReveal = useCallback((img: HTMLImageElement | null) => {
-    if (!img || !isAcceptableFrame(img, minNaturalWidth)) return false
+    if (!img || readyRef.current) return readyRef.current
+    if (!isAcceptableFrame(img, minNaturalWidth)) return false
     markReady()
     return true
   }, [markReady, minNaturalWidth])
@@ -85,6 +90,7 @@ export function PosterImage({
       return
     }
     retriesRef.current += 1
+    readyRef.current = false
     if (revealWhenDecoded) setIsReady(false)
     reloadImage(img, baseSrc)
   }, [baseSrc, markFailed, revealWhenDecoded])
@@ -98,17 +104,20 @@ export function PosterImage({
 
   useEffect(() => {
     retriesRef.current = 0
+    readyRef.current = false
     if (revealWhenDecoded) setIsReady(false)
   }, [baseSrc, revealWhenDecoded])
 
-  // Cached images often complete before onLoad is attached (webOS especially).
-  // Also re-check after paint so a focus/layout pass is not required to reveal.
+  // webOS often skips onLoad for cached images and may leave naturalWidth at 0
+  // until a later paint — poll instead of waiting for a focus remount.
   useEffect(() => {
     if (!baseSrc) return
 
     let disposed = false
-    let timeoutId = 0
+    let polls = 0
     let rafId = 0
+    let timeoutId = 0
+    let intervalId = 0
 
     const checkNow = () => {
       if (disposed) return
@@ -116,13 +125,22 @@ export function PosterImage({
     }
 
     rafId = window.requestAnimationFrame(checkNow)
-    // Second tick covers late decode without waiting for the stall timer.
-    timeoutId = window.setTimeout(checkNow, 50)
+    timeoutId = window.setTimeout(checkNow, 0)
+    intervalId = window.setInterval(() => {
+      if (disposed) return
+      if (tryReveal(imgRef.current)) {
+        window.clearInterval(intervalId)
+        return
+      }
+      polls += 1
+      if (polls >= READY_POLL_MAX) window.clearInterval(intervalId)
+    }, READY_POLL_MS)
 
     return () => {
       disposed = true
       window.cancelAnimationFrame(rafId)
       window.clearTimeout(timeoutId)
+      window.clearInterval(intervalId)
     }
   }, [baseSrc, tryReveal])
 
@@ -134,7 +152,7 @@ export function PosterImage({
 
     const scheduleStallCheck = () => {
       timeoutId = window.setTimeout(() => {
-        if (disposed) return
+        if (disposed || readyRef.current) return
 
         const img = imgRef.current
         if (!img) return
@@ -172,7 +190,13 @@ export function PosterImage({
       loading={loading}
       decoding="async"
       onLoad={(event) => {
-        tryReveal(event.currentTarget)
+        const img = event.currentTarget
+        const finish = () => tryReveal(img)
+        if (typeof img.decode === 'function') {
+          img.decode().then(finish).catch(finish)
+        } else {
+          finish()
+        }
       }}
       onError={(event) => {
         retryImage(event.currentTarget)

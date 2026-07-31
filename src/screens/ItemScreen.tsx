@@ -166,6 +166,14 @@ export function ItemScreen({ itemId, preview = null, onBack, onPlay, onPlayTrail
     setBannerReady(false)
   }, [posterUrl, itemId])
 
+  // If decode callbacks never fire on webOS, still drop the spinner so the
+  // already-painted <img> (no opacity:0) can show without waiting for focus.
+  useEffect(() => {
+    if (!posterUrl || bannerReady) return
+    const timer = window.setTimeout(() => setBannerReady(true), 2000)
+    return () => window.clearTimeout(timer)
+  }, [posterUrl, bannerReady])
+
   useEffect(() => {
     let cancelled = false
     let safetyTimer = 0
@@ -702,8 +710,6 @@ export function ItemScreen({ itemId, preview = null, onBack, onPlay, onPlayTrail
             alt=""
             class="item-banner-image"
             loading="eager"
-            revealWhenDecoded
-            minNaturalWidth={480}
             onReady={() => setBannerReady(true)}
             onFailed={() => setBannerReady(true)}
           />
