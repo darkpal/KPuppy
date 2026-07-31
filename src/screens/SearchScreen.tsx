@@ -23,6 +23,7 @@ export const DEFAULT_SEARCH_STATE: SearchScreenState = {
 
 interface SearchScreenProps {
   onBack: () => void
+  exitDirectlyOnBack?: boolean
   onSelectItem: (itemId: number) => void
   onNavigateToMenu: () => void
   isActive: boolean
@@ -66,6 +67,7 @@ function resolveInitialState(
 
 export function SearchScreen({
   onBack,
+  exitDirectlyOnBack = false,
   onSelectItem,
   onNavigateToMenu,
   isActive,
@@ -276,6 +278,10 @@ export function SearchScreen({
     if (focusArea === 'query') {
       return {
         onBack: () => {
+          if (exitDirectlyOnBack) {
+            onBack()
+            return
+          }
           // Remote Back while IME is open: dismiss input first, then leave search.
           if (isQueryInputFocused()) {
             queryInputRef.current?.blur()
@@ -319,9 +325,9 @@ export function SearchScreen({
         onLeftEdge: onNavigateToMenu,
         onTopEdge: () => setFocusArea('query')
       }),
-      onBack: () => setFocusArea('query')
+      onBack: exitDirectlyOnBack ? onBack : () => setFocusArea('query')
     }
-  }, [focusArea, results, resultIndex, resultsPerRow, onBack, onSelectItem, onNavigateToMenu, filterDropdownOpen, filterDropdownIndex, currentDropdownOptions.length, activeFilter, typeOptions, isQueryInputFocused])
+  }, [focusArea, results, resultIndex, resultsPerRow, onBack, onSelectItem, onNavigateToMenu, filterDropdownOpen, filterDropdownIndex, currentDropdownOptions.length, activeFilter, typeOptions, isQueryInputFocused, exitDirectlyOnBack])
 
   useKeyboardNavigation(handlers, isActive)
 

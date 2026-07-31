@@ -41,4 +41,21 @@ describe('getEpisodeNeighbors', () => {
     expect(getEpisodeNeighbors(undefined, 1, 1)).toEqual({})
     expect(getEpisodeNeighbors(seasons, 3, 1)).toEqual({})
   })
+
+  it('works on older webOS Chromium without Array.prototype.flatMap', () => {
+    const originalFlatMap = Array.prototype.flatMap
+    Object.defineProperty(Array.prototype, 'flatMap', {
+      configurable: true,
+      value: undefined
+    })
+
+    try {
+      expect(getEpisodeNeighbors(seasons, 1, 2).nextEpisode).toEqual({ season: 2, episode: 1 })
+    } finally {
+      Object.defineProperty(Array.prototype, 'flatMap', {
+        configurable: true,
+        value: originalFlatMap
+      })
+    }
+  })
 })

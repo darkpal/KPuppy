@@ -18,11 +18,15 @@ export function getEpisodeNeighbors(
 ): EpisodeNeighbors {
   if (!seasons || currentSeason === undefined || currentEpisode === undefined) return {}
 
-  const episodes = [...seasons]
-    .sort((a, b) => a.number - b.number)
-    .flatMap(season => [...season.episodes]
-      .sort((a, b) => a.number - b.number)
-      .map(episode => ({ season: season.number, episode: episode.number })))
+  // webOS 3.x/4.x uses Chromium versions without Array.prototype.flatMap.
+  const episodes: EpisodeNavigationTarget[] = []
+  const orderedSeasons = seasons.slice().sort((a, b) => a.number - b.number)
+  orderedSeasons.forEach(season => {
+    const orderedEpisodes = season.episodes.slice().sort((a, b) => a.number - b.number)
+    orderedEpisodes.forEach(episode => {
+      episodes.push({ season: season.number, episode: episode.number })
+    })
+  })
 
   const currentIndex = episodes.findIndex(target => (
     target.season === currentSeason && target.episode === currentEpisode

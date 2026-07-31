@@ -70,14 +70,15 @@
 .item-summary::before {
   content: '';
   position: absolute;
-  inset: -28px -44px -20px -32px;
+  inset: -200px -90px -24px -32px;
   z-index: 0;
-  border-radius: 12px;
-  background: linear-gradient(
-    90deg,
-    rgba(3, 7, 5, 0.66) 0%,
-    rgba(3, 7, 5, 0.5) 62%,
-    rgba(3, 7, 5, 0) 100%
+  background: radial-gradient(
+    ellipse 125% 90% at 0% 100%,
+    rgba(3, 7, 5, 0.72) 0%,
+    rgba(3, 7, 5, 0.64) 42%,
+    rgba(3, 7, 5, 0.42) 62%,
+    rgba(3, 7, 5, 0.18) 78%,
+    rgba(3, 7, 5, 0) 94%
   );
   pointer-events: none;
 }
@@ -357,6 +358,33 @@
 .item-detail-list-item {
   color: #e0e0e0;
   line-height: 1.25;
+}
+
+/* Full details need stronger labels and more breathing room at TV distance. */
+.item-details-page .item-detail-label {
+  color: #e2e2e2;
+  font-weight: 600;
+}
+
+.item-details-page .item-detail-topline {
+  margin-bottom: 14px;
+}
+
+.item-details-page .item-details-content > .item-detail {
+  margin-bottom: 18px;
+}
+
+.item-details-page .item-detail-inline,
+.item-details-page .item-detail-block {
+  gap: 8px 12px;
+}
+
+.item-details-page .item-cast-list {
+  gap: 6px 9px;
+}
+
+.item-details-page .item-detail-list {
+  gap: 6px;
 }
 
 .item-detail-more {
@@ -646,11 +674,11 @@
 }
 
 .item-similar.active {
-  border-top-color: #e50914;
+  border-top-color: #63c884;
 }
 
 .item-similar-title {
-  font-size: 18px;
+  font-size: 24px;
   font-weight: 600;
   color: #ffffff;
   margin: 0 0 10px 0;
@@ -660,14 +688,14 @@
 .item-similar-row {
   display: flex;
   overflow: visible;
-  padding: 8px 0;
-  margin: -8px 0;
+  padding: 10px 0;
+  margin: -10px 0;
 }
 
 .item-similar-card {
   flex-shrink: 0;
-  width: 118px;
-  margin-right: 14px;
+  width: 146px;
+  margin-right: 18px;
   cursor: pointer;
   transition: transform 0.15s ease;
 }
@@ -682,8 +710,8 @@
 }
 
 .item-similar-poster {
-  width: 118px;
-  height: 166px;
+  width: 146px;
+  height: 206px;
   object-fit: cover;
   border-radius: var(--radius-sm);
   background: rgba(255, 255, 255, 0.1);
@@ -696,16 +724,16 @@
 }
 
 .item-similar-card.focused .item-similar-poster {
-  box-shadow: 0 0 0 2px #e50914;
+  box-shadow: 0 0 0 3px #63c884;
 }
 
 .item-similar-info {
-  margin-top: 6px;
+  margin-top: 8px;
 }
 
 .item-similar-name {
   display: block;
-  font-size: 12px;
+  font-size: 16px;
   color: #ffffff;
   white-space: nowrap;
   overflow: hidden;
@@ -714,7 +742,7 @@
 
 .item-similar-year {
   display: block;
-  font-size: 10px;
+  font-size: 14px;
   color: #808080;
 }
 

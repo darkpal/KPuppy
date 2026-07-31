@@ -61,6 +61,7 @@ interface ItemScreenState {
 type ItemScreenAction =
   | { type: 'LOAD_START' }
   | { type: 'LOAD_SUCCESS'; item: ItemDetailsType; focusArea: FocusArea; selectedQuality: string | null }
+  | { type: 'UPDATE_MEDIA'; item: ItemDetailsType; selectedQuality: string | null }
   | { type: 'LOAD_ERROR'; error: string }
   | { type: 'SET_SIMILAR_ITEMS'; items: MovieItem[] }
   | { type: 'SET_IS_WATCHING'; value: boolean }
@@ -105,6 +106,13 @@ function itemScreenReducer(state: ItemScreenState, action: ItemScreenAction): It
       return { ...initialState, loading: true }
     case 'LOAD_SUCCESS':
       return { ...state, loading: false, item: action.item, focusArea: action.focusArea, selectedQuality: action.selectedQuality }
+    case 'UPDATE_MEDIA':
+      if (state.item?.id !== action.item.id) return state
+      return {
+        ...state,
+        item: action.item,
+        selectedQuality: state.selectedQuality || action.selectedQuality
+      }
     case 'LOAD_ERROR':
       return { ...state, loading: false, error: action.error }
     case 'SET_SIMILAR_ITEMS':
@@ -151,21 +159,40 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
   const detailsPageRef = useRef<HTMLElement>(null)
 
   useEffect(() => {
+    let cancelled = false
+
     async function loadItem() {
       try {
         dispatch({ type: 'LOAD_START' })
-        let data = await getItem(itemId)
+        const data = await getItem(itemId)
+        if (cancelled) return
 
         const hasSeries = data.seasons && data.seasons.length > 0
         const newFocusArea: FocusArea = hasSeries ? 'seasons' : 'play'
 
+        const files = data.videos?.[0]?.files || data.seasons?.[0]?.episodes?.[0]?.files
+        const available = getAvailableQualities(files)
+        const { defaultQuality } = getLocalSettings()
+
+        let quality: string | null = null
+        if (defaultQuality !== 'auto' && available.includes(defaultQuality)) {
+          quality = defaultQuality
+        } else if (available.length > 0) {
+          quality = available[0]
+        }
+
+        // The item payload is enough to render the card. Do not keep the whole
+        // screen behind a spinner while the supplemental media request is slow.
+        dispatch({ type: 'LOAD_SUCCESS', item: data, focusArea: newFocusArea, selectedQuality: quality })
+
         // media-links returns the full subtitle/file set (item payload can be incomplete)
         const mediaId = data.videos?.[0]?.id || data.seasons?.[0]?.episodes?.[0]?.id
         if (mediaId) {
-          try {
-            const links = await getMediaLinks(mediaId)
+          getMediaLinks(mediaId).then(links => {
+            if (cancelled) return
+            let enrichedData = data
             if (data.videos?.[0]) {
-              data = {
+              enrichedData = {
                 ...data,
                 videos: [
                   {
@@ -179,7 +206,7 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
             } else if (data.seasons?.[0]?.episodes?.[0]) {
               const season0 = data.seasons[0]
               const ep0 = season0.episodes[0]
-              data = {
+              enrichedData = {
                 ...data,
                 seasons: [
                   {
@@ -197,38 +224,44 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
                 ]
               }
             }
-          } catch (err) {
+
+            const enrichedFiles = enrichedData.videos?.[0]?.files || enrichedData.seasons?.[0]?.episodes?.[0]?.files
+            const enrichedAvailable = getAvailableQualities(enrichedFiles)
+            let enrichedQuality: string | null = null
+            if (defaultQuality !== 'auto' && enrichedAvailable.includes(defaultQuality)) {
+              enrichedQuality = defaultQuality
+            } else if (enrichedAvailable.length > 0) {
+              enrichedQuality = enrichedAvailable[0]
+            }
+            dispatch({ type: 'UPDATE_MEDIA', item: enrichedData, selectedQuality: enrichedQuality })
+          }).catch(err => {
             if (import.meta.env.DEV) console.error('getMediaLinks failed:', err)
-          }
+          })
         }
 
-        const files = data.videos?.[0]?.files || data.seasons?.[0]?.episodes?.[0]?.files
-        const available = getAvailableQualities(files)
-        const { defaultQuality } = getLocalSettings()
-
-        let quality: string | null = null
-        if (defaultQuality !== 'auto' && available.includes(defaultQuality)) {
-          quality = defaultQuality
-        } else if (available.length > 0) {
-          quality = available[0]
-        }
-
-        dispatch({ type: 'LOAD_SUCCESS', item: data, focusArea: newFocusArea, selectedQuality: quality })
-
-        getSimilarItems(itemId).then(items => dispatch({ type: 'SET_SIMILAR_ITEMS', items })).catch(err => {
+        getSimilarItems(itemId).then(items => {
+          if (!cancelled) dispatch({ type: 'SET_SIMILAR_ITEMS', items })
+        }).catch(err => {
           if (import.meta.env.DEV) console.error('getSimilarItems failed:', err)
         })
 
         if (hasSeries) {
-          isItemInWatchlist(itemId).then(value => dispatch({ type: 'SET_IS_WATCHING', value })).catch(err => {
+          isItemInWatchlist(itemId).then(value => {
+            if (!cancelled) dispatch({ type: 'SET_IS_WATCHING', value })
+          }).catch(err => {
             if (import.meta.env.DEV) console.error('isItemInWatchlist failed:', err)
           })
         }
       } catch (err) {
-        dispatch({ type: 'LOAD_ERROR', error: err instanceof Error ? err.message : 'Failed to load' })
+        if (!cancelled) {
+          dispatch({ type: 'LOAD_ERROR', error: err instanceof Error ? err.message : 'Failed to load' })
+        }
       }
     }
     loadItem()
+    return () => {
+      cancelled = true
+    }
   }, [itemId])
 
   const videoData = item?.videos?.[0] || item?.seasons?.[0]?.episodes?.[0]

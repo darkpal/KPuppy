@@ -57,6 +57,14 @@ interface PlayerState {
   initialAudioIndex: number
 }
 
+interface SearchReturnTarget {
+  itemId: number
+  selectedMenuId: string
+  searchState: SearchScreenState | null
+  categoryGenreId: number | null
+  categoryFilters: CategoryFilters | null
+}
+
 interface AppState {
   authenticated: boolean
   selectedMenuId: string
@@ -69,6 +77,7 @@ interface AppState {
   returnToSeriesId: number | null
   player: PlayerState | null
   searchState: SearchScreenState | null
+  searchReturnTarget: SearchReturnTarget | null
   categoryGenreId: number | null
   categoryFilters: CategoryFilters | null
   bookmarksState: {
@@ -126,6 +135,7 @@ export function App() {
       returnToSeriesId: null,
       player: null,
       searchState: null,
+      searchReturnTarget: null,
       categoryGenreId: null,
       categoryFilters: null,
       bookmarksState: null
@@ -249,6 +259,7 @@ export function App() {
       seriesId: null,
       // Drop search/category filters when leaving that section via the menu.
       searchState: menuId === 'search' ? prev.searchState : null,
+      searchReturnTarget: null,
       bookmarksState: menuId === 'bookmarks' ? prev.bookmarksState : null,
       categoryGenreId: null,
       categoryFilters: null
@@ -265,6 +276,7 @@ export function App() {
       categoryGenreId: genreId,
       categoryFilters: { ...DEFAULT_CATEGORY_FILTERS, genreId },
       searchState: null,
+      searchReturnTarget: null,
       focusArea: 'content'
     }))
   }, [])
@@ -292,6 +304,13 @@ export function App() {
   const handleSelectActor = useCallback((name: string) => {
     setState(prev => ({
       ...prev,
+      searchReturnTarget: prev.itemId ? {
+        itemId: prev.itemId,
+        selectedMenuId: prev.selectedMenuId,
+        searchState: prev.searchState,
+        categoryGenreId: prev.categoryGenreId,
+        categoryFilters: prev.categoryFilters
+      } : prev.searchReturnTarget,
       itemId: null,
       seriesId: null,
       selectedMenuId: 'search',
@@ -305,6 +324,13 @@ export function App() {
   const handleSelectDirector = useCallback((name: string) => {
     setState(prev => ({
       ...prev,
+      searchReturnTarget: prev.itemId ? {
+        itemId: prev.itemId,
+        selectedMenuId: prev.selectedMenuId,
+        searchState: prev.searchState,
+        categoryGenreId: prev.categoryGenreId,
+        categoryFilters: prev.categoryFilters
+      } : prev.searchReturnTarget,
       itemId: null,
       seriesId: null,
       selectedMenuId: 'search',
@@ -313,6 +339,37 @@ export function App() {
       categoryFilters: null,
       focusArea: 'content'
     }))
+  }, [])
+
+  const handleBackFromSearch = useCallback(() => {
+    setState(prev => {
+      const target = prev.searchReturnTarget
+      if (!target) {
+        return {
+          ...prev,
+          selectedMenuId: 'home',
+          focusArea: 'content',
+          itemId: null,
+          seriesId: null,
+          searchState: null,
+          searchReturnTarget: null,
+          categoryGenreId: null,
+          categoryFilters: null
+        }
+      }
+
+      return {
+        ...prev,
+        selectedMenuId: target.selectedMenuId,
+        itemId: target.itemId,
+        seriesId: null,
+        searchState: target.searchState,
+        searchReturnTarget: null,
+        categoryGenreId: target.categoryGenreId,
+        categoryFilters: target.categoryFilters,
+        focusArea: 'content'
+      }
+    })
   }, [])
 
   const handleNavigateToMenu = useCallback(() => {
@@ -673,7 +730,8 @@ export function App() {
         return (
           <SearchScreen
             key="search"
-            onBack={() => handleMenuSelect('home')}
+            onBack={handleBackFromSearch}
+            exitDirectlyOnBack={state.searchReturnTarget !== null}
             onSelectItem={handleSelectItem}
             onNavigateToMenu={handleNavigateToMenu}
             isActive={isContentActive}

@@ -91,6 +91,7 @@ describe('ItemScreen', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(kinopub.getItem).mockResolvedValue(mockMovieDetails)
+    vi.mocked(kinopub.getMediaLinks).mockResolvedValue({ files: [], subtitles: [] })
     vi.mocked(kinopub.getSimilarItems).mockResolvedValue([])
     vi.mocked(kinopub.isItemInWatchlist).mockResolvedValue(false)
   })
@@ -106,6 +107,17 @@ describe('ItemScreen', () => {
       renderWithI18n(<ItemScreen {...mockProps} />)
 
       expect(document.querySelector('.spinner')).not.toBeNull()
+    })
+
+    it('renders the card without waiting for supplemental media links', async () => {
+      vi.mocked(kinopub.getMediaLinks).mockImplementation(() => new Promise(() => {}))
+
+      renderWithI18n(<ItemScreen {...mockProps} />)
+
+      await waitFor(() => {
+        expect(screen.getAllByText('Test Movie')).toHaveLength(2)
+      })
+      expect(document.querySelector('.spinner')).toBeNull()
     })
   })
 

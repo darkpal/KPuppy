@@ -30,13 +30,22 @@ vi.mock('../src/storage', () => ({
 vi.mock('../src/api/kinopub', () => ({
   refreshAccessToken: vi.fn(),
   getItem: vi.fn(),
+  getMediaLinks: vi.fn(() => Promise.resolve({ files: [], subtitles: [] })),
   setOnAuthError: vi.fn(),
   getDeviceInfo: vi.fn(),
   markTime: vi.fn(),
   registerDevice: vi.fn(() => Promise.resolve()),
   getUser: vi.fn(() => Promise.resolve({ username: 'testuser', avatar: null })),
   getContentTypes: vi.fn(() => Promise.resolve([])),
-  getItems: vi.fn(() => Promise.resolve([])),
+  monthAgoUnix: vi.fn(() => 0),
+  getItems: vi.fn(() => Promise.resolve({
+    items: [],
+    pagination: { current: 1, total: 0, totalItems: 0, perpage: 20 }
+  })),
+  getFreshItems: vi.fn(() => Promise.resolve({
+    items: [],
+    pagination: { current: 1, total: 0, totalItems: 0, perpage: 20 }
+  })),
   getWatching: vi.fn(() => Promise.resolve([])),
   getNewMovies: vi.fn(() => Promise.resolve([])),
   getPopularMovies: vi.fn(() => Promise.resolve([])),
@@ -45,7 +54,10 @@ vi.mock('../src/api/kinopub', () => ({
   getFreshSeries: vi.fn(() => Promise.resolve([])),
   getHotMovies: vi.fn(() => Promise.resolve([])),
   getHotSeries: vi.fn(() => Promise.resolve([])),
-  searchItems: vi.fn(() => Promise.resolve([])),
+  searchItems: vi.fn(() => Promise.resolve({
+    items: [],
+    pagination: { current: 1, total: 0, totalItems: 0, perpage: 48 }
+  })),
   getBookmarkFolders: vi.fn(() => Promise.resolve([])),
   getBookmarkItems: vi.fn(() => Promise.resolve([])),
   getCollections: vi.fn(() => Promise.resolve({
@@ -310,6 +322,78 @@ describe('App Navigation', () => {
         const settingsScreen = document.querySelector('.settings-screen')
         expect(settingsScreen).toBeDefined()
       })
+    })
+
+    it('returns from a person search result to the original item card', async () => {
+      const firstItem = {
+        id: 1,
+        title: 'Original Movie',
+        type: 'movie',
+        year: 2024,
+        plot: 'Original plot',
+        posters: { small: '', medium: '', big: '' },
+        rating: 8,
+        imdbRating: 7.5,
+        kinopoiskRating: 8.2,
+        quality: 0,
+        views: 100,
+        directors: [],
+        actors: [{ id: 10, name: 'Test Actor' }],
+        countries: [],
+        genres: [],
+        videos: [],
+        duration: { average: 120, total: 120 }
+      }
+      const secondItem = {
+        ...firstItem,
+        id: 2,
+        title: 'Second Movie',
+        plot: 'Second plot',
+        actors: []
+      }
+
+      vi.mocked(storage.getReturnTo).mockReturnValueOnce({
+        itemId: 1,
+        seriesId: null,
+        selectedMenuId: 'movies',
+        screenFocus: {}
+      })
+      vi.mocked(kinopub.getItem).mockImplementation((id) => Promise.resolve(id === 1 ? firstItem : secondItem))
+      vi.mocked(kinopub.searchItems).mockResolvedValue({
+        items: [{
+          id: 2,
+          title: 'Second Movie',
+          type: 'movie',
+          year: 2024,
+          posters: { small: '', medium: '', big: '' },
+          rating: 8,
+          imdbRating: 7.5,
+          kinopoiskRating: 8.2,
+          quality: 0,
+          views: 100,
+          genres: []
+        }],
+        pagination: { current: 1, total: 1, totalItems: 1, perpage: 48 }
+      })
+
+      renderApp()
+
+      await waitFor(() => expect(screen.getAllByText('Test Actor').length).toBeGreaterThan(0))
+      fireEvent.click(screen.getAllByText('Test Actor')[0])
+
+      await waitFor(() => {
+        expect(kinopub.searchItems).toHaveBeenCalledWith(expect.objectContaining({ q: 'Test Actor', field: 'actor' }))
+        expect(screen.getByText('Second Movie')).toBeDefined()
+      })
+      fireEvent.click(screen.getByText('Second Movie'))
+
+      await waitFor(() => expect(screen.getAllByText('Second Movie')).toHaveLength(2))
+      fireEvent.keyDown(document, { keyCode: 461 })
+
+      await waitFor(() => expect(document.querySelector('.search-screen')).not.toBeNull())
+      fireEvent.keyDown(document, { keyCode: 461 })
+
+      await waitFor(() => expect(screen.getAllByText('Original Movie')).toHaveLength(2))
     })
   })
 
