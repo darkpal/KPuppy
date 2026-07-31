@@ -4,26 +4,19 @@ const SAFETY_TIMEOUT_MS = 15000
 const RETRY_DELAY_MS = 1500
 const MAX_RETRIES = 2
 
-function decodeViaCanvas(image: HTMLImageElement): void {
-  try {
-    const canvas = document.createElement('canvas')
-    canvas.width = 1
-    canvas.height = 1
-    // drawImage forces a full synchronous decode into the browser image cache.
-    canvas.getContext('2d')?.drawImage(image, 0, 0, 1, 1)
-  } catch {
-    // Corrupt image — reveal anyway, the dark banner background covers it.
-  }
-}
-
 /**
- * Preload and fully decode an image off-DOM before it is shown.
+ * Preload an image off-DOM and report when it is safe to show.
  *
- * webOS (Chromium 38/53) rasterizes large JPEGs synchronously at paint time
- * and often drops that repaint entirely, so a freshly loaded hero image stays
- * invisible until the next input/layout pass (a button press). Decoding here
- * first means the eventual <img> mount paints instantly, and the state flip
- * itself provides the DOM invalidation the TV was missing.
+ * webOS drops the repaint that should follow a large hero image finishing its
+ * load, so an <img> mounted before the data arrived stays invisible until the
+ * next input/layout pass (a button press). Mounting the element only after
+ * onload turns the reveal into a DOM mutation, which reliably schedules the
+ * frame the TV was missing.
+ *
+ * Where img.decode() exists (Chrome 64+) we also pre-rasterize off the main
+ * thread so that frame paints instantly. Older engines get no forced decode:
+ * a synchronous canvas decode here wedged the webOS renderer for good under
+ * memory pressure (frozen spinner, dead timers).
  */
 export function useDecodedImage(url: string | null): boolean {
   const [ready, setReady] = useState(false)
@@ -48,14 +41,9 @@ export function useDecodedImage(url: string | null): boolean {
       img.onload = () => {
         const loaded = img
         if (disposed || !loaded) return
-        // decode() (Chrome 64+) is preferred; canvas draw covers webOS 3/4.
         if (typeof loaded.decode === 'function') {
-          loaded.decode().then(finish).catch(() => {
-            decodeViaCanvas(loaded)
-            finish()
-          })
+          loaded.decode().then(finish).catch(finish)
         } else {
-          decodeViaCanvas(loaded)
           finish()
         }
       }
