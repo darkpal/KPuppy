@@ -5,15 +5,21 @@
   overflow: hidden;
 }
 
-/* Full-bleed backdrop — almost the entire screen */
+/* Full-bleed backdrop. The image element retries stalled webOS loads. */
 .item-banner {
   position: absolute;
   inset: 0;
   background-color: #0a0a0a;
-  background-size: cover;
-  background-repeat: no-repeat;
-  background-position: center 18%;
+  overflow: hidden;
   pointer-events: none;
+}
+
+.item-banner-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 18%;
 }
 
 /* Soft bottom darkness so title/plot stay readable over the poster */
@@ -23,12 +29,12 @@
   inset: 0;
   background: linear-gradient(
     to top,
-    rgba(10, 10, 10, 0.96) 0%,
-    rgba(10, 10, 10, 0.88) 22%,
-    rgba(10, 10, 10, 0.55) 48%,
-    rgba(10, 10, 10, 0.28) 68%,
-    rgba(10, 10, 10, 0.12) 85%,
-    rgba(10, 10, 10, 0.08) 100%
+    rgba(10, 10, 10, 0.98) 0%,
+    rgba(10, 10, 10, 0.9) 24%,
+    rgba(10, 10, 10, 0.62) 46%,
+    rgba(10, 10, 10, 0.22) 64%,
+    rgba(10, 10, 10, 0.06) 78%,
+    rgba(10, 10, 10, 0.02) 100%
   );
 }
 
@@ -38,25 +44,35 @@
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
-  padding: 28px 48px 24px;
+  padding: 28px 56px 28px;
   z-index: 1;
   overflow: hidden;
   box-sizing: border-box;
 }
 
-.item-header {
+.item-info-panel {
   flex: 0 1 auto;
   min-height: 0;
   display: flex;
-  flex-direction: column;
+  align-items: flex-end;
+  padding: 24px 28px 22px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(
+    90deg,
+    rgba(8, 8, 8, 0.94) 0%,
+    rgba(8, 8, 8, 0.88) 58%,
+    rgba(8, 8, 8, 0.8) 100%
+  );
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.34);
   overflow: hidden;
 }
 
 .item-title {
-  font-size: 40px;
+  font-size: 44px;
   font-weight: 700;
   color: #ffffff;
-  margin: 0 0 12px;
+  margin: 0 0 8px;
   text-shadow: 0 2px 12px rgba(0, 0, 0, 0.85);
   max-width: 100%;
   line-height: 1.2;
@@ -69,7 +85,7 @@
 .item-meta {
   display: flex;
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .item-year {
@@ -115,8 +131,8 @@
 .item-genres {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  margin-bottom: 16px;
+  gap: 8px;
+  margin-bottom: 12px;
 }
 
 .item-chip {
@@ -145,13 +161,13 @@
   display: flex;
   flex-wrap: wrap;
   align-items: flex-start;
-  gap: 8px 10px;
+  gap: 5px 8px;
 }
 
 .item-cast-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px 8px;
+  gap: 2px 6px;
   flex: 1;
   min-width: 0;
 }
@@ -162,9 +178,9 @@
   border: none;
   background: transparent;
   color: #e8e8e8;
-  font-size: 18px;
-  line-height: 1.2;
-  padding: 6px 10px;
+  font-size: 20px;
+  line-height: 1.25;
+  padding: 3px 6px;
   border-radius: 8px;
   cursor: pointer;
   font-family: inherit;
@@ -180,35 +196,26 @@
   color: #ffffff;
 }
 
-.item-two-columns {
-  display: flex;
-  gap: 24px;
-  margin-bottom: 12px;
-  min-height: 0;
-  align-items: stretch;
-}
-
 .item-column-left {
   flex: 3;
   min-width: 0;
-  padding-right: 0;
+  margin-right: 56px;
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
 }
 
 .item-column-right {
   flex: 2;
   min-width: 0;
   max-width: 40%;
-  align-self: flex-start;
+  align-self: flex-end;
 }
 
 .item-plot {
-  font-size: 24px;
+  font-size: 25px;
   color: #e0e0e0;
   line-height: 1.45;
-  margin: 0 0 16px 0;
+  margin: 0 0 12px 0;
   text-shadow: 0 1px 8px rgba(0, 0, 0, 0.7);
   display: -webkit-box;
   -webkit-box-orient: vertical;
@@ -217,10 +224,10 @@
 }
 
 .item-detail {
-  font-size: 20px;
+  font-size: 21px;
   color: #d2d2d2;
-  margin: 0 0 14px 0;
-  line-height: 1.4;
+  margin: 0 0 10px 0;
+  line-height: 1.3;
 }
 
 .item-detail:last-child {
@@ -231,8 +238,8 @@
   color: #9a9a9a;
   margin-right: 6px;
   flex-shrink: 0;
-  line-height: 1.4;
-  padding-top: 6px;
+  line-height: 1.3;
+  padding-top: 3px;
 }
 
 .item-detail > .item-detail-label {
@@ -247,14 +254,14 @@
 .item-detail-list {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
   flex: 1;
   min-width: 0;
 }
 
 .item-detail-list-item {
   color: #e0e0e0;
-  line-height: 1.35;
+  line-height: 1.25;
 }
 
 .item-actions {

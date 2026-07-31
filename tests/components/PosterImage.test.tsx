@@ -26,7 +26,7 @@ describe('PosterImage', () => {
     expect(img.getAttribute('src')).toBe('https://example.com/p.jpg')
   })
 
-  it('retries when load stalls', () => {
+  it('retries a stalled load up to the retry limit', () => {
     const { container } = render(<PosterImage src="https://example.com/slow.jpg" alt="Poster" />)
     const img = container.querySelector('img') as HTMLImageElement
     Object.defineProperty(img, 'complete', { configurable: true, get: () => false })
@@ -34,10 +34,16 @@ describe('PosterImage', () => {
 
     const removeSpy = vi.spyOn(img, 'removeAttribute')
     act(() => {
+      vi.advanceTimersByTime(7000)
+    })
+
+    expect(removeSpy).toHaveBeenCalledTimes(2)
+    expect(img.getAttribute('src')).toBe('https://example.com/slow.jpg')
+
+    act(() => {
       vi.advanceTimersByTime(3500)
     })
 
-    expect(removeSpy).toHaveBeenCalledWith('src')
-    expect(img.getAttribute('src')).toBe('https://example.com/slow.jpg')
+    expect(removeSpy).toHaveBeenCalledTimes(2)
   })
 })

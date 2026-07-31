@@ -7,6 +7,7 @@ import { useI18n } from '../i18n'
 import { ItemDetails } from '../components/ItemDetails'
 import { SimilarItems } from '../components/SimilarItems'
 import { FolderDialog } from '../components/FolderDialog'
+import { PosterImage } from '../components/PosterImage'
 import '../styles/item.css'
 
 interface PlayOptions {
@@ -531,56 +532,59 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
     <>
     <div class="item-screen">
       {posterUrl && (
-        <div
-          class="item-banner"
-          style={{ backgroundImage: `url("${posterUrl}")` }}
-        />
+        <div class="item-banner">
+          <PosterImage
+            src={posterUrl}
+            alt=""
+            class="item-banner-image"
+            loading="eager"
+          />
+        </div>
       )}
 
       <div class="item-content">
-        <div class="item-header">
-          <h1 class="item-title">{item.title}</h1>
+        <div class="item-info-panel">
+          <div class="item-column-left">
+            <h1 class="item-title">{item.title}</h1>
 
-          <div class="item-meta">
-            <span class="item-year">{item.year}</span>
-            {kpRating > 0 && (
-              <span class="item-rating item-rating-kp">
-                KP {kpRating.toFixed(1)}
-              </span>
-            )}
-            {imdbRating > 0 && (
-              <span class="item-rating item-rating-imdb">
-                IMDb {imdbRating.toFixed(1)}
-              </span>
-            )}
-            {duration && <span class="item-duration">{duration}</span>}
-            <span class="item-type">{item.type}</span>
-          </div>
-
-          {genres.length > 0 && (
-            <div class="item-genres">
-              {genres.map((genre, index) => (
-                <button
-                  key={genre.id}
-                  type="button"
-                  class={`item-chip ${focusArea === 'genres' && metaFocusIndex === index ? 'focused' : ''}`}
-                  onMouseEnter={() => {
-                    dispatch({ type: 'SET_FOCUS_AREA', area: 'genres' })
-                    dispatch({ type: 'SET_META_FOCUS_INDEX', index })
-                  }}
-                  onClick={() => onSelectGenre?.(genre.id, item.type)}
-                >
-                  {genre.title}
-                </button>
-              ))}
+            <div class="item-meta">
+              <span class="item-year">{item.year}</span>
+              {kpRating > 0 && (
+                <span class="item-rating item-rating-kp">
+                  KP {kpRating.toFixed(1)}
+                </span>
+              )}
+              {imdbRating > 0 && (
+                <span class="item-rating item-rating-imdb">
+                  IMDb {imdbRating.toFixed(1)}
+                </span>
+              )}
+              {duration && <span class="item-duration">{duration}</span>}
+              <span class="item-type">{item.type}</span>
             </div>
-          )}
 
-          <div class="item-two-columns">
-            <div class="item-column-left">
-              {item.plot && <p class="item-plot">{item.plot}</p>}
+            {genres.length > 0 && (
+              <div class="item-genres">
+                {genres.map((genre, index) => (
+                  <button
+                    key={genre.id}
+                    type="button"
+                    class={`item-chip ${focusArea === 'genres' && metaFocusIndex === index ? 'focused' : ''}`}
+                    onMouseEnter={() => {
+                      dispatch({ type: 'SET_FOCUS_AREA', area: 'genres' })
+                      dispatch({ type: 'SET_META_FOCUS_INDEX', index })
+                    }}
+                    onClick={() => onSelectGenre?.(genre.id, item.type)}
+                  >
+                    {genre.title}
+                  </button>
+                ))}
+              </div>
+            )}
 
-              <div class="item-actions">
+            {item.plot && <p class="item-plot">{item.plot}</p>}
+
+            <div class="item-actions">
                 {hasSeasons ? (
                   <button
                     type="button"
@@ -680,23 +684,22 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
                     {t.trailer}
                   </button>
                 )}
-              </div>
             </div>
-            <ItemDetails
-              countries={countries}
-              directors={directors}
-              actors={cast}
-              audios={audios}
-              subtitles={subtitles}
-              focusedActorIndex={focusArea === 'cast' ? metaFocusIndex : null}
-              onHoverActor={(index) => {
-                dispatch({ type: 'SET_FOCUS_AREA', area: 'cast' })
-                dispatch({ type: 'SET_META_FOCUS_INDEX', index })
-              }}
-              onSelectActor={onSelectActor}
-              onSelectDirector={onSelectDirector}
-            />
           </div>
+          <ItemDetails
+            countries={countries}
+            directors={directors}
+            actors={cast}
+            audios={audios}
+            subtitles={subtitles}
+            focusedActorIndex={focusArea === 'cast' ? metaFocusIndex : null}
+            onHoverActor={(index) => {
+              dispatch({ type: 'SET_FOCUS_AREA', area: 'cast' })
+              dispatch({ type: 'SET_META_FOCUS_INDEX', index })
+            }}
+            onSelectActor={onSelectActor}
+            onSelectDirector={onSelectDirector}
+          />
         </div>
 
         <SimilarItems

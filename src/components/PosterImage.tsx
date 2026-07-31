@@ -37,16 +37,30 @@ export function PosterImage({
   useEffect(() => {
     if (!baseSrc) return
 
-    const id = window.setTimeout(() => {
-      const img = imgRef.current
-      if (!img) return
-      if (img.complete && img.naturalWidth > 0) return
-      if (retriesRef.current >= MAX_RETRIES) return
-      retriesRef.current += 1
-      reloadImage(img, baseSrc)
-    }, STALL_MS)
+    let disposed = false
+    let timeoutId = 0
 
-    return () => window.clearTimeout(id)
+    const scheduleStallCheck = () => {
+      timeoutId = window.setTimeout(() => {
+        if (disposed) return
+
+        const img = imgRef.current
+        if (!img) return
+        if (img.complete && img.naturalWidth > 0) return
+        if (retriesRef.current >= MAX_RETRIES) return
+
+        retriesRef.current += 1
+        reloadImage(img, baseSrc)
+        scheduleStallCheck()
+      }, STALL_MS)
+    }
+
+    scheduleStallCheck()
+
+    return () => {
+      disposed = true
+      window.clearTimeout(timeoutId)
+    }
   }, [baseSrc])
 
   if (!baseSrc) return null

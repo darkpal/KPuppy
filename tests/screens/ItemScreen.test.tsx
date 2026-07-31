@@ -142,6 +142,17 @@ describe('ItemScreen', () => {
       })
     })
 
+    it('loads the backdrop through the retryable poster image', async () => {
+      renderWithI18n(<ItemScreen {...mockProps} />)
+
+      await waitFor(() => {
+        const backdrop = document.querySelector('.item-banner-image') as HTMLImageElement
+        expect(backdrop).not.toBeNull()
+        expect(backdrop.getAttribute('src')).toBe('poster.jpg')
+        expect(backdrop.getAttribute('loading')).toBe('eager')
+      })
+    })
+
     it('renders play button for movies', async () => {
       renderWithI18n(<ItemScreen {...mockProps} />)
 
