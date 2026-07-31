@@ -78,31 +78,35 @@ export function ItemDetails({
 
   return (
     <div class="item-column-right">
-      {countries && (
-        <p class="item-detail">
-          <span class="item-detail-label">{t.country}:</span>
-          <span class="item-detail-value">{countries}</span>
-        </p>
-      )}
-      {visibleDirectors.length > 0 && (
-        <div class="item-detail item-detail-cast">
-          <span class="item-detail-label">{t.director}:</span>
-          <div class="item-cast-list">
-            {visibleDirectors.map((director) => (
-              <button
-                key={`dir-${director.id}-${director.name}`}
-                type="button"
-                class="item-chip"
-                onClick={() => onSelectDirector?.(director.name)}
-              >
-                {director.name}
-              </button>
-            ))}
-          </div>
+      {(countries || visibleDirectors.length > 0) && (
+        <div class="item-detail-meta-row">
+          {countries && (
+            <p class="item-detail item-detail-inline-text">
+              <span class="item-detail-label">{t.country}:</span>
+              <span class="item-detail-value">{countries}</span>
+            </p>
+          )}
+          {visibleDirectors.length > 0 && (
+            <div class="item-detail item-detail-inline">
+              <span class="item-detail-label">{t.director}:</span>
+              <div class="item-cast-list">
+                {visibleDirectors.map((director) => (
+                  <button
+                    key={`dir-${director.id}-${director.name}`}
+                    type="button"
+                    class="item-chip"
+                    onClick={() => onSelectDirector?.(director.name)}
+                  >
+                    {director.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
       {visibleActors.length > 0 && (
-        <div class="item-detail item-detail-cast">
+        <div class="item-detail item-detail-inline">
           <span class="item-detail-label">{t.cast}:</span>
           <div class="item-cast-list">
             {visibleActors.map((actor, index) => (
