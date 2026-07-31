@@ -378,7 +378,7 @@ async function ensureFreshTokens(): Promise<Tokens> {
   }
 }
 
-async function authFetch(url: string, options: RequestInit = {}): Promise<Response> {
+async function authFetch(url: string, options: RequestInit = {}, timeoutMs = 20000): Promise<Response> {
   const freshTokens = await ensureFreshTokens()
   const accessToken = freshTokens.access
 
@@ -394,7 +394,23 @@ async function authFetch(url: string, options: RequestInit = {}): Promise<Respon
   }
   headers['Authorization'] = `Bearer ${accessToken}`
 
-  const response = await fetch(url, { ...options, headers })
+  // Chrome 53 / older webOS has no AbortController — race a timeout instead.
+  const response = await new Promise<Response>((resolve, reject) => {
+    const timer = window.setTimeout(() => {
+      reject(new ApiError('Request timeout', 408))
+    }, timeoutMs)
+
+    fetch(url, { ...options, headers }).then(
+      (res) => {
+        window.clearTimeout(timer)
+        resolve(res)
+      },
+      (err) => {
+        window.clearTimeout(timer)
+        reject(err)
+      }
+    )
+  })
 
   if (response.status === 401) {
     handleAuthError()

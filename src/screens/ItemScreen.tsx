@@ -160,12 +160,21 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
 
   useEffect(() => {
     let cancelled = false
+    let safetyTimer = 0
 
     async function loadItem() {
       try {
         dispatch({ type: 'LOAD_START' })
+        // If getItem hangs without rejecting, unblock the spinner with an error.
+        safetyTimer = window.setTimeout(() => {
+          if (!cancelled) {
+            dispatch({ type: 'LOAD_ERROR', error: t.errorLoading })
+          }
+        }, 25000)
+
         const data = await getItem(itemId)
         if (cancelled) return
+        window.clearTimeout(safetyTimer)
 
         const hasSeries = data.seasons && data.seasons.length > 0
         const newFocusArea: FocusArea = hasSeries ? 'seasons' : 'play'
@@ -256,13 +265,16 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
         if (!cancelled) {
           dispatch({ type: 'LOAD_ERROR', error: err instanceof Error ? err.message : 'Failed to load' })
         }
+      } finally {
+        window.clearTimeout(safetyTimer)
       }
     }
     loadItem()
     return () => {
       cancelled = true
+      window.clearTimeout(safetyTimer)
     }
-  }, [itemId])
+  }, [itemId, t.errorLoading])
 
   const videoData = item?.videos?.[0] || item?.seasons?.[0]?.episodes?.[0]
   const files = videoData?.files

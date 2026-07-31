@@ -167,8 +167,14 @@
 .item-genres {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
   margin-bottom: 10px;
+}
+
+/* flex gap unsupported on webOS Chrome 53 — use margins */
+.item-genres .item-chip {
+  margin: 0 6px 6px 0;
+  padding: 4px 10px;
+  font-size: 19px;
 }
 
 .item-chip {

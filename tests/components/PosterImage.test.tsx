@@ -78,4 +78,30 @@ describe('PosterImage', () => {
 
     expect(img.classList.contains('poster-image-ready')).toBe(true)
   })
+
+  it('forces hero reveal when decode never settles', async () => {
+    const { container } = render(
+      <PosterImage
+        src="https://example.com/hero-hang.jpg"
+        alt="Hero"
+        loading="eager"
+        revealWhenDecoded
+      />
+    )
+    const img = container.querySelector('img') as HTMLImageElement
+    Object.defineProperty(img, 'naturalWidth', { configurable: true, get: () => 1920 })
+    Object.defineProperty(img, 'naturalHeight', { configurable: true, get: () => 1080 })
+    Object.defineProperty(img, 'decode', {
+      configurable: true,
+      value: vi.fn(() => new Promise(() => { /* never settles */ }))
+    })
+
+    await act(async () => {
+      fireEvent.load(img)
+      vi.advanceTimersByTime(2000)
+      await Promise.resolve()
+    })
+
+    expect(img.classList.contains('poster-image-ready')).toBe(true)
+  })
 })

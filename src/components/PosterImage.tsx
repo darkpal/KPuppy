@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'preact/hooks'
 
 const MAX_RETRIES = 3
 const STALL_MS = 3500
+const DECODE_TIMEOUT_MS = 2000
 let retryRequestId = 0
 
 interface PosterImageProps {
@@ -46,12 +47,20 @@ export function PosterImage({
   const mountedRef = useRef(true)
   const [isReady, setIsReady] = useState(!revealWhenDecoded)
 
+  const markReady = useCallback(() => {
+    if (mountedRef.current) setIsReady(true)
+  }, [])
+
   const retryImage = useCallback((img: HTMLImageElement) => {
-    if (retriesRef.current >= MAX_RETRIES) return
+    if (retriesRef.current >= MAX_RETRIES) {
+      // Prefer a possibly incomplete frame over an endless blank hero.
+      markReady()
+      return
+    }
     retriesRef.current += 1
     if (revealWhenDecoded) setIsReady(false)
     reloadImage(img, baseSrc)
-  }, [baseSrc, revealWhenDecoded])
+  }, [baseSrc, markReady, revealWhenDecoded])
 
   useEffect(() => {
     mountedRef.current = true
@@ -77,8 +86,14 @@ export function PosterImage({
 
         const img = imgRef.current
         if (!img) return
-        if (img.complete && img.naturalWidth > 0) return
-        if (retriesRef.current >= MAX_RETRIES) return
+        if (img.complete && img.naturalWidth > 0) {
+          if (revealWhenDecoded) markReady()
+          return
+        }
+        if (retriesRef.current >= MAX_RETRIES) {
+          markReady()
+          return
+        }
 
         retryImage(img)
         scheduleStallCheck()
@@ -91,7 +106,7 @@ export function PosterImage({
       disposed = true
       window.clearTimeout(timeoutId)
     }
-  }, [baseSrc, retryImage])
+  }, [baseSrc, markReady, revealWhenDecoded, retryImage])
 
   if (!baseSrc) return null
 
@@ -115,15 +130,25 @@ export function PosterImage({
         const loadedSrc = img.src
         const decode = img.decode
         if (typeof decode !== 'function') {
-          setIsReady(true)
+          markReady()
           return
         }
 
-        decode.call(img).then(() => {
+        let settled = false
+        const finish = () => {
+          if (settled) return
+          settled = true
           if (mountedRef.current && imgRef.current === img && img.src === loadedSrc) {
-            setIsReady(true)
+            markReady()
           }
+        }
+
+        const timer = window.setTimeout(finish, DECODE_TIMEOUT_MS)
+        decode.call(img).then(() => {
+          window.clearTimeout(timer)
+          finish()
         }).catch(() => {
+          window.clearTimeout(timer)
           if (mountedRef.current && imgRef.current === img && img.src === loadedSrc) {
             retryImage(img)
           }
