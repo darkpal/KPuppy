@@ -6,7 +6,7 @@ import { Translations } from '../i18n/translations'
 import { getLocalSettings } from '../storage'
 import {
   HomeIcon, SearchIcon, BookmarkIcon, CollectionIcon, HistoryIcon, FilmIcon, TvIcon,
-  MicIcon, GlassesIcon, VideoIcon, RadioIcon, LiveIcon, SettingsIcon, UserIcon, BellIcon
+  MicIcon, GlassesIcon, VideoIcon, RadioIcon, LiveIcon, SettingsIcon, UserIcon, BellIcon, NewReleasesIcon
 } from './Icons'
 import '../styles/sidemenu.css'
 
@@ -29,7 +29,8 @@ const MENU_ITEM_CONFIGS: MenuItem[] = [
   { id: 'livetv', Icon: LiveIcon, labelKey: 'menuLiveTV' },
   { id: 'collections', Icon: CollectionIcon, labelKey: 'menuCollections' },
   { id: 'bookmarks', Icon: BookmarkIcon, labelKey: 'menuBookmarks' },
-  { id: 'newepisodes', Icon: BellIcon, labelKey: 'menuNewEpisodes' },
+  { id: 'watching', Icon: BellIcon, labelKey: 'menuWatching' },
+  { id: 'newepisodes', Icon: NewReleasesIcon, labelKey: 'menuNewEpisodes' },
   { id: 'settings', Icon: SettingsIcon, labelKey: 'menuSettings' },
 ]
 

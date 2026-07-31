@@ -335,7 +335,8 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
           dispatch({ type: 'SET_SELECTED_QUALITY', quality: availableQualities[dropdownFocusIndex] })
           dispatch({ type: 'SET_FOCUS_AREA', area: 'play' })
         },
-        onBack: () => dispatch({ type: 'SET_FOCUS_AREA', area: 'play' })
+        onBack: () => dispatch({ type: 'SET_FOCUS_AREA', area: 'play' }),
+        onRed: () => dispatch({ type: 'SET_FOCUS_AREA', area: 'play' })
       }
     }
 
@@ -507,7 +508,7 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
     )
   }
 
-  const backdropUrl = item.posters?.big || item.posters?.medium
+  const posterUrl = item.posters?.big || item.posters?.medium || item.posters?.small
   const hasSeasons = item.seasons && item.seasons.length > 0
   const durationMinutes = item.duration?.average
     ? item.duration.average > 300
@@ -528,11 +529,16 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
   return (
     <>
     <div class="item-screen">
-      {backdropUrl && (
-        <div
-          class="item-backdrop"
-          style={{ backgroundImage: `url(${backdropUrl})` }}
-        />
+      {posterUrl && (
+        <>
+          <div
+            class="item-backdrop"
+            style={{ backgroundImage: `url(${posterUrl})` }}
+          />
+          <div class="item-poster-frame">
+            <img class="item-poster" src={posterUrl} alt="" />
+          </div>
+        </>
       )}
 
       <div class="item-content">
@@ -617,21 +623,27 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
                       )}
                     </button>
                     {focusArea === 'qualitySelect' && (
-                      <div class="item-dropdown item-dropdown-quality">
-                        {availableQualities.map((q, idx) => (
-                          <div
-                            key={q}
-                            class={`item-dropdown-option ${dropdownFocusIndex === idx ? 'focused' : ''} ${selectedQuality === q ? 'selected' : ''}`}
-                            onMouseEnter={() => dispatch({ type: 'SET_DROPDOWN_FOCUS_INDEX', index: idx })}
-                            onClick={() => {
-                              dispatch({ type: 'SET_SELECTED_QUALITY', quality: q })
-                              dispatch({ type: 'SET_FOCUS_AREA', area: 'play' })
-                            }}
-                          >
-                            {q}
-                          </div>
-                        ))}
-                      </div>
+                      <>
+                        <div
+                          class="item-dropdown-backdrop"
+                          onClick={() => dispatch({ type: 'SET_FOCUS_AREA', area: 'play' })}
+                        />
+                        <div class="item-dropdown item-dropdown-quality">
+                          {availableQualities.map((q, idx) => (
+                            <div
+                              key={q}
+                              class={`item-dropdown-option ${dropdownFocusIndex === idx ? 'focused' : ''} ${selectedQuality === q ? 'selected' : ''}`}
+                              onMouseEnter={() => dispatch({ type: 'SET_DROPDOWN_FOCUS_INDEX', index: idx })}
+                              onClick={() => {
+                                dispatch({ type: 'SET_SELECTED_QUALITY', quality: q })
+                                dispatch({ type: 'SET_FOCUS_AREA', area: 'play' })
+                              }}
+                            >
+                              {q}
+                            </div>
+                          ))}
+                        </div>
+                      </>
                     )}
                   </div>
                 )}

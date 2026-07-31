@@ -149,40 +149,40 @@
 }
 
 .remote-btn-red {
-  background: #c0392b;
-  border-color: #e74c3c;
+  background: var(--remote-red);
+  border-color: color-mix(in srgb, var(--remote-red) 70%, white);
 }
 
 .remote-btn-red:hover {
-  background: #e74c3c;
+  background: color-mix(in srgb, var(--remote-red) 80%, white);
 }
 
 .remote-btn-green {
-  background: #27ae60;
-  border-color: #2ecc71;
+  background: var(--remote-green);
+  border-color: color-mix(in srgb, var(--remote-green) 70%, white);
 }
 
 .remote-btn-green:hover {
-  background: #2ecc71;
+  background: color-mix(in srgb, var(--remote-green) 80%, white);
 }
 
 .remote-btn-yellow {
-  background: #f39c12;
-  border-color: #f1c40f;
-  color: #000;
+  background: var(--remote-yellow);
+  border-color: color-mix(in srgb, var(--remote-yellow) 70%, white);
+  color: #1a1a1a;
 }
 
 .remote-btn-yellow:hover {
-  background: #f1c40f;
+  background: color-mix(in srgb, var(--remote-yellow) 80%, white);
 }
 
 .remote-btn-blue {
-  background: #2980b9;
-  border-color: #3498db;
+  background: var(--remote-blue);
+  border-color: color-mix(in srgb, var(--remote-blue) 70%, white);
 }
 
 .remote-btn-blue:hover {
-  background: #3498db;
+  background: color-mix(in srgb, var(--remote-blue) 80%, white);
 }
 
 .remote-debug-show {

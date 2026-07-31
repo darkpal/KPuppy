@@ -234,15 +234,15 @@
 }
 
 .player-hint-quality {
-  background: rgba(229, 9, 20, 0.92);
+  background: color-mix(in srgb, var(--remote-red) 88%, transparent);
 }
 
 .player-hint-audio {
-  background: rgba(46, 204, 113, 0.9);
+  background: color-mix(in srgb, var(--remote-green) 88%, transparent);
 }
 
 .player-hint-subtitles {
-  background: rgba(241, 196, 15, 0.92);
+  background: color-mix(in srgb, var(--remote-yellow) 90%, transparent);
   color: #1a1a1a;
 }
 

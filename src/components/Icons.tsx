@@ -149,8 +149,17 @@ export function LiveIcon(props: IconProps) {
   )
 }
 
-/** Kinopub web: new_releases — «Новые эпизоды» */
+/** Kinopub web: notifications — «Я смотрю» */
 export function BellIcon(props: IconProps) {
+  return (
+    <MaterialIcon {...props}>
+      <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z" />
+    </MaterialIcon>
+  )
+}
+
+/** Kinopub web: new_releases — «Новые эпизоды» */
+export function NewReleasesIcon(props: IconProps) {
   return (
     <MaterialIcon {...props}>
       <path d="M23 12l-2.44-2.78.34-3.68-3.61-.82-1.89-3.18L12 3 8.6 1.54 6.71 4.72l-3.61.81.34 3.68L1 12l2.44 2.78-.34 3.63 3.61.82 1.89 3.18L12 21l3.4 1.46 1.89-3.18 3.61-.82-.34-3.63L23 12zm-10 5h-2v-2h2v2zm0-4h-2V7h2v6z" />

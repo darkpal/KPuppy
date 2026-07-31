@@ -17,6 +17,7 @@ export interface Translations {
   menuSearch: string
   menuContinue: string
   menuNewEpisodes: string
+  menuWatching: string
   menuBookmarks: string
   menuCollections: string
   menuHistory: string
@@ -187,6 +188,7 @@ const en: Translations = {
   menuSearch: 'Search',
   menuContinue: 'Continue',
   menuNewEpisodes: 'New Episodes',
+  menuWatching: "I'm Watching",
   menuBookmarks: 'Bookmarks',
   menuCollections: 'Collections',
   menuHistory: 'History',
@@ -337,7 +339,8 @@ const ru: Translations = {
   menuHome: 'Главная',
   menuSearch: 'Поиск',
   menuContinue: 'Продолжить',
-  menuNewEpisodes: 'Новые серии',
+  menuNewEpisodes: 'Новые эпизоды',
+  menuWatching: 'Я смотрю',
   menuBookmarks: 'Закладки',
   menuCollections: 'Подборки',
   menuHistory: 'История',
@@ -489,6 +492,7 @@ const de: Translations = {
   menuSearch: 'Suche',
   menuContinue: 'Fortsetzen',
   menuNewEpisodes: 'Neue Folgen',
+  menuWatching: 'Ich schaue',
   menuBookmarks: 'Lesezeichen',
   menuCollections: 'Sammlungen',
   menuHistory: 'Verlauf',

@@ -4,12 +4,16 @@ import { MovieCard } from '../components/MovieCard'
 import { GridScreen } from '../components/GridScreen'
 import { useKeyboardNavigation, useGridLayout, createGridNavigationHandlers } from '../hooks'
 import { useI18n } from '../i18n'
+import { Translations } from '../i18n/translations'
 import '../styles/category.css'
 
 interface NewEpisodesScreenProps {
   onSelectItem: (itemId: number) => void
   onNavigateToMenu: () => void
   isActive: boolean
+  /** When true, only serials with unread new episodes. Otherwise full watching list. */
+  onlyNew?: boolean
+  titleKey?: keyof Translations
 }
 
 function watchingToMovieItem(item: WatchingItem): MovieItem {
@@ -29,7 +33,13 @@ function watchingToMovieItem(item: WatchingItem): MovieItem {
   }
 }
 
-export function NewEpisodesScreen({ onSelectItem, onNavigateToMenu, isActive }: NewEpisodesScreenProps) {
+export function NewEpisodesScreen({
+  onSelectItem,
+  onNavigateToMenu,
+  isActive,
+  onlyNew = true,
+  titleKey = 'menuNewEpisodes'
+}: NewEpisodesScreenProps) {
   const { t } = useI18n()
   const [items, setItems] = useState<WatchingItem[]>([])
   const [cardMeta, setCardMeta] = useState<Map<number, MovieItem>>(new Map())
@@ -39,22 +49,22 @@ export function NewEpisodesScreen({ onSelectItem, onNavigateToMenu, isActive }: 
   const { itemsPerRow, cardWidth } = useGridLayout('.category-grid', 240, [items.length])
 
   useEffect(() => {
-    async function loadNewEpisodes() {
+    async function loadWatching() {
       setLoading(true)
       try {
         const data = await getWatchingSerials()
-        const withNewEpisodes = data.filter(item => item.new > 0)
-        setItems(withNewEpisodes)
-        const enriched = await enrichMovieItemsMeta(withNewEpisodes.map(watchingToMovieItem))
+        const list = onlyNew ? data.filter(item => item.new > 0) : data
+        setItems(list)
+        const enriched = await enrichMovieItemsMeta(list.map(watchingToMovieItem))
         setCardMeta(new Map(enriched.map(item => [item.id, item])))
       } catch (err) {
-        if (import.meta.env.DEV) console.error('Failed to load new episodes:', err)
+        if (import.meta.env.DEV) console.error('Failed to load watching list:', err)
       } finally {
         setLoading(false)
       }
     }
-    loadNewEpisodes()
-  }, [])
+    loadWatching()
+  }, [onlyNew])
 
   const handlers = useMemo(() => createGridNavigationHandlers({
     itemCount: items.length,
@@ -90,7 +100,7 @@ export function NewEpisodesScreen({ onSelectItem, onNavigateToMenu, isActive }: 
 
   return (
     <GridScreen
-      title={t.menuNewEpisodes}
+      title={t[titleKey]}
       loading={loading}
       items={items}
       focusedIndex={focusedIndex}

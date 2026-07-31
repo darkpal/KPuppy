@@ -362,8 +362,16 @@ export function PlayerScreen({
     if (target.closest('.player-progress-bar, .player-panel, .player-state-button, .player-hints')) {
       return
     }
+    if (controls.activePanel !== 'none') {
+      setControls(prev => ({ ...prev, activePanel: 'none' }))
+      return
+    }
     togglePlay()
-  }, [togglePlay])
+  }, [togglePlay, controls.activePanel])
+
+  const closePanel = useCallback(() => {
+    setControls(prev => ({ ...prev, activePanel: 'none' }))
+  }, [])
 
   const selectAudio = useCallback((listIndex: number) => {
     const video = videoRef.current
@@ -422,19 +430,31 @@ export function PlayerScreen({
 
   const openAudioPanel = useCallback(() => {
     if (audios.length === 0) return
-    setControls(prev => ({ ...prev, visible: true, activePanel: 'audio' }))
+    setControls(prev => ({
+      ...prev,
+      visible: true,
+      activePanel: prev.activePanel === 'audio' ? 'none' : 'audio'
+    }))
     showControls()
   }, [audios.length, showControls])
 
   const openSubtitlesPanel = useCallback(() => {
     if (convertedSubs.length === 0) return
-    setControls(prev => ({ ...prev, visible: true, activePanel: 'subtitles' }))
+    setControls(prev => ({
+      ...prev,
+      visible: true,
+      activePanel: prev.activePanel === 'subtitles' ? 'none' : 'subtitles'
+    }))
     showControls()
   }, [convertedSubs.length, showControls])
 
   const openQualityPanel = useCallback(() => {
     if (availableQualities.length <= 1) return
-    setControls(prev => ({ ...prev, visible: true, activePanel: 'quality' }))
+    setControls(prev => ({
+      ...prev,
+      visible: true,
+      activePanel: prev.activePanel === 'quality' ? 'none' : 'quality'
+    }))
     showControls()
   }, [availableQualities.length, showControls])
 
@@ -544,7 +564,16 @@ export function PlayerScreen({
               break
             case KEY_CODES.ENTER:
             case KEY_CODES.BACK:
+            case KEY_CODES.RED:
               setControls(prev => ({ ...prev, activePanel: 'none' }))
+              e.preventDefault()
+              break
+            case KEY_CODES.GREEN:
+              openAudioPanel()
+              e.preventDefault()
+              break
+            case KEY_CODES.YELLOW:
+              openSubtitlesPanel()
               e.preventDefault()
               break
           }
@@ -576,6 +605,26 @@ export function PlayerScreen({
           case KEY_CODES.ENTER:
           case KEY_CODES.BACK:
             setControls(prev => ({ ...prev, activePanel: 'none' }))
+            e.preventDefault()
+            break
+          case KEY_CODES.RED:
+            openQualityPanel()
+            e.preventDefault()
+            break
+          case KEY_CODES.GREEN:
+            if (controls.activePanel === 'audio') {
+              setControls(prev => ({ ...prev, activePanel: 'none' }))
+            } else {
+              openAudioPanel()
+            }
+            e.preventDefault()
+            break
+          case KEY_CODES.YELLOW:
+            if (controls.activePanel === 'subtitles') {
+              setControls(prev => ({ ...prev, activePanel: 'none' }))
+            } else {
+              openSubtitlesPanel()
+            }
             e.preventDefault()
             break
         }

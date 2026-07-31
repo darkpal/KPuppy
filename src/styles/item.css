@@ -10,24 +10,44 @@
   top: 0;
   left: 0;
   right: 0;
-  height: 60%;
+  height: 70%;
   background-size: cover;
   background-position: center top;
+  filter: blur(48px) brightness(0.35) saturate(0.85);
+  transform: scale(1.12);
+  transform-origin: center top;
+  pointer-events: none;
 }
 
 .item-backdrop::after {
   content: '';
   position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 100%;
+  inset: 0;
   background: linear-gradient(
     to bottom,
-    transparent 0%,
-    rgba(20, 20, 20, 0.6) 40%,
+    rgba(20, 20, 20, 0.25) 0%,
+    rgba(20, 20, 20, 0.7) 55%,
     #141414 100%
   );
+}
+
+.item-poster-frame {
+  position: absolute;
+  top: 40px;
+  right: 60px;
+  width: min(22vw, 300px);
+  z-index: 2;
+  pointer-events: none;
+}
+
+.item-poster {
+  display: block;
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+  background: #1f1f1f;
 }
 
 .item-content {
@@ -36,6 +56,7 @@
   display: flex;
   flex-direction: column;
   padding: 40px 60px;
+  padding-right: max(60px, calc(min(22vw, 300px) + 90px));
   z-index: 1;
 }
 
@@ -316,6 +337,12 @@
   font-size: 14px;
   color: #666;
   margin-left: 4px;
+}
+
+.item-dropdown-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 99;
 }
 
 .item-dropdown {

@@ -18,7 +18,7 @@ export function VirtualGrid<T>({
   items,
   focusedIndex,
   itemsPerRow,
-  itemHeight = 500,
+  itemHeight = 360,
   renderBuffer = 24,
   renderItem,
   getItemKey,
@@ -67,7 +67,16 @@ export function VirtualGrid<T>({
       const containerTop = container.getBoundingClientRect().top
       const cellRect = focusedCell.getBoundingClientRect()
       const cellTop = cellRect.top - containerTop + container.scrollTop
-      container.scrollTop = Math.max(0, cellTop - container.clientHeight / 2 + cellRect.height / 2)
+      const cellBottom = cellTop + cellRect.height
+      const viewTop = container.scrollTop
+      const viewBottom = viewTop + container.clientHeight
+      const pad = 24
+
+      if (cellTop < viewTop + pad) {
+        container.scrollTop = Math.max(0, cellTop - pad)
+      } else if (cellBottom > viewBottom - pad) {
+        container.scrollTop = cellBottom - container.clientHeight + pad
+      }
     }
   }, [focusedIndex, itemsPerRow, rowHeight, items.length, cardWidth])
 
