@@ -8,3 +8,4 @@ export { createGridNavigationHandlers, type GridNavigationOptions } from './grid
 export { useGridLayout, type GridLayout } from './useGridLayout'
 export { useDropdown } from './useDropdown'
 export { useWheelScroll } from './useWheelScroll'
+export { useDecodedImage } from './useDecodedImage'

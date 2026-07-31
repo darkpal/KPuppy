@@ -90,6 +90,17 @@ describe('ItemScreen', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    // jsdom never loads images; the banner pre-decoder needs onload to fire.
+    vi.stubGlobal('Image', class {
+      onload: (() => void) | null = null
+      onerror: (() => void) | null = null
+      decode() {
+        return Promise.resolve()
+      }
+      set src(_value: string) {
+        setTimeout(() => this.onload?.(), 0)
+      }
+    })
     vi.mocked(kinopub.getItem).mockResolvedValue(mockMovieDetails)
     vi.mocked(kinopub.getMediaLinks).mockResolvedValue({ files: [], subtitles: [] })
     vi.mocked(kinopub.getSimilarItems).mockResolvedValue([])
@@ -98,6 +109,7 @@ describe('ItemScreen', () => {
 
   afterEach(() => {
     cleanup()
+    vi.unstubAllGlobals()
   })
 
   describe('loading state', () => {
@@ -214,7 +226,7 @@ describe('ItemScreen', () => {
       expect(document.querySelector('.item-content')?.classList.contains('details-expanded')).toBe(false)
     })
 
-    it('loads the backdrop through the retryable poster image', async () => {
+    it('shows the backdrop only after it is pre-decoded', async () => {
       renderWithI18n(<ItemScreen {...mockProps} />)
 
       await waitFor(() => {

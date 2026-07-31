@@ -1,13 +1,12 @@
 import { useEffect, useCallback, useMemo, useReducer, useRef } from 'preact/hooks'
 import { getItem, getMediaLinks, getSimilarItems, getBookmarkFolders, getItemFolders, addToBookmark, removeFromBookmark, toggleWatchlist, isItemInWatchlist, ItemDetails as ItemDetailsType, MovieItem, VideoFile, BookmarkFolder } from '../api/kinopub'
 import { getLocalSettings } from '../storage'
-import { useEventListener, useKeyboardNavigation, useWheelScroll } from '../hooks'
+import { useDecodedImage, useEventListener, useKeyboardNavigation, useWheelScroll } from '../hooks'
 import { LoadingState, LoadingSpinner } from '../components/LoadingSpinner'
 import { useI18n } from '../i18n'
 import { ItemDetails } from '../components/ItemDetails'
 import { SimilarItems } from '../components/SimilarItems'
 import { FolderDialog } from '../components/FolderDialog'
-import { PosterImage } from '../components/PosterImage'
 import thumbUpIcon from '../assets/thumb-up.svg'
 import '../styles/item.css'
 
@@ -160,6 +159,7 @@ export function ItemScreen({ itemId, preview = null, onBack, onPlay, onPlayTrail
   const detailsPageRef = useRef<HTMLElement>(null)
   // Landscape banner only — never use list medium/big (portrait) as full-bleed art.
   const posterUrl = (item?.posters?.wide || '').trim() || null
+  const bannerReady = useDecodedImage(posterUrl)
 
   useEffect(() => {
     let cancelled = false
@@ -648,9 +648,12 @@ export function ItemScreen({ itemId, preview = null, onBack, onPlay, onPlayTrail
     )
   }
 
-  // Spinner only while waiting for the wide URL from getItem — never gate on
-  // decode callbacks (webOS often needs a focus remount for those).
-  const bannerPending = !posterUrl && (loading || (!!preview && !item))
+  // Spinner while the wide URL is unknown or its bitmap is still decoding.
+  // The <img> mounts only after useDecodedImage pre-decoded it off-DOM, so the
+  // mount both paints instantly and forces the invalidation webOS drops.
+  const bannerPending = posterUrl
+    ? !bannerReady
+    : (loading || (!!preview && !item))
   const hasSeasons = Boolean(item?.seasons && item.seasons.length > 0) ||
     (!item && (preview?.type === 'serial' || preview?.type === 'docuserial' || preview?.type === 'tvshow'))
   const durationMinutes = item?.duration?.average
@@ -690,15 +693,12 @@ export function ItemScreen({ itemId, preview = null, onBack, onPlay, onPlayTrail
             <LoadingSpinner size="md" />
           </div>
         )}
-        {posterUrl && (
-          <PosterImage
-            key={posterUrl}
+        {posterUrl && bannerReady && (
+          <img
             src={posterUrl}
             alt=""
             class="item-banner-image"
             loading="eager"
-            retryOnStall={false}
-            forcePaintOnLoad
           />
         )}
       </div>

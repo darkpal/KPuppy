@@ -5,7 +5,7 @@
   overflow: hidden;
 }
 
-/* Full-bleed backdrop. The image element retries stalled webOS loads. */
+/* Full-bleed backdrop. The image mounts only after being pre-decoded in JS. */
 .item-banner {
   position: absolute;
   inset: 0;
@@ -35,14 +35,6 @@
   object-position: center 18%;
   -webkit-transform: translateZ(0);
   transform: translateZ(0);
-}
-
-.item-banner-image.poster-image-loading {
-  opacity: 0;
-}
-
-.item-banner-image.poster-image-ready {
-  opacity: 1;
 }
 
 /* Keep the poster visible while gradually strengthening contrast near the UI. */

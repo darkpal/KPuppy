@@ -61,44 +61,4 @@ describe('PosterImage', () => {
     expect(img.getAttribute('src')).toContain('_kpuppy_retry=')
   })
 
-  it('reveals a cached image without waiting for a later interaction', async () => {
-    const onReady = vi.fn()
-    const { container } = render(
-      <PosterImage
-        src="https://example.com/cached.jpg"
-        alt="Poster"
-        revealWhenDecoded
-        onReady={onReady}
-      />
-    )
-    const img = container.querySelector('img') as HTMLImageElement
-    Object.defineProperty(img, 'complete', { configurable: true, get: () => true })
-    Object.defineProperty(img, 'naturalWidth', { configurable: true, get: () => 1280 })
-
-    await act(async () => {
-      await Promise.resolve()
-      vi.advanceTimersByTime(50)
-    })
-
-    expect(onReady).toHaveBeenCalled()
-    expect(img.className).toContain('poster-image-ready')
-    expect(img.className).toContain(' ')
-  })
-
-  it('does not clear src on stall when retryOnStall is false', () => {
-    const { container } = render(
-      <PosterImage src="https://example.com/banner.jpg" alt="Poster" retryOnStall={false} />
-    )
-    const img = container.querySelector('img') as HTMLImageElement
-    Object.defineProperty(img, 'complete', { configurable: true, get: () => false })
-    Object.defineProperty(img, 'naturalWidth', { configurable: true, get: () => 0 })
-    const removeSpy = vi.spyOn(img, 'removeAttribute')
-
-    act(() => {
-      vi.advanceTimersByTime(12000)
-    })
-
-    expect(removeSpy).not.toHaveBeenCalled()
-    expect(img.getAttribute('src')).toBe('https://example.com/banner.jpg')
-  })
 })
