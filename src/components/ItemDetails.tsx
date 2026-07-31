@@ -5,8 +5,8 @@ interface ItemDetailsProps {
   countries?: string
   directors?: Person[]
   actors?: Person[]
-  audios: Audio[]
-  subtitles: Subtitle[]
+  audios?: Audio[]
+  subtitles?: Subtitle[]
   focusedActorIndex?: number | null
   onHoverActor?: (index: number) => void
   onSelectActor?: (name: string) => void
@@ -65,15 +65,15 @@ export function ItemDetails({
   countries,
   directors,
   actors,
-  audios,
-  subtitles,
+  audios = [],
+  subtitles = [],
   focusedActorIndex = null,
   onHoverActor,
   onSelectActor,
   onSelectDirector
 }: ItemDetailsProps) {
   const { t } = useI18n()
-  const visibleActors = actors?.slice(0, 8) || []
+  const visibleActors = actors?.slice(0, 6) || []
   const visibleDirectors = directors?.slice(0, 3) || []
 
   return (
@@ -137,13 +137,13 @@ export function ItemDetails({
         <p class="item-detail">
           <span class="item-detail-label">{t.subtitles}:</span>
           <span class="item-detail-value">
-            {subtitles.slice(0, 5).map((sub, idx, list) => (
+            {subtitles.slice(0, 6).map((sub, idx, list) => (
               <span key={`${sub.lang}-${sub.forced ? 'f' : 'n'}-${idx}`}>
                 {formatSubtitleLabel(sub)}
                 {idx < list.length - 1 && ', '}
               </span>
             ))}
-            {subtitles.length > 5 && ` +${subtitles.length - 5}`}
+            {subtitles.length > 6 && ` +${subtitles.length - 6}`}
           </span>
         </p>
       )}

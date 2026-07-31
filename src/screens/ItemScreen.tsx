@@ -301,7 +301,7 @@ export function ItemScreen({ itemId, onBack, onPlay, onPlayTrailer, onSelectSeri
   }, [folders, folderFocusIndex, itemFolderIds, itemId, watchlistLoading])
 
   const genres = item?.genres?.slice(0, 8) || []
-  const cast = item?.actors?.slice(0, 8) || []
+  const cast = item?.actors?.slice(0, 6) || []
 
   const handlers = useMemo(() => {
     const hasSeries = item?.seasons && item.seasons.length > 0
