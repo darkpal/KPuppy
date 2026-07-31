@@ -37,18 +37,20 @@ describe('useDecodedImage', () => {
 
   it('stays not ready without a url', () => {
     const { result } = renderHook(() => useDecodedImage(null))
-    expect(result.current).toBe(false)
+    expect(result.current.ready).toBe(false)
+    expect(result.current.image).toBeNull()
   })
 
-  it('becomes ready after the image loads and decodes', async () => {
+  it('becomes ready with the image after it loads and decodes', async () => {
     const { result } = renderHook(() => useDecodedImage('https://example.com/wide.jpg'))
-    expect(result.current).toBe(false)
+    expect(result.current.ready).toBe(false)
 
     await act(async () => {
       vi.advanceTimersByTime(50)
     })
 
-    expect(result.current).toBe(true)
+    expect(result.current.ready).toBe(true)
+    expect(result.current.image).not.toBeNull()
   })
 
   it('resets when the url changes', async () => {
@@ -59,18 +61,19 @@ describe('useDecodedImage', () => {
     await act(async () => {
       vi.advanceTimersByTime(50)
     })
-    expect(result.current).toBe(true)
+    expect(result.current.ready).toBe(true)
 
     rerender({ url: 'https://example.com/b.jpg' })
-    expect(result.current).toBe(false)
+    expect(result.current.ready).toBe(false)
+    expect(result.current.image).toBeNull()
 
     await act(async () => {
       vi.advanceTimersByTime(50)
     })
-    expect(result.current).toBe(true)
+    expect(result.current.ready).toBe(true)
   })
 
-  it('retries failed loads before giving up', () => {
+  it('retries failed loads before giving up without an image', () => {
     FakeImage.behavior = 'error'
     const { result } = renderHook(() => useDecodedImage('https://example.com/broken.jpg'))
 
@@ -80,7 +83,8 @@ describe('useDecodedImage', () => {
 
     // Original attempt + 2 retries, then reveal anyway.
     expect(FakeImage.instances.length).toBe(3)
-    expect(result.current).toBe(true)
+    expect(result.current.ready).toBe(true)
+    expect(result.current.image).toBeNull()
   })
 
   it('reveals via the safety timeout when the load hangs', () => {
@@ -90,11 +94,12 @@ describe('useDecodedImage', () => {
     act(() => {
       vi.advanceTimersByTime(14000)
     })
-    expect(result.current).toBe(false)
+    expect(result.current.ready).toBe(false)
 
     act(() => {
       vi.advanceTimersByTime(2000)
     })
-    expect(result.current).toBe(true)
+    expect(result.current.ready).toBe(true)
+    expect(result.current.image).toBeNull()
   })
 })

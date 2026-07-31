@@ -101,6 +101,8 @@ describe('ItemScreen', () => {
         setTimeout(() => this.onload?.(), 0)
       }
     })
+    // jsdom has no 2d context; the banner draw guards against a null context.
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(() => null)
     vi.mocked(kinopub.getItem).mockResolvedValue(mockMovieDetails)
     vi.mocked(kinopub.getMediaLinks).mockResolvedValue({ files: [], subtitles: [] })
     vi.mocked(kinopub.getSimilarItems).mockResolvedValue([])
@@ -226,14 +228,14 @@ describe('ItemScreen', () => {
       expect(document.querySelector('.item-content')?.classList.contains('details-expanded')).toBe(false)
     })
 
-    it('shows the backdrop only after it is pre-decoded', async () => {
+    it('shows the backdrop canvas only after the poster is preloaded', async () => {
       renderWithI18n(<ItemScreen {...mockProps} />)
 
       await waitFor(() => {
-        const backdrop = document.querySelector('.item-banner-image') as HTMLImageElement
+        const backdrop = document.querySelector('.item-banner-image') as HTMLCanvasElement
         expect(backdrop).not.toBeNull()
-        expect(backdrop.getAttribute('src')).toBe('wide.jpg')
-        expect(backdrop.getAttribute('loading')).toBe('eager')
+        expect(backdrop.tagName).toBe('CANVAS')
+        expect(backdrop.getAttribute('data-src')).toBe('wide.jpg')
       })
     })
 
@@ -251,8 +253,8 @@ describe('ItemScreen', () => {
       renderWithI18n(<ItemScreen {...mockProps} />)
 
       await waitFor(() => {
-        const backdrop = document.querySelector('.item-banner-image') as HTMLImageElement
-        expect(backdrop.getAttribute('src')).toBe('wide.jpg')
+        const backdrop = document.querySelector('.item-banner-image') as HTMLCanvasElement
+        expect(backdrop.getAttribute('data-src')).toBe('wide.jpg')
       })
     })
 
@@ -294,7 +296,7 @@ describe('ItemScreen', () => {
 
       await waitFor(() => {
         expect(
-          (document.querySelector('.item-banner-image') as HTMLImageElement).getAttribute('src')
+          (document.querySelector('.item-banner-image') as HTMLCanvasElement).getAttribute('data-src')
         ).toBe('wide.jpg')
       })
       expect(document.querySelector('.item-banner-loading')).toBeNull()

@@ -38,6 +38,30 @@ function getAvailableQualities(files?: VideoFile[]): string[] {
   return files.map(f => f.quality).filter(q => QUALITY_ORDER.includes(q))
 }
 
+/** Draw the poster cover-cropped onto a screen-sized canvas (replaces
+ * `object-fit: cover; object-position: center 18%` on the old <img>). */
+function drawBannerCover(canvas: HTMLCanvasElement, image: HTMLImageElement): void {
+  const width = canvas.clientWidth || 1920
+  const height = canvas.clientHeight || 1080
+  canvas.width = width
+  canvas.height = height
+  const iw = image.naturalWidth
+  const ih = image.naturalHeight
+  let ctx: CanvasRenderingContext2D | null = null
+  try {
+    ctx = canvas.getContext('2d')
+  } catch {
+    return
+  }
+  if (!ctx || !iw || !ih) return
+  const scale = Math.max(width / iw, height / ih)
+  const sourceWidth = width / scale
+  const sourceHeight = height / scale
+  const sourceX = (iw - sourceWidth) / 2
+  const sourceY = (ih - sourceHeight) * 0.18
+  ctx.drawImage(image, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, width, height)
+}
+
 interface ItemScreenState {
   item: ItemDetailsType | null
   loading: boolean
@@ -157,9 +181,18 @@ export function ItemScreen({ itemId, preview = null, onBack, onPlay, onPlayTrail
   const [state, dispatch] = useReducer(itemScreenReducer, initialState)
   const { item, loading, error, focusArea, selectedQuality, dropdownFocusIndex, similarItems, similarFocusIndex, metaFocusIndex, watchlistLoading, showFolderDialog, folders, itemFolderIds, folderFocusIndex, isWatching, watchingToggleLoading, detailsExpanded } = state
   const detailsPageRef = useRef<HTMLElement>(null)
+  const bannerCanvasRef = useRef<HTMLCanvasElement>(null)
   // Landscape banner only — never use list medium/big (portrait) as full-bleed art.
   const posterUrl = (item?.posters?.wide || '').trim() || null
-  const bannerReady = useDecodedImage(posterUrl)
+  const { image: bannerImage, ready: bannerReady } = useDecodedImage(posterUrl)
+
+  // Downscale the poster to screen size: the webOS compositor stalls forever
+  // (frozen frame until a key press) when asked to rasterize huge bitmaps.
+  useEffect(() => {
+    const canvas = bannerCanvasRef.current
+    if (!canvas || !bannerImage) return
+    drawBannerCover(canvas, bannerImage)
+  }, [bannerImage])
 
   useEffect(() => {
     let cancelled = false
@@ -693,12 +726,11 @@ export function ItemScreen({ itemId, preview = null, onBack, onPlay, onPlayTrail
             <LoadingSpinner size="md" />
           </div>
         )}
-        {posterUrl && bannerReady && (
-          <img
-            src={posterUrl}
-            alt=""
+        {posterUrl && bannerReady && bannerImage && (
+          <canvas
+            ref={bannerCanvasRef}
             class="item-banner-image"
-            loading="eager"
+            data-src={posterUrl}
           />
         )}
       </div>

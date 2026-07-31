@@ -4,25 +4,30 @@ const SAFETY_TIMEOUT_MS = 15000
 const RETRY_DELAY_MS = 1500
 const MAX_RETRIES = 2
 
+export interface DecodedImageState {
+  /** The fully loaded image element, or null if the load failed / timed out. */
+  image: HTMLImageElement | null
+  /** True once the spinner can be dropped (loaded, failed, or timed out). */
+  ready: boolean
+}
+
 /**
  * Preload an image off-DOM and report when it is safe to show.
  *
- * webOS drops the repaint that should follow a large hero image finishing its
- * load, so an <img> mounted before the data arrived stays invisible until the
- * next input/layout pass (a button press). Mounting the element only after
- * onload turns the reveal into a DOM mutation, which reliably schedules the
- * frame the TV was missing.
+ * The webOS compositor cannot rasterize very large source bitmaps: the frame
+ * containing them never activates and the screen freezes on the previous
+ * frame until real input forces a redraw. So the banner never mounts the raw
+ * <img> — the caller draws the loaded image downscaled onto a screen-sized
+ * canvas instead, which the TV composites without trouble.
  *
- * Where img.decode() exists (Chrome 64+) we also pre-rasterize off the main
- * thread so that frame paints instantly. Older engines get no forced decode:
- * a synchronous canvas decode here wedged the webOS renderer for good under
- * memory pressure (frozen spinner, dead timers).
+ * Where img.decode() exists (Chrome 64+) the bitmap is also decoded off the
+ * main thread here, so the later canvas draw is cheap.
  */
-export function useDecodedImage(url: string | null): boolean {
-  const [ready, setReady] = useState(false)
+export function useDecodedImage(url: string | null): DecodedImageState {
+  const [state, setState] = useState<DecodedImageState>({ image: null, ready: false })
 
   useEffect(() => {
-    setReady(false)
+    setState({ image: null, ready: false })
     if (!url) return
 
     let disposed = false
@@ -30,10 +35,10 @@ export function useDecodedImage(url: string | null): boolean {
     let img: HTMLImageElement | null = null
     let retryTimer = 0
 
-    const finish = () => {
+    const finish = (image: HTMLImageElement | null) => {
       if (disposed) return
       disposed = true
-      setReady(true)
+      setState({ image, ready: true })
     }
 
     const start = () => {
@@ -42,15 +47,15 @@ export function useDecodedImage(url: string | null): boolean {
         const loaded = img
         if (disposed || !loaded) return
         if (typeof loaded.decode === 'function') {
-          loaded.decode().then(finish).catch(finish)
+          loaded.decode().then(() => finish(loaded)).catch(() => finish(loaded))
         } else {
-          finish()
+          finish(loaded)
         }
       }
       img.onerror = () => {
         if (disposed) return
         if (retries >= MAX_RETRIES) {
-          finish()
+          finish(null)
           return
         }
         retries += 1
@@ -61,7 +66,7 @@ export function useDecodedImage(url: string | null): boolean {
 
     start()
     // Never hold the spinner forever on very slow networks.
-    const safetyTimer = window.setTimeout(finish, SAFETY_TIMEOUT_MS)
+    const safetyTimer = window.setTimeout(() => finish(null), SAFETY_TIMEOUT_MS)
 
     return () => {
       disposed = true
@@ -74,5 +79,5 @@ export function useDecodedImage(url: string | null): boolean {
     }
   }, [url])
 
-  return ready
+  return state
 }
