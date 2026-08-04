@@ -191,7 +191,6 @@ export interface Translations {
   pinSideMenu: string
   freshMovies: string
   freshSeries: string
-  seeAll: string
 }
 
 const en: Translations = {
@@ -358,7 +357,6 @@ const en: Translations = {
   pinSideMenu: 'Keep side menu expanded',
   freshMovies: 'Fresh Movies',
   freshSeries: 'Fresh Series',
-  seeAll: 'See all',
 }
 
 const ru: Translations = {
@@ -525,7 +523,6 @@ const ru: Translations = {
   pinSideMenu: 'Не скрывать боковую панель',
   freshMovies: 'Свежие фильмы',
   freshSeries: 'Свежие сериалы',
-  seeAll: 'Смотреть все',
 }
 
 const de: Translations = {
@@ -692,7 +689,6 @@ const de: Translations = {
   pinSideMenu: 'Seitenmenü ausgeklappt lassen',
   freshMovies: 'Frische Filme',
   freshSeries: 'Frische Serien',
-  seeAll: 'Alle anzeigen',
 }
 
 export const translations: Record<Language, Translations> = { en, ru, de }

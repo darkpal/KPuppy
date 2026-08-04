@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'preact/hooks'
 import { AuthScreen } from './screens/AuthScreen'
-import { MainScreen, type HomeShelfTarget } from './screens/MainScreen'
+import { MainScreen } from './screens/MainScreen'
 import { ItemScreen } from './screens/ItemScreen'
 import { SearchScreen, SearchScreenState, DEFAULT_SEARCH_STATE } from './screens/SearchScreen'
 import { CategoryScreen, CategoryFilters, DEFAULT_CATEGORY_FILTERS } from './screens/CategoryScreen'
@@ -379,22 +379,6 @@ export function App() {
     })
   }, [])
 
-  const handleOpenShelf = useCallback((target: HomeShelfTarget) => {
-    setState(prev => ({
-      ...prev,
-      selectedMenuId: target.menuId,
-      focusArea: 'content',
-      itemId: null,
-      itemPreview: null,
-      seriesId: null,
-      searchState: null,
-      navHistory: [],
-      categoryGenreId: target.filters?.genreId ?? null,
-      categoryFilters: target.filters ?? null,
-      bookmarksState: null
-    }))
-  }, [])
-
   const handleNavigateToMenu = useCallback(() => {
     setState(prev => ({ ...prev, focusArea: 'menu' }))
   }, [])
@@ -737,7 +721,6 @@ export function App() {
             onBack={handleNavigateToMenu}
             onSelectItem={handleSelectItem}
             onNavigateToMenu={handleNavigateToMenu}
-            onOpenShelf={handleOpenShelf}
             isActive={baseActive}
             initialFocusRow={homeFocus.row}
             initialFocusCol={homeFocus.col}

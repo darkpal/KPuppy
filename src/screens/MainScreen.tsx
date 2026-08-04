@@ -6,19 +6,12 @@ import { useKeyboardNavigation, useScrollToFocused, useWheelScroll } from '../ho
 import { LoadingState } from '../components/LoadingSpinner'
 import { useI18n } from '../i18n'
 import { Translations } from '../i18n/translations'
-import { CategoryFilters, DEFAULT_CATEGORY_FILTERS } from './CategoryScreen'
 import '../styles/main.css'
-
-export interface HomeShelfTarget {
-  menuId: string
-  filters?: CategoryFilters | null
-}
 
 interface MainScreenProps {
   onBack: () => void
   onSelectItem: (itemId: number, preview?: MovieItem) => void
   onNavigateToMenu: () => void
-  onOpenShelf?: (target: HomeShelfTarget) => void
   isActive: boolean
   initialFocusRow?: number
   initialFocusCol?: number
@@ -33,7 +26,6 @@ interface ContentRow {
   params?: ItemsParams
   feed?: FeedSource
   isWatching?: boolean
-  shelfTarget?: HomeShelfTarget
   items: MovieItem[]
   loading: boolean
   loadingMore: boolean
@@ -47,7 +39,6 @@ interface RowConfig {
   params?: ItemsParams
   feed?: FeedSource
   isWatching?: boolean
-  shelfTarget?: HomeShelfTarget
 }
 
 const HOME_PER_PAGE = 20
@@ -56,7 +47,7 @@ function createHomeRowConfigs(): RowConfig[] {
   const lastMonth = monthAgoUnix()
 
   return [
-    { id: 'watching', titleKey: 'categoryContinueWatching', isWatching: true, shelfTarget: { menuId: 'watching' } },
+    { id: 'watching', titleKey: 'categoryContinueWatching', isWatching: true },
     {
       id: 'popular-movies',
       titleKey: 'popularMovies',
@@ -66,64 +57,44 @@ function createHomeRowConfigs(): RowConfig[] {
         page: 0,
         perpage: HOME_PER_PAGE,
         conditions: [`created>=${lastMonth}`]
-      },
-      shelfTarget: {
-        menuId: 'movies',
-        filters: { ...DEFAULT_CATEGORY_FILTERS, sort: 'views-' }
       }
     },
     {
       id: 'fresh-movies',
       titleKey: 'freshMovies',
       feed: 'fresh',
-      params: { type: 'movie', page: 0, perpage: HOME_PER_PAGE },
-      shelfTarget: {
-        menuId: 'movies',
-        filters: { ...DEFAULT_CATEGORY_FILTERS, sort: 'created-' }
-      }
+      params: { type: 'movie', page: 0, perpage: HOME_PER_PAGE }
     },
     {
       id: 'popular-series',
       titleKey: 'popularSeries',
-      params: { type: 'serial', sort: 'watchers-', page: 0, perpage: HOME_PER_PAGE },
-      shelfTarget: {
-        menuId: 'series',
-        filters: { ...DEFAULT_CATEGORY_FILTERS, sort: 'views-' }
-      }
+      params: { type: 'serial', sort: 'watchers-', page: 0, perpage: HOME_PER_PAGE }
     },
     {
       id: 'fresh-series',
       titleKey: 'freshSeries',
       feed: 'fresh',
-      params: { type: 'serial', page: 0, perpage: HOME_PER_PAGE },
-      shelfTarget: {
-        menuId: 'series',
-        filters: { ...DEFAULT_CATEGORY_FILTERS, sort: 'created-' }
-      }
+      params: { type: 'serial', page: 0, perpage: HOME_PER_PAGE }
     },
     {
       id: 'new-concerts',
       titleKey: 'newConcerts',
-      params: { type: 'concert', sort: 'created-', page: 0, perpage: HOME_PER_PAGE },
-      shelfTarget: { menuId: 'concerts', filters: { ...DEFAULT_CATEGORY_FILTERS } }
+      params: { type: 'concert', sort: 'created-', page: 0, perpage: HOME_PER_PAGE }
     },
     {
       id: 'new-docs',
       titleKey: 'newDocs',
-      params: { type: 'documovie', sort: 'created-', page: 0, perpage: HOME_PER_PAGE },
-      shelfTarget: { menuId: 'docs', filters: { ...DEFAULT_CATEGORY_FILTERS } }
+      params: { type: 'documovie', sort: 'created-', page: 0, perpage: HOME_PER_PAGE }
     },
     {
       id: 'new-docuseries',
       titleKey: 'newDocuseries',
-      params: { type: 'docuserial', sort: 'created-', page: 0, perpage: HOME_PER_PAGE },
-      shelfTarget: { menuId: 'docs', filters: { ...DEFAULT_CATEGORY_FILTERS } }
+      params: { type: 'docuserial', sort: 'created-', page: 0, perpage: HOME_PER_PAGE }
     },
     {
       id: 'new-tvshows',
       titleKey: 'newTvShows',
-      params: { type: 'tvshow', sort: 'created-', page: 0, perpage: HOME_PER_PAGE },
-      shelfTarget: { menuId: 'tvshows', filters: { ...DEFAULT_CATEGORY_FILTERS } }
+      params: { type: 'tvshow', sort: 'created-', page: 0, perpage: HOME_PER_PAGE }
     },
   ]
 }
@@ -132,7 +103,6 @@ export function MainScreen({
   onBack,
   onSelectItem,
   onNavigateToMenu,
-  onOpenShelf,
   isActive,
   initialFocusRow = 0,
   initialFocusCol = 0,
@@ -265,11 +235,6 @@ export function MainScreen({
     }
   }, [rows])
 
-  const openShelf = useCallback((rowIndex: number) => {
-    const target = rows[rowIndex]?.shelfTarget
-    if (target && onOpenShelf) onOpenShelf(target)
-  }, [rows, onOpenShelf])
-
   const focusByKeyboard = useCallback((update: () => void) => {
     setScrollWithFocus(true)
     update()
@@ -278,9 +243,7 @@ export function MainScreen({
   const handlers = useMemo(() => {
     const currentRow = rows[focusedRow]
     const itemCount = currentRow?.items.length || 0
-    const hasSeeAll = Boolean(currentRow?.shelfTarget && onOpenShelf)
-    // See-all is an extra focusable slot after the last poster.
-    const maxCol = hasSeeAll ? itemCount : Math.max(0, itemCount - 1)
+    const maxCol = Math.max(0, itemCount - 1)
 
     return {
       onLeft: () => {
@@ -305,11 +268,9 @@ export function MainScreen({
           focusByKeyboard(() => {
             const newRow = focusedRow - 1
             const newRowItemCount = rows[newRow]?.items.length || 0
-            const newHasSeeAll = Boolean(rows[newRow]?.shelfTarget && onOpenShelf)
-            const newMax = newHasSeeAll ? newRowItemCount : Math.max(0, newRowItemCount - 1)
             const rememberedCol = rowColMemory.current[newRow] ?? 0
             setFocusedRow(newRow)
-            setFocusedCol(Math.min(rememberedCol, newMax))
+            setFocusedCol(Math.min(rememberedCol, Math.max(0, newRowItemCount - 1)))
           })
         }
       },
@@ -318,19 +279,13 @@ export function MainScreen({
           focusByKeyboard(() => {
             const newRow = focusedRow + 1
             const newRowItemCount = rows[newRow]?.items.length || 0
-            const newHasSeeAll = Boolean(rows[newRow]?.shelfTarget && onOpenShelf)
-            const newMax = newHasSeeAll ? newRowItemCount : Math.max(0, newRowItemCount - 1)
             const rememberedCol = rowColMemory.current[newRow] ?? 0
             setFocusedRow(newRow)
-            setFocusedCol(Math.min(rememberedCol, newMax))
+            setFocusedCol(Math.min(rememberedCol, Math.max(0, newRowItemCount - 1)))
           })
         }
       },
       onEnter: () => {
-        if (hasSeeAll && focusedCol >= itemCount) {
-          openShelf(focusedRow)
-          return
-        }
         const movie = currentRow?.items[focusedCol]
         if (movie) {
           onSelectItem(movie.id, movie)
@@ -338,7 +293,7 @@ export function MainScreen({
       },
       onBack
     }
-  }, [focusedRow, focusedCol, rows, onBack, onSelectItem, onNavigateToMenu, onOpenShelf, focusByKeyboard, loadMoreForRow, openShelf])
+  }, [focusedRow, focusedCol, rows, onBack, onSelectItem, onNavigateToMenu, focusByKeyboard, loadMoreForRow])
 
   useKeyboardNavigation(handlers, isActive)
 
@@ -380,37 +335,29 @@ export function MainScreen({
   return (
     <div class="main-screen">
       <div class="rows-container" ref={rowsContainerRef}>
-        {rows.map((row, rowIndex) => {
-          const hasSeeAll = Boolean(row.shelfTarget && onOpenShelf)
-          const seeAllFocused = rowIndex === focusedRow && focusedCol >= row.items.length
-          return (
-            <div key={row.id} data-row={rowIndex}>
-              <MovieRow
-                title={t[row.titleKey]}
-                movies={row.items}
-                loading={row.loading}
-                focusedIndex={rowIndex === focusedRow ? focusedCol : null}
-                scrollToFocused={scrollWithFocus && rowIndex === focusedRow}
-                seeAllLabel={hasSeeAll ? t.seeAll : undefined}
-                seeAllFocused={seeAllFocused}
-                onTitleActivate={hasSeeAll ? () => openShelf(rowIndex) : undefined}
-                onSeeAll={hasSeeAll ? () => openShelf(rowIndex) : undefined}
-                onSelect={(colIndex) => {
-                  setScrollWithFocus(false)
-                  setFocusedRow(rowIndex)
-                  setFocusedCol(colIndex)
-                }}
-                onActivate={(colIndex) => {
-                  setScrollWithFocus(false)
-                  setFocusedRow(rowIndex)
-                  setFocusedCol(colIndex)
-                  const movie = row.items[colIndex]
-                  if (movie) onSelectItem(movie.id, movie)
-                }}
-              />
-            </div>
-          )
-        })}
+        {rows.map((row, rowIndex) => (
+          <div key={row.id} data-row={rowIndex}>
+            <MovieRow
+              title={t[row.titleKey]}
+              movies={row.items}
+              loading={row.loading}
+              focusedIndex={rowIndex === focusedRow ? focusedCol : null}
+              scrollToFocused={scrollWithFocus && rowIndex === focusedRow}
+              onSelect={(colIndex) => {
+                setScrollWithFocus(false)
+                setFocusedRow(rowIndex)
+                setFocusedCol(colIndex)
+              }}
+              onActivate={(colIndex) => {
+                setScrollWithFocus(false)
+                setFocusedRow(rowIndex)
+                setFocusedCol(colIndex)
+                const movie = row.items[colIndex]
+                if (movie) onSelectItem(movie.id, movie)
+              }}
+            />
+          </div>
+        ))}
       </div>
     </div>
   )
