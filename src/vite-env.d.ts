@@ -14,3 +14,7 @@ declare module '*.svg' {
   const src: string
   export default src
 }
+
+declare module 'hls.js/dist/hls.light.mjs' {
+  export { default } from 'hls.js'
+}

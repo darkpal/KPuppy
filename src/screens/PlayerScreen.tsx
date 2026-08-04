@@ -7,6 +7,7 @@ import { KEY_CODES } from '../hooks'
 import { useI18n } from '../i18n'
 import { convertSrtUrlToVtt, isSrtUrl } from '../utils/subtitles'
 import type { EpisodeNavigationTarget } from '../utils/episodes'
+import { createLiveHls, Hls, isHlsPlaylistUrl, shouldUseMseHls } from '../player/mseHls'
 import '../styles/player.css'
 
 function IconAudio() {
@@ -120,8 +121,10 @@ export function PlayerScreen({
   const startTimeAppliedRef = useRef(false)
   const resumeAfterReloadRef = useRef<number | null>(null)
   const endedNavigationRef = useRef(false)
+  const hlsRef = useRef<Hls | null>(null)
 
   const availableQualities = getAvailableQualities(files)
+  const useMseHls = shouldUseMseHls(url, files.length)
 
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
@@ -195,9 +198,60 @@ export function PlayerScreen({
       }
     }
     video.addEventListener('loadedmetadata', onLoaded)
-    video.src = nextSrc
+    const hls = hlsRef.current
+    if (hls) {
+      hls.loadSource(nextSrc)
+    } else {
+      video.src = nextSrc
+    }
     flushTime(resumeAt)
   }, [flushTime])
+
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video || !useMseHls) {
+      hlsRef.current?.destroy()
+      hlsRef.current = null
+      return
+    }
+
+    setErrorMessage(null)
+    video.removeAttribute('src')
+    video.load()
+
+    const hls = createLiveHls()
+    hlsRef.current = hls
+    hls.loadSource(url)
+    hls.attachMedia(video)
+
+    const onParsed = () => {
+      playVideo(video)
+    }
+    const onHlsError = (_event: string, data: { fatal?: boolean; type?: string; details?: string }) => {
+      if (!data.fatal) return
+      if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+        hls.startLoad()
+        return
+      }
+      if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+        hls.recoverMediaError()
+        return
+      }
+      setErrorMessage(`HLS.js ${data.type || 'ERROR'}: ${data.details || 'fatal'}`)
+      hls.destroy()
+      if (hlsRef.current === hls) hlsRef.current = null
+    }
+
+    hls.on(Hls.Events.MANIFEST_PARSED, onParsed)
+    hls.on(Hls.Events.ERROR, onHlsError)
+
+    return () => {
+      hls.off(Hls.Events.MANIFEST_PARSED, onParsed)
+      hls.off(Hls.Events.ERROR, onHlsError)
+      hls.destroy()
+      if (hlsRef.current === hls) hlsRef.current = null
+    }
+  }, [url, useMseHls])
 
   const getRatioFromClientX = useCallback((clientX: number) => {
     const bar = progressBarRef.current
@@ -534,6 +588,8 @@ export function PlayerScreen({
     }
 
     const handleError = () => {
+      // MSE/hls.js owns fatal errors when attached — ignore empty native media errors.
+      if (hlsRef.current) return
       const error = video.error
       const errorCodes: Record<number, string> = {
         1: 'MEDIA_ERR_ABORTED',
@@ -543,8 +599,7 @@ export function PlayerScreen({
       }
       const errorType = errorCodes[error?.code || 0] || 'UNKNOWN'
       const details = error?.message || 'No details'
-      const isHls = /\.m3u8(\?|$)/i.test(url)
-      // webOS often reports unsupported codecs / playlist tags this way for live HLS.
+      const isHls = isHlsPlaylistUrl(url)
       const hint = error?.code === 4 && isHls
         ? ' This live stream format is likely unsupported on this TV (codec/playlist), not a broken app URL.'
         : ''
@@ -827,7 +882,7 @@ export function PlayerScreen({
       <video
         ref={videoRef}
         class="player-video"
-        src={url}
+        src={useMseHls ? undefined : url}
         poster={poster}
         preload="metadata"
       />
