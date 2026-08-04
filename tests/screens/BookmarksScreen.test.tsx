@@ -52,7 +52,10 @@ describe('BookmarksScreen', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(kinopub.getBookmarkFolders).mockResolvedValue([])
-    vi.mocked(kinopub.getBookmarkItems).mockResolvedValue([])
+    vi.mocked(kinopub.getBookmarkItems).mockResolvedValue({
+      items: [],
+      pagination: { current: 1, total: 0, totalItems: 0, perpage: 50 }
+    })
   })
 
   afterEach(() => {
@@ -135,7 +138,10 @@ describe('BookmarksScreen', () => {
   describe('items view', () => {
     it('loads items when folder selected', async () => {
       vi.mocked(kinopub.getBookmarkFolders).mockResolvedValue([mockFolder])
-      vi.mocked(kinopub.getBookmarkItems).mockResolvedValue([mockItem])
+      vi.mocked(kinopub.getBookmarkItems).mockResolvedValue({
+        items: [mockItem],
+        pagination: { current: 1, total: 1, totalItems: 1, perpage: 50 }
+      })
 
       renderWithI18n(<BookmarksScreen {...mockProps} />)
 

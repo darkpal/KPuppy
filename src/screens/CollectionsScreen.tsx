@@ -1,13 +1,12 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'preact/hooks'
 import { getCollections, getCollectionItems, Collection, MovieItem } from '../api/kinopub'
 import { MovieCard } from '../components/MovieCard'
-import { CollectionCard } from '../components/CollectionCard'
 import { GridScreen } from '../components/GridScreen'
 import { useKeyboardNavigation, useGridLayout, createGridNavigationHandlers, useScrollToFocused } from '../hooks'
 import { LoadingState } from '../components/LoadingSpinner'
 import { useI18n } from '../i18n'
 import '../styles/category.css'
-import '../styles/collection-card.css'
+import '../styles/bookmarks.css'
 
 const COLLECTIONS_PER_PAGE = 40
 
@@ -32,8 +31,7 @@ export function CollectionsScreen({ onSelectItem, onNavigateToMenu, isActive }: 
   const [focusedIndex, setFocusedIndex] = useState(0)
   const [savedCollectionIndex, setSavedCollectionIndex] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
-  const gridDeps = viewMode === 'collections' ? [collections.length] : [items.length]
-  const { itemsPerRow, cardWidth } = useGridLayout('.category-grid', 240, gridDeps)
+  const { itemsPerRow, cardWidth } = useGridLayout('.category-grid', 240, [items.length, viewMode])
 
   const loadCollectionsPage = useCallback(async (page: number, append: boolean) => {
     if (page > 1) {
@@ -99,37 +97,26 @@ export function CollectionsScreen({ onSelectItem, onNavigateToMenu, isActive }: 
     setFocusedIndex(savedCollectionIndex)
   }, [savedCollectionIndex])
 
-  const collectionsHandlers = useMemo(() => {
-    const currentRow = Math.floor(focusedIndex / itemsPerRow)
-    const totalRows = Math.ceil(collections.length / itemsPerRow)
-
-    const gridHandlers = createGridNavigationHandlers({
-      itemCount: collections.length,
-      itemsPerRow,
-      focusedIndex,
-      setFocusedIndex,
-      onSelect: (index) => {
-        const collection = collections[index]
-        if (collection) {
-          loadCollectionItems(collection, index)
-        }
-      },
-      onLeftEdge: onNavigateToMenu,
-      onBottomEdge: () => {
-        if (hasMore) loadMore()
-      }
-    })
-
-    return {
-      ...gridHandlers,
-      onDown: () => {
-        gridHandlers.onDown?.()
-        if (currentRow >= totalRows - 2 && hasMore) {
+  const collectionsHandlers = useMemo(() => ({
+    onLeft: onNavigateToMenu,
+    onUp: () => setFocusedIndex(prev => Math.max(0, prev - 1)),
+    onDown: () => {
+      setFocusedIndex(prev => {
+        const next = Math.min(collections.length - 1, prev + 1)
+        if (next >= collections.length - 3 && hasMore) {
           loadMore()
         }
+        return next
+      })
+    },
+    onEnter: () => {
+      const collection = collections[focusedIndex]
+      if (collection) {
+        loadCollectionItems(collection, focusedIndex)
       }
-    }
-  }, [collections, focusedIndex, itemsPerRow, onNavigateToMenu, loadCollectionItems, hasMore, loadMore])
+    },
+    onBack: undefined
+  }), [collections, focusedIndex, onNavigateToMenu, loadCollectionItems, hasMore, loadMore])
 
   const itemsHandlers = useMemo(() => ({
     ...createGridNavigationHandlers({
@@ -156,11 +143,11 @@ export function CollectionsScreen({ onSelectItem, onNavigateToMenu, isActive }: 
   useScrollToFocused({
     containerRef,
     focusedIndex,
-    itemSelector: viewMode === 'collections' ? '.collection-card' : '.movie-card',
+    itemSelector: '.bookmarks-folder',
     direction: 'vertical',
     center: false,
-    itemCount: viewMode === 'collections' ? collections.length : items.length,
-    enabled: isActive && !loading
+    itemCount: collections.length,
+    enabled: isActive && !loading && viewMode === 'collections'
   })
 
   const renderItem = useCallback((item: MovieItem, _index: number, focused: boolean) => (
@@ -209,18 +196,19 @@ export function CollectionsScreen({ onSelectItem, onNavigateToMenu, isActive }: 
   return (
     <div class="category-screen" ref={containerRef}>
       <h1 class="category-title">{t.menuCollections}</h1>
-      <div class="category-grid-container">
-        <div class="category-grid" style={{ '--card-width': `${cardWidth}px` } as preact.JSX.CSSProperties}>
-          {collections.map((collection, index) => (
-            <CollectionCard
-              key={collection.id}
-              collection={collection}
-              focused={focusedIndex === index}
-              onHover={() => setFocusedIndex(index)}
-              onSelect={() => loadCollectionItems(collection, index)}
-            />
-          ))}
-        </div>
+      <div class="bookmarks-folders">
+        {collections.map((collection, index) => (
+          <div
+            key={collection.id}
+            class={`bookmarks-folder ${focusedIndex === index ? 'focused' : ''}`}
+            onClick={() => loadCollectionItems(collection, index)}
+          >
+            <div class="bookmarks-folder-title">{collection.title}</div>
+            {collection.count > 0 && (
+              <div class="bookmarks-folder-count">{collection.count}</div>
+            )}
+          </div>
+        ))}
       </div>
       {loadingMore && (
         <div class="category-loading-more">

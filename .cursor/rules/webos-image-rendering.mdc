@@ -48,3 +48,13 @@ stall, NOT a JS deadlock, NOT a load/decode-event problem.
 - `object-fit`/`object-position` do not apply to canvas *content* — the
   cover-crop (incl. the `center 18%` vertical bias) is baked in by
   `drawBannerCover`.
+
+## 4. Side menu expand ≠ window resize
+
+Expanding the side menu shrinks `.app-with-menu` without firing `window.resize`,
+and Chrome 53 has no `ResizeObserver`. Grids that cache `itemsPerRow` /
+`cardWidth` (esp. `VirtualGrid` totalHeight) then keep a too-small height and
+sections overlap (History movies over series).
+
+Fix: `SideMenu` dispatches `kpuppy-content-resize`; `useGridLayout` listens;
+`VirtualGrid` resets measured row height when layout inputs change.

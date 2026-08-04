@@ -1,7 +1,7 @@
 .movie-card {
   width: 300px;
   border-radius: 4px;
-  overflow: visible;
+  overflow: hidden;
   position: relative;
   cursor: pointer;
   border: 2px solid transparent;
@@ -14,7 +14,8 @@
 
 .movie-card.focused {
   border-color: #e50914;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
+  -webkit-filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.55));
+  filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.55));
   z-index: 10;
   background: #e50914;
 }

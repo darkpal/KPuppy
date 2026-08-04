@@ -33,6 +33,11 @@ export function VirtualGrid<T>({
   const rowHeight = measuredRowHeight || itemHeight
   const rootRef = useRef<HTMLDivElement>(null)
 
+  // Stale row height after side-menu expand makes totalHeight too small → sections overlap.
+  useEffect(() => {
+    setMeasuredRowHeight(0)
+  }, [itemsPerRow, cardWidth])
+
   const getVisibleRange = useCallback(() => {
     const focusedRow = Math.floor(focusedIndex / itemsPerRow)
     const bufferRows = Math.ceil(renderBuffer / itemsPerRow)

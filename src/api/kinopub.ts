@@ -634,8 +634,12 @@ export function getPopularItems(type?: ItemsParams['type'], perpage = 20): Promi
 }
 
 /** Shortcut used by Kinopub web for "Новые/свежие ..." */
-export function getFreshItems(type?: ItemsParams['type'], perpage = 20): Promise<ItemsResponse> {
-  return getItemsShortcut('fresh', type, 0, perpage)
+export function getFreshItems(
+  type?: ItemsParams['type'],
+  perpage = 20,
+  page = 0
+): Promise<ItemsResponse> {
+  return getItemsShortcut('fresh', type, page, perpage)
 }
 
 export function getHotItems(type?: ItemsParams['type'], perpage = 20): Promise<ItemsResponse> {
@@ -1070,20 +1074,36 @@ export async function getBookmarkFolders(): Promise<BookmarkFolder[]> {
   return result
 }
 
-export async function getBookmarkItems(folderId: number): Promise<MovieItem[]> {
-  const cacheKey = createCacheKey('bookmark', folderId)
-  const cached = getCached<MovieItem[]>(cacheKey)
+export async function getBookmarkItems(
+  folderId: number,
+  page = 1,
+  perpage = 50
+): Promise<ItemsResponse> {
+  const cacheKey = createCacheKey('bookmark', folderId, page, perpage)
+  const cached = getCached<ItemsResponse>(cacheKey)
   if (cached) return cached
 
-  const response = await authFetch(`${BASE_URL}/v1/bookmarks/${folderId}`)
+  const searchParams = new URLSearchParams()
+  searchParams.set('page', page.toString())
+  searchParams.set('perpage', perpage.toString())
+
+  const response = await authFetch(`${BASE_URL}/v1/bookmarks/${folderId}?${searchParams}`)
 
   if (!response.ok) {
     throw new ApiError('Failed to fetch bookmark items', response.status)
   }
 
   const data = await response.json()
-
-  const result: MovieItem[] = (data.items || []).map(mapToMovieItem)
+  const items: MovieItem[] = (data.items || []).map(mapToMovieItem)
+  const result: ItemsResponse = {
+    items,
+    pagination: {
+      current: data.pagination?.current ?? page,
+      total: data.pagination?.total ?? 1,
+      totalItems: data.pagination?.total_items ?? items.length,
+      perpage: data.pagination?.perpage ?? perpage
+    }
+  }
 
   setCache(cacheKey, result)
   return result

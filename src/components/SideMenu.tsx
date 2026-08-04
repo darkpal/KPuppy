@@ -65,6 +65,16 @@ export function SideMenu({ selectedId, focusedIndex, onSelect }: SideMenuProps) 
     return () => window.removeEventListener('kpuppy-settings-changed', sync)
   }, [])
 
+  // Notify grids that content width changed (no window.resize, no ResizeObserver on webOS).
+  useEffect(() => {
+    const fire = () => window.dispatchEvent(new Event('kpuppy-content-resize'))
+    fire()
+    const raf = window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(fire)
+    })
+    return () => window.cancelAnimationFrame(raf)
+  }, [isExpanded])
+
   useScrollToFocused({
     containerRef: menuItemsRef,
     focusedIndex: focusedIndex ?? 0,

@@ -35,9 +35,13 @@ export function useGridLayout(
 
   useLayoutEffect(() => {
     updateLayout()
+    // Side menu expand/collapse changes content width without a window resize
+    // (Chrome 53 / webOS has no ResizeObserver).
     window.addEventListener('resize', updateLayout)
+    window.addEventListener('kpuppy-content-resize', updateLayout)
     return () => {
       window.removeEventListener('resize', updateLayout)
+      window.removeEventListener('kpuppy-content-resize', updateLayout)
     }
   }, [updateLayout, ...triggerDeps])
 

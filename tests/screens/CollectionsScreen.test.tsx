@@ -93,7 +93,7 @@ describe('CollectionsScreen', () => {
       })
     })
 
-    it('renders collections grid after loading', async () => {
+    it('renders collections list after loading', async () => {
       vi.mocked(kinopub.getCollections).mockResolvedValue({
         items: [mockCollection],
         pagination: { current: 1, total: 1, totalItems: 1, perpage: 40 }
@@ -102,8 +102,8 @@ describe('CollectionsScreen', () => {
       renderWithI18n(<CollectionsScreen {...mockProps} />)
 
       await waitFor(() => {
-        expect(document.querySelector('.category-grid')).toBeDefined()
-        expect(document.querySelector('.collection-card')).toBeDefined()
+        expect(document.querySelector('.bookmarks-folders')).toBeDefined()
+        expect(document.querySelector('.bookmarks-folder')).toBeDefined()
       })
     })
 
@@ -129,7 +129,7 @@ describe('CollectionsScreen', () => {
       renderWithI18n(<CollectionsScreen {...mockProps} />)
 
       await waitFor(() => {
-        const focusedCollection = document.querySelector('.collection-card.focused')
+        const focusedCollection = document.querySelector('.bookmarks-folder.focused')
         expect(focusedCollection).toBeDefined()
       })
     })

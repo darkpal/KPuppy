@@ -1199,7 +1199,7 @@ describe('kinopub API', () => {
       await getBookmarkItems(1)
 
       const call = mockFetch.mock.calls[0]
-      expect(call[0]).toBe('https://api.service-kp.com/v1/bookmarks/1')
+      expect(call[0]).toBe('https://api.service-kp.com/v1/bookmarks/1?page=1&perpage=50')
       expect(call[1].headers['Authorization']).toBe('Bearer valid-token')
     })
 
@@ -1232,19 +1232,21 @@ describe('kinopub API', () => {
               kinopoisk_rating: 9.2,
               views: 5000
             }
-          ]
+          ],
+          pagination: { current: 1, total: 1, total_items: 2, perpage: 50 }
         })
       })
 
       const result = await getBookmarkItems(1)
 
-      expect(result).toHaveLength(2)
-      expect(result[0].id).toBe(123)
-      expect(result[0].title).toBe('Test Movie')
-      expect(result[0].imdbRating).toBe(7.8)
-      expect(result[0].kinopoiskRating).toBe(8.2)
-      expect(result[1].id).toBe(456)
-      expect(result[1].title).toBe('Test Series')
+      expect(result.items).toHaveLength(2)
+      expect(result.items[0].id).toBe(123)
+      expect(result.items[0].title).toBe('Test Movie')
+      expect(result.items[0].imdbRating).toBe(7.8)
+      expect(result.items[0].kinopoiskRating).toBe(8.2)
+      expect(result.items[1].id).toBe(456)
+      expect(result.items[1].title).toBe('Test Series')
+      expect(result.pagination.totalItems).toBe(2)
     })
 
     it('handles empty items list', async () => {
@@ -1255,7 +1257,7 @@ describe('kinopub API', () => {
 
       const result = await getBookmarkItems(1)
 
-      expect(result).toHaveLength(0)
+      expect(result.items).toHaveLength(0)
     })
 
     it('handles missing optional fields gracefully', async () => {
@@ -1276,11 +1278,11 @@ describe('kinopub API', () => {
 
       const result = await getBookmarkItems(1)
 
-      expect(result[0].plot).toBe('')
-      expect(result[0].rating).toBe(0)
-      expect(result[0].imdbRating).toBe(0)
-      expect(result[0].kinopoiskRating).toBe(0)
-      expect(result[0].views).toBe(0)
+      expect(result.items[0].plot).toBe('')
+      expect(result.items[0].rating).toBe(0)
+      expect(result.items[0].imdbRating).toBe(0)
+      expect(result.items[0].kinopoiskRating).toBe(0)
+      expect(result.items[0].views).toBe(0)
     })
 
     it('throws ApiError on failure', async () => {

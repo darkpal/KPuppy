@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'preact/hooks'
 import { AuthScreen } from './screens/AuthScreen'
-import { MainScreen } from './screens/MainScreen'
+import { MainScreen, type HomeShelfTarget } from './screens/MainScreen'
 import { ItemScreen } from './screens/ItemScreen'
 import { SearchScreen, SearchScreenState, DEFAULT_SEARCH_STATE } from './screens/SearchScreen'
 import { CategoryScreen, CategoryFilters, DEFAULT_CATEGORY_FILTERS } from './screens/CategoryScreen'
@@ -58,8 +58,9 @@ interface PlayerState {
   initialAudioIndex: number
 }
 
-interface SearchReturnTarget {
-  itemId: number
+interface NavHistoryEntry {
+  itemId: number | null
+  itemPreview: MovieItem | null
   selectedMenuId: string
   searchState: SearchScreenState | null
   categoryGenreId: number | null
@@ -80,7 +81,8 @@ interface AppState {
   player: PlayerState | null
   playerPreparing: boolean
   searchState: SearchScreenState | null
-  searchReturnTarget: SearchReturnTarget | null
+  /** Stack of previous screens for actor/director drill-down; Back pops. */
+  navHistory: NavHistoryEntry[]
   categoryGenreId: number | null
   categoryFilters: CategoryFilters | null
   bookmarksState: {
@@ -140,7 +142,7 @@ export function App() {
       player: null,
       playerPreparing: false,
       searchState: null,
-      searchReturnTarget: null,
+      navHistory: [],
       categoryGenreId: null,
       categoryFilters: null,
       bookmarksState: null
@@ -266,7 +268,7 @@ export function App() {
       seriesId: null,
       // Drop search/category filters when leaving that section via the menu.
       searchState: menuId === 'search' ? prev.searchState : null,
-      searchReturnTarget: null,
+      navHistory: [],
       bookmarksState: menuId === 'bookmarks' ? prev.bookmarksState : null,
       categoryGenreId: null,
       categoryFilters: null
@@ -283,7 +285,7 @@ export function App() {
       categoryGenreId: genreId,
       categoryFilters: { ...DEFAULT_CATEGORY_FILTERS, genreId },
       searchState: null,
-      searchReturnTarget: null,
+      navHistory: [],
       focusArea: 'content'
     }))
   }, [])
@@ -308,75 +310,89 @@ export function App() {
     setState(prev => ({ ...prev, bookmarksState }))
   }, [])
 
-  const handleSelectActor = useCallback((name: string) => {
-    setState(prev => ({
-      ...prev,
-      searchReturnTarget: prev.itemId ? {
+  const pushPersonSearch = useCallback((name: string, field: 'actor' | 'director') => {
+    setState(prev => {
+      const entry: NavHistoryEntry = {
         itemId: prev.itemId,
+        itemPreview: prev.itemPreview,
         selectedMenuId: prev.selectedMenuId,
         searchState: prev.searchState,
         categoryGenreId: prev.categoryGenreId,
         categoryFilters: prev.categoryFilters
-      } : prev.searchReturnTarget,
-      itemId: null,
-      seriesId: null,
-      selectedMenuId: 'search',
-      searchState: { ...DEFAULT_SEARCH_STATE, query: name, field: 'actor' },
-      categoryGenreId: null,
-      categoryFilters: null,
-      focusArea: 'content'
-    }))
+      }
+      // Only push when leaving a real screen (item or an earlier search).
+      const shouldPush = prev.itemId != null || prev.searchState != null
+      return {
+        ...prev,
+        navHistory: shouldPush ? [...prev.navHistory, entry] : prev.navHistory,
+        itemId: null,
+        itemPreview: null,
+        seriesId: null,
+        selectedMenuId: 'search',
+        searchState: { ...DEFAULT_SEARCH_STATE, query: name, field },
+        categoryGenreId: null,
+        categoryFilters: null,
+        focusArea: 'content'
+      }
+    })
   }, [])
 
+  const handleSelectActor = useCallback((name: string) => {
+    pushPersonSearch(name, 'actor')
+  }, [pushPersonSearch])
+
   const handleSelectDirector = useCallback((name: string) => {
-    setState(prev => ({
-      ...prev,
-      searchReturnTarget: prev.itemId ? {
-        itemId: prev.itemId,
-        selectedMenuId: prev.selectedMenuId,
-        searchState: prev.searchState,
-        categoryGenreId: prev.categoryGenreId,
-        categoryFilters: prev.categoryFilters
-      } : prev.searchReturnTarget,
-      itemId: null,
-      seriesId: null,
-      selectedMenuId: 'search',
-      searchState: { ...DEFAULT_SEARCH_STATE, query: name, field: 'director' },
-      categoryGenreId: null,
-      categoryFilters: null,
-      focusArea: 'content'
-    }))
-  }, [])
+    pushPersonSearch(name, 'director')
+  }, [pushPersonSearch])
 
   const handleBackFromSearch = useCallback(() => {
     setState(prev => {
-      const target = prev.searchReturnTarget
-      if (!target) {
+      if (prev.navHistory.length === 0) {
         return {
           ...prev,
           selectedMenuId: 'home',
           focusArea: 'content',
           itemId: null,
+          itemPreview: null,
           seriesId: null,
           searchState: null,
-          searchReturnTarget: null,
+          navHistory: [],
           categoryGenreId: null,
           categoryFilters: null
         }
       }
 
+      const navHistory = prev.navHistory.slice(0, -1)
+      const target = prev.navHistory[prev.navHistory.length - 1]
       return {
         ...prev,
         selectedMenuId: target.selectedMenuId,
         itemId: target.itemId,
+        itemPreview: target.itemPreview,
         seriesId: null,
         searchState: target.searchState,
-        searchReturnTarget: null,
+        navHistory,
         categoryGenreId: target.categoryGenreId,
         categoryFilters: target.categoryFilters,
         focusArea: 'content'
       }
     })
+  }, [])
+
+  const handleOpenShelf = useCallback((target: HomeShelfTarget) => {
+    setState(prev => ({
+      ...prev,
+      selectedMenuId: target.menuId,
+      focusArea: 'content',
+      itemId: null,
+      itemPreview: null,
+      seriesId: null,
+      searchState: null,
+      navHistory: [],
+      categoryGenreId: target.filters?.genreId ?? null,
+      categoryFilters: target.filters ?? null,
+      bookmarksState: null
+    }))
   }, [])
 
   const handleNavigateToMenu = useCallback(() => {
@@ -721,6 +737,7 @@ export function App() {
             onBack={handleNavigateToMenu}
             onSelectItem={handleSelectItem}
             onNavigateToMenu={handleNavigateToMenu}
+            onOpenShelf={handleOpenShelf}
             isActive={baseActive}
             initialFocusRow={homeFocus.row}
             initialFocusCol={homeFocus.col}
@@ -730,11 +747,14 @@ export function App() {
       }
       case 'search': {
         const searchFocus = state.screenFocus['search'] || { row: 0, col: 0 }
+        const searchKey = state.searchState
+          ? `search-${state.searchState.field}-${state.searchState.query}`
+          : 'search'
         return (
           <SearchScreen
-            key="search"
+            key={searchKey}
             onBack={handleBackFromSearch}
-            exitDirectlyOnBack={state.searchReturnTarget !== null}
+            exitDirectlyOnBack={state.navHistory.length > 0}
             onSelectItem={handleSelectItem}
             onNavigateToMenu={handleNavigateToMenu}
             isActive={baseActive}

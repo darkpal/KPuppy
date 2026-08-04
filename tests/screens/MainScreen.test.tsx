@@ -124,8 +124,8 @@ describe('MainScreen', () => {
             perpage: 20
           })
         )
-        expect(kinopub.getFreshItems).toHaveBeenCalledWith('movie', 20)
-        expect(kinopub.getFreshItems).toHaveBeenCalledWith('serial', 20)
+        expect(kinopub.getFreshItems).toHaveBeenCalledWith('movie', 20, 0)
+        expect(kinopub.getFreshItems).toHaveBeenCalledWith('serial', 20, 0)
       })
     })
   })
