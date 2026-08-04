@@ -1,6 +1,6 @@
 {
   "name": "kpuppy",
-  "version": "0.0.78",
+  "version": "0.0.79",
   "description": "KinoPub client for LG webOS TV",
   "type": "module",
   "scripts": {
@@ -12,7 +12,8 @@
     "package": "ares-package dist -o .",
     "deploy": "ares-install *.ipk",
     "lint": "eslint src/",
-    "lint:css": "stylelint 'src/**/*.css'"
+    "lint:css": "stylelint 'src/**/*.css'",
+    "capture:screenshots": "node scripts/capture-screenshots.mjs"
   },
   "browserslist": [
     "Chrome 53"
@@ -28,6 +29,7 @@
     "@testing-library/preact": "^3.2.4",
     "eslint": "^9.39.2",
     "jsdom": "^25.0.1",
+    "playwright": "^1.49.1",
     "stylelint": "^17.1.1",
     "stylelint-config-standard": "^40.0.0",
     "stylelint-no-unsupported-browser-features": "^8.1.1",

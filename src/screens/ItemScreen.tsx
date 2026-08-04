@@ -182,7 +182,8 @@ export function ItemScreen({ itemId, preview = null, onBack, onPlay, onPlayTrail
   const { item, loading, error, focusArea, selectedQuality, dropdownFocusIndex, similarItems, similarFocusIndex, metaFocusIndex, watchlistLoading, showFolderDialog, folders, itemFolderIds, folderFocusIndex, isWatching, watchingToggleLoading, detailsExpanded } = state
   const detailsPageRef = useRef<HTMLElement>(null)
   const bannerCanvasRef = useRef<HTMLCanvasElement>(null)
-  const similarCount = Math.min(similarItems.length, 12)
+  const similarFetchedForRef = useRef<number | null>(null)
+  const similarCount = similarItems.length
   const { itemsPerRow: similarPerRow, cardWidth: similarCardWidth } = useGridLayout(
     '.item-similar-grid',
     200,
@@ -289,12 +290,6 @@ export function ItemScreen({ itemId, preview = null, onBack, onPlay, onPlayTrail
             if (import.meta.env.DEV) console.error('getMediaLinks failed:', err)
           })
         }
-
-        getSimilarItems(itemId).then(items => {
-          if (!cancelled) dispatch({ type: 'SET_SIMILAR_ITEMS', items })
-        }).catch(err => {
-          if (import.meta.env.DEV) console.error('getSimilarItems failed:', err)
-        })
 
         if (hasSeries) {
           isItemInWatchlist(itemId).then(value => {
@@ -436,6 +431,31 @@ export function ItemScreen({ itemId, preview = null, onBack, onPlay, onPlayTrail
     if (detailsExpanded) scrollDetailsToTop()
   }, [detailsExpanded, scrollDetailsToTop])
 
+  // Similar list is only needed on the details page — fetch once per title when expanded.
+  useEffect(() => {
+    if (!detailsExpanded) return
+    if (similarFetchedForRef.current === itemId) return
+
+    let cancelled = false
+    getSimilarItems(itemId)
+      .then(items => {
+        if (cancelled) return
+        similarFetchedForRef.current = itemId
+        dispatch({ type: 'SET_SIMILAR_ITEMS', items })
+      })
+      .catch(err => {
+        if (import.meta.env.DEV) console.error('getSimilarItems failed:', err)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [detailsExpanded, itemId])
+
+  useEffect(() => {
+    similarFetchedForRef.current = null
+  }, [itemId])
+
   useEffect(() => {
     if (focusArea !== 'similar' || !detailsExpanded) return
     const page = detailsPageRef.current
@@ -547,6 +567,10 @@ export function ItemScreen({ itemId, preview = null, onBack, onPlay, onPlayTrail
           }
         },
         onDown: () => {
+          if (!detailsExpanded) {
+            openDetails()
+            return
+          }
           if (hasSimilar) {
             dispatch({ type: 'SET_FOCUS_AREA', area: 'similar' })
             dispatch({ type: 'SET_SIMILAR_FOCUS_INDEX', index: 0 })

@@ -26,6 +26,9 @@ npm-debug.log*
 .env.local
 .env.*.local
 
+# Local OAuth tokens for screenshot capture (never commit)
+.kpuppy-tokens.json
+
 # Claude Code
 .claude/
 com.kpuppy.app.manifest.json

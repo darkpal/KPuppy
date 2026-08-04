@@ -1,49 +1,35 @@
-# KPuppy (darkpal fork)
+# KPuppy
 
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![webOS](https://img.shields.io/badge/webOS-5.4%2B-green)
 
-Fork of [twttr/KPuppy](https://github.com/twttr/KPuppy) — a lightweight webOS LG TV app for KinoPub online cinema.
+KinoPub client for LG webOS TV — movies, series, Live TV, collections, and a remote-friendly player.
 
-Upstream: https://github.com/twttr/KPuppy  
-This fork: https://github.com/darkpal/KPuppy
+Based on [twttr/KPuppy](https://github.com/twttr/KPuppy). This fork: https://github.com/darkpal/KPuppy
 
 ## Install (Homebrew Channel)
 
 Add this repository URL in Homebrew Channel → Settings → Add repository:
 
 ```text
-https://raw.githubusercontent.com/darkpal/KPuppy/develop/homebrew/apps.json
+https://raw.githubusercontent.com/darkpal/KPuppy/main/homebrew/apps.json
 ```
 
 Packages are published via [GitHub Releases](https://github.com/darkpal/KPuppy/releases/latest).
 
-## Changes from upstream
+## Features
 
-Compared to [twttr/KPuppy](https://github.com/twttr/KPuppy):
-
-- **Resume playback** — restore position from `watching.time`, save on pause/back, pass position to the native player
-- **Magic Remote** — click-to-seek on the progress bar; cursor clicks across the UI (menus, озвучка / subtitles panels)
-- **Player controls** — Up/Down to show/hide controls; improved hover preview and play/pause
-- **Озвучка** — classic HLS (`master-v1aN`) track switching for the built-in player; prefer classic HLS when using builtin
-- **Subtitles** — selection via remote and Magic Remote click
-- **Home feed** — «Популярные» rows use Kinopub `/v1/items/hot` (same shortcut as the Apple client)
-- **Defaults** — built-in player, Auto quality, 4K/HEVC/HDR/SSL, Netherlands + HLS, Continue watching on; UI language follows the TV locale (ru/en/de)
-- **webOS packaging** — releases as IPK + Homebrew manifest for this fork
-
-## Features (from upstream)
-
-- Netflix-style dark UI optimized for TV remote navigation
-- Device code authentication
-- Browse movies, series, concerts, documentaries, TV shows
-- Continue watching, search
-- Multi-language support (English, Russian, German)
-- Quality selection (4K, 1080p, 720p, 480p)
+- Catalogs: movies, series, concerts, documentaries, TV shows, 3D
+- Live TV (HLS) and collections («Подборки»)
+- Continue watching, bookmarks, «Я смотрю», history, search (webOS keyboard / Magic Remote voice)
+- Title card with plot, cast, similar titles (grid), playback quality
+- Built-in and native webOS players; audio tracks and subtitles; resume from last position
+- Magic Remote pointer/click across the UI; languages: Russian, English, German
 
 ## Screenshots
 
-<img src=".github/screenshots/screen1.png" alt="Main Screen" width="400"> <img src=".github/screenshots/screen2.png" alt="Movie Details" width="400">
-<img src=".github/screenshots/screen3.png" alt="Search" width="400"> <img src=".github/screenshots/screen4.png" alt="Video Player" width="400">
+<img src=".github/screenshots/screen1.png" alt="Home" width="400"> <img src=".github/screenshots/screen2.png" alt="Title details" width="400">
+<img src=".github/screenshots/screen3.png" alt="Catalog" width="400"> <img src=".github/screenshots/screen4.png" alt="Player" width="400">
 
 ## Requirements
 
@@ -57,6 +43,12 @@ npm install
 npm run dev
 npm test
 npm run build
+```
+
+Capture README screenshots (device-code login once; tokens in gitignored `.kpuppy-tokens.json`):
+
+```bash
+npm run capture:screenshots
 ```
 
 ## Deployment

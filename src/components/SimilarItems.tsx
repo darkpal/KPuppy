@@ -20,9 +20,8 @@ export function SimilarItems({
   onSelectItem
 }: SimilarItemsProps) {
   const { t } = useI18n()
-  const visible = items.slice(0, 12)
 
-  if (visible.length === 0) return null
+  if (items.length === 0) return null
 
   return (
     <div class={`item-similar ${isFocused ? 'active' : ''}`}>
@@ -31,7 +30,7 @@ export function SimilarItems({
         class="item-similar-grid"
         style={cardWidth ? { '--card-width': `${cardWidth}px` } as Record<string, string> : undefined}
       >
-        {visible.map((similar, idx) => (
+        {items.map((similar, idx) => (
           <div key={similar.id} data-similar-index={idx}>
             <MovieCard
               movie={similar}

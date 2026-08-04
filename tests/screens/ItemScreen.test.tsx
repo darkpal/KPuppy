@@ -48,6 +48,7 @@ const mockMovieDetails = {
   countries: [{ id: 1, title: 'USA' }],
   genres: [{ id: 1, title: 'Action', type: 'movie' }],
   videos: [{
+    id: 101,
     number: 1,
     title: 'Main',
     files: [{ quality: '1080p', url: { hls: 'test.m3u8' } }],
@@ -207,25 +208,35 @@ describe('ItemScreen', () => {
       renderWithI18n(<ItemScreen {...mockProps} />)
 
       await waitFor(() => expect(screen.getByText('Full information')).toBeDefined())
+      await waitFor(() => expect(kinopub.getMediaLinks).toHaveBeenCalled())
 
       fireEvent.keyDown(document, { keyCode: 40 })
-      expect(document.querySelector('.item-content')?.classList.contains('details-expanded')).toBe(true)
+      await waitFor(() => {
+        expect(document.querySelector('.item-content')?.classList.contains('details-expanded')).toBe(true)
+      })
       expect(document.querySelector('.item-details-page')?.getAttribute('aria-hidden')).toBe('false')
 
       fireEvent.keyDown(document, { keyCode: 38 })
-      expect(document.querySelector('.item-content')?.classList.contains('details-expanded')).toBe(false)
+      await waitFor(() => {
+        expect(document.querySelector('.item-content')?.classList.contains('details-expanded')).toBe(false)
+      })
     })
 
     it('opens full information with the Magic Remote wheel', async () => {
       renderWithI18n(<ItemScreen {...mockProps} />)
 
       await waitFor(() => expect(screen.getByText('Full information')).toBeDefined())
+      await waitFor(() => expect(kinopub.getMediaLinks).toHaveBeenCalled())
 
       fireEvent.wheel(document, { deltaY: 120 })
-      expect(document.querySelector('.item-content')?.classList.contains('details-expanded')).toBe(true)
+      await waitFor(() => {
+        expect(document.querySelector('.item-content')?.classList.contains('details-expanded')).toBe(true)
+      })
 
       fireEvent.wheel(document, { deltaY: -120 })
-      expect(document.querySelector('.item-content')?.classList.contains('details-expanded')).toBe(false)
+      await waitFor(() => {
+        expect(document.querySelector('.item-content')?.classList.contains('details-expanded')).toBe(false)
+      })
     })
 
     it('shows the backdrop canvas only after the poster is preloaded', async () => {
@@ -390,8 +401,23 @@ describe('ItemScreen', () => {
   })
 
   describe('similar items', () => {
-    it('fetches similar items', async () => {
+    it('does not fetch similar until details are opened', async () => {
       renderWithI18n(<ItemScreen {...mockProps} />)
+
+      await waitFor(() => {
+        expect(screen.getByText('Full information')).toBeDefined()
+      })
+      expect(kinopub.getSimilarItems).not.toHaveBeenCalled()
+    })
+
+    it('fetches similar items when details expand', async () => {
+      renderWithI18n(<ItemScreen {...mockProps} />)
+
+      await waitFor(() => {
+        expect(screen.getByText('Full information')).toBeDefined()
+      })
+
+      fireEvent.click(screen.getByText('Full information'))
 
       await waitFor(() => {
         expect(kinopub.getSimilarItems).toHaveBeenCalledWith(1)
