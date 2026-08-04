@@ -1,13 +1,34 @@
+.collections-screen {
+  height: 100%;
+  background: #141414;
+  padding: 30px 24px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.collections-chrome {
+  flex-shrink: 0;
+}
+
+.collections-chrome .category-title {
+  margin-bottom: 16px;
+}
+
+.collections-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
 .collections-toolbar {
-  position: sticky;
-  top: 0;
-  z-index: 5;
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  padding: 8px 0 14px;
+  padding: 0 0 14px;
   background: #141414;
-  box-shadow: 0 8px 12px #141414;
 }
 
 .collections-hint {
@@ -70,7 +91,7 @@
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: currentColor;
+  background: currentcolor;
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.15);
 }
 

@@ -147,10 +147,7 @@ export function CollectionsScreen({ onSelectItem, onNavigateToMenu, isActive }: 
     const style = window.getComputedStyle(item)
     const marginY = (parseFloat(style.marginTop) || 0) + (parseFloat(style.marginBottom) || 0)
     const rowHeight = item.offsetHeight + marginY
-    const toolbar = container.querySelector('.collections-toolbar') as HTMLElement | null
-    const title = container.querySelector('.category-title') as HTMLElement | null
-    const chrome = (toolbar?.offsetHeight || 0) + (title?.offsetHeight || 0) + 40
-    const available = Math.max(rowHeight, container.clientHeight - chrome)
+    const available = Math.max(rowHeight, container.clientHeight - 16)
     const rows = Math.max(1, Math.floor(available / rowHeight))
     return rows * COLLECTIONS_COLUMNS
   }, [])
@@ -328,67 +325,71 @@ export function CollectionsScreen({ onSelectItem, onNavigateToMenu, isActive }: 
   }
 
   return (
-    <div class="category-screen" ref={containerRef}>
-      <h1 class="category-title">{t.menuCollections}</h1>
-      {collections.length > 0 && (
-        <div class="collections-toolbar">
-          <button
-            type="button"
-            class="collections-hint collections-hint-sort"
-            onClick={() => { void sortCollectionsAz() }}
-          >
-            <RemoteKeyDots count={1} />
-            <span class="collections-hint-label">{t.collectionsSortAz}</span>
-          </button>
-          <button
-            type="button"
-            class="collections-hint collections-hint-shuffle"
-            onClick={() => { void shuffleCollections() }}
-          >
-            <RemoteKeyDots count={2} />
-            <span class="collections-hint-label">{t.collectionsShuffle}</span>
-          </button>
-          <button
-            type="button"
-            class="collections-hint collections-hint-page"
-            onClick={jumpByPage}
-          >
-            <RemoteKeyDots count={3} />
-            <span class="collections-hint-label">{t.collectionsPageDown}</span>
-          </button>
-          <button
-            type="button"
-            class="collections-hint collections-hint-top"
-            onClick={jumpToTop}
-          >
-            <RemoteKeyDots count={4} />
-            <span class="collections-hint-label">{t.collectionsJumpTop}</span>
-          </button>
-        </div>
-      )}
-      <div class="collections-list">
-        {collections.map((collection, index) => (
-          <div
-            key={collection.id}
-            class={`collections-item ${focusedIndex === index ? 'focused' : ''}`}
-            onClick={() => loadCollectionItems(collection, index)}
-            onMouseEnter={() => setFocusedIndex(index)}
-          >
-            <div class="collections-item-title">{collection.title}</div>
-            {collection.count > 0 && (
-              <div class="collections-item-count">{collection.count}</div>
-            )}
+    <div class="collections-screen">
+      <div class="collections-chrome">
+        <h1 class="category-title">{t.menuCollections}</h1>
+        {collections.length > 0 && (
+          <div class="collections-toolbar">
+            <button
+              type="button"
+              class="collections-hint collections-hint-sort"
+              onClick={() => { void sortCollectionsAz() }}
+            >
+              <RemoteKeyDots count={1} />
+              <span class="collections-hint-label">{t.collectionsSortAz}</span>
+            </button>
+            <button
+              type="button"
+              class="collections-hint collections-hint-shuffle"
+              onClick={() => { void shuffleCollections() }}
+            >
+              <RemoteKeyDots count={2} />
+              <span class="collections-hint-label">{t.collectionsShuffle}</span>
+            </button>
+            <button
+              type="button"
+              class="collections-hint collections-hint-page"
+              onClick={jumpByPage}
+            >
+              <RemoteKeyDots count={3} />
+              <span class="collections-hint-label">{t.collectionsPageDown}</span>
+            </button>
+            <button
+              type="button"
+              class="collections-hint collections-hint-top"
+              onClick={jumpToTop}
+            >
+              <RemoteKeyDots count={4} />
+              <span class="collections-hint-label">{t.collectionsJumpTop}</span>
+            </button>
           </div>
-        ))}
+        )}
       </div>
-      {loadingMore && (
-        <div class="category-loading-more">
-          <LoadingState />
+      <div class="collections-scroll" ref={containerRef}>
+        <div class="collections-list">
+          {collections.map((collection, index) => (
+            <div
+              key={collection.id}
+              class={`collections-item ${focusedIndex === index ? 'focused' : ''}`}
+              onClick={() => loadCollectionItems(collection, index)}
+              onMouseEnter={() => setFocusedIndex(index)}
+            >
+              <div class="collections-item-title">{collection.title}</div>
+              {collection.count > 0 && (
+                <div class="collections-item-count">{collection.count}</div>
+              )}
+            </div>
+          ))}
         </div>
-      )}
-      {collections.length === 0 && (
-        <div class="category-empty">{t.errorNoItems}</div>
-      )}
+        {loadingMore && (
+          <div class="category-loading-more">
+            <LoadingState />
+          </div>
+        )}
+        {collections.length === 0 && (
+          <div class="category-empty">{t.errorNoItems}</div>
+        )}
+      </div>
     </div>
   )
 }
