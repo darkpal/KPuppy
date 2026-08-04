@@ -7,7 +7,7 @@ import { KEY_CODES } from '../hooks'
 import { useI18n } from '../i18n'
 import { convertSrtUrlToVtt, isSrtUrl } from '../utils/subtitles'
 import type { EpisodeNavigationTarget } from '../utils/episodes'
-import { createLiveHls, Hls, isHlsPlaylistUrl, shouldUseMseHls } from '../player/mseHls'
+import { createLiveHls, Hls, isHlsPlaylistUrl, recoverLiveEdge, seekIntoBuffered, shouldPreferMseHls } from '../player/mseHls'
 import '../styles/player.css'
 
 function IconAudio() {
@@ -122,9 +122,12 @@ export function PlayerScreen({
   const resumeAfterReloadRef = useRef<number | null>(null)
   const endedNavigationRef = useRef(false)
   const hlsRef = useRef<Hls | null>(null)
+  const mseFallbackTriedRef = useRef(false)
+  const liveStreamRef = useRef(false)
 
   const availableQualities = getAvailableQualities(files)
-  const useMseHls = shouldUseMseHls(url, files.length)
+  const canUseMseHls = shouldPreferMseHls(url, files.length)
+  const [useMseHls, setUseMseHls] = useState(false)
 
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
@@ -141,6 +144,7 @@ export function PlayerScreen({
     selectedQuality: initialQuality || availableQualities[0] || null
   })
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [isLiveStream, setIsLiveStream] = useState(false)
   const [hoverPreview, setHoverPreview] = useState<{ percent: number; time: number } | null>(null)
   const [primaryControlsActive, setPrimaryControlsActive] = useState(false)
   const [primaryControlFocus, setPrimaryControlFocus] = useState<PrimaryControl>('play')
@@ -156,6 +160,10 @@ export function PlayerScreen({
     startTimeAppliedRef.current = false
     resumeAfterReloadRef.current = null
     lastTimeRef.current = 0
+    mseFallbackTriedRef.current = false
+    liveStreamRef.current = false
+    setUseMseHls(false)
+    setIsLiveStream(false)
     setCurrentTime(0)
     setDuration(0)
     setBuffered(0)
@@ -217,18 +225,48 @@ export function PlayerScreen({
 
     setErrorMessage(null)
     video.removeAttribute('src')
-    video.load()
+    // Avoid video.load() here — it races MediaSource attach on webOS.
 
     const hls = createLiveHls()
     hlsRef.current = hls
-    hls.loadSource(url)
+    let startupSeekDone = false
+    liveStreamRef.current = true
+    setIsLiveStream(true)
     hls.attachMedia(video)
+    hls.loadSource(url)
 
     const onParsed = () => {
+      if (!startupSeekDone) {
+        startupSeekDone = seekIntoBuffered(video) || startupSeekDone
+      }
+      playVideo(video)
+    }
+    const onLevelLoaded = (_event: string, data: { details?: { live?: boolean } }) => {
+      if (data.details && data.details.live === false) {
+        liveStreamRef.current = false
+        setIsLiveStream(false)
+      }
+    }
+    const onFragBuffered = () => {
+      if (!startupSeekDone) {
+        startupSeekDone = seekIntoBuffered(video) || startupSeekDone
+      }
+      if (video.paused) playVideo(video)
+    }
+    const onWaiting = () => {
+      if (!liveStreamRef.current) return
+      recoverLiveEdge(video)
+      hls.startLoad()
       playVideo(video)
     }
     const onHlsError = (_event: string, data: { fatal?: boolean; type?: string; details?: string }) => {
-      if (!data.fatal) return
+      if (!data.fatal) {
+        if (data.details === 'bufferStalledError' || data.details === 'bufferNudgeOnStall') {
+          recoverLiveEdge(video)
+          playVideo(video)
+        }
+        return
+      }
       if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
         hls.startLoad()
         return
@@ -243,10 +281,16 @@ export function PlayerScreen({
     }
 
     hls.on(Hls.Events.MANIFEST_PARSED, onParsed)
+    hls.on(Hls.Events.LEVEL_LOADED, onLevelLoaded)
+    hls.on(Hls.Events.FRAG_BUFFERED, onFragBuffered)
     hls.on(Hls.Events.ERROR, onHlsError)
+    video.addEventListener('waiting', onWaiting)
 
     return () => {
+      video.removeEventListener('waiting', onWaiting)
       hls.off(Hls.Events.MANIFEST_PARSED, onParsed)
+      hls.off(Hls.Events.LEVEL_LOADED, onLevelLoaded)
+      hls.off(Hls.Events.FRAG_BUFFERED, onFragBuffered)
       hls.off(Hls.Events.ERROR, onHlsError)
       hls.destroy()
       if (hlsRef.current === hls) hlsRef.current = null
@@ -591,6 +635,18 @@ export function PlayerScreen({
       // MSE/hls.js owns fatal errors when attached — ignore empty native media errors.
       if (hlsRef.current) return
       const error = video.error
+      // Native HLS rejected the live playlist — retry once via MSE (desktop-like path).
+      if (
+        error?.code === 4 &&
+        canUseMseHls &&
+        !mseFallbackTriedRef.current &&
+        !useMseHls
+      ) {
+        mseFallbackTriedRef.current = true
+        setErrorMessage(null)
+        setUseMseHls(true)
+        return
+      }
       const errorCodes: Record<number, string> = {
         1: 'MEDIA_ERR_ABORTED',
         2: 'MEDIA_ERR_NETWORK',
@@ -626,7 +682,7 @@ export function PlayerScreen({
       video.removeEventListener('progress', handleProgress)
       video.removeEventListener('loadedmetadata', handleLoadedMetadata)
     }
-  }, [startTime, onTimeUpdate, onPlayNextEpisode, flushTime, url])
+  }, [startTime, onTimeUpdate, onPlayNextEpisode, flushTime, url, canUseMseHls, useMseHls])
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -929,7 +985,7 @@ export function PlayerScreen({
               </div>
               <div class="player-time">
                 <span>{formatTime(currentTime)}</span>
-                <span>{formatTime(duration)}</span>
+                <span>{isLiveStream ? 'LIVE' : formatTime(duration)}</span>
               </div>
             </div>
 
