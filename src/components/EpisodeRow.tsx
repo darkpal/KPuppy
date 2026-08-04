@@ -8,10 +8,13 @@ interface EpisodeRowProps {
   episodes: Episode[]
   seriesPoster?: string
   focusedIndex: number | null
+  /** Focus only (mouse hover / d-pad position). */
   onSelect?: (index: number) => void
+  /** Open/play episode (click / Enter). Defaults to onSelect. */
+  onActivate?: (index: number) => void
 }
 
-export function EpisodeRow({ title, episodes, seriesPoster, focusedIndex, onSelect }: EpisodeRowProps) {
+export function EpisodeRow({ title, episodes, seriesPoster, focusedIndex, onSelect, onActivate }: EpisodeRowProps) {
   const gridRef = useRef<HTMLDivElement>(null)
 
   useScrollToFocused({
@@ -36,7 +39,8 @@ export function EpisodeRow({ title, episodes, seriesPoster, focusedIndex, onSele
             episode={episode}
             seriesPoster={seriesPoster}
             focused={index === focusedIndex}
-            onSelect={() => onSelect?.(index)}
+            onHover={() => onSelect?.(index)}
+            onSelect={() => (onActivate || onSelect)?.(index)}
           />
         ))}
       </div>

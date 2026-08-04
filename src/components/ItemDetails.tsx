@@ -1,6 +1,7 @@
 import { Audio, Subtitle, Person } from '../api/kinopub'
 import { getAudioTrackName } from '../storage'
 import { useI18n } from '../i18n'
+import { summarizeSubtitleTracks } from '../utils/subtitles'
 
 interface ItemDetailsProps {
   className?: string
@@ -14,11 +15,6 @@ interface ItemDetailsProps {
   onHoverActor?: (index: number) => void
   onSelectActor?: (name: string) => void
   onSelectDirector?: (name: string) => void
-}
-
-function formatSubtitleLabel(sub: Subtitle): string {
-  const code = (sub.lang || '').toUpperCase()
-  return sub.forced ? `${code} Forced` : code
 }
 
 export function ItemDetails({
@@ -104,15 +100,7 @@ export function ItemDetails({
       {subtitles.length > 0 && (
         <p class="item-detail">
           <span class="item-detail-label">{t.subtitles}:</span>
-          <span class="item-detail-value">
-            {subtitles.slice(0, 8).map((sub, idx, list) => (
-              <span key={`${sub.lang}-${sub.forced ? 'f' : 'n'}-${idx}`}>
-                {formatSubtitleLabel(sub)}
-                {idx < list.length - 1 && '  '}
-              </span>
-            ))}
-            {subtitles.length > 8 && ` +${subtitles.length - 8}`}
-          </span>
+          <span class="item-detail-value">{summarizeSubtitleTracks(subtitles)}</span>
         </p>
       )}
     </div>

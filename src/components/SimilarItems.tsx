@@ -1,6 +1,6 @@
 import { MovieItem } from '../api/kinopub'
 import { useI18n } from '../i18n'
-import { PosterImage } from './PosterImage'
+import { MovieCard } from './MovieCard'
 
 interface SimilarItemsProps {
   items: MovieItem[]
@@ -20,26 +20,13 @@ export function SimilarItems({ items, focusedIndex, isFocused, onHoverItem, onSe
       <h3 class="item-similar-title">{t.similar}</h3>
       <div class="item-similar-row">
         {items.slice(0, 8).map((similar, idx) => (
-          <div
+          <MovieCard
             key={similar.id}
-            class={`item-similar-card ${isFocused && focusedIndex === idx ? 'focused' : ''}`}
-            onMouseEnter={() => onHoverItem?.(idx)}
-            onClick={() => onSelectItem(similar.id, similar)}
-          >
-            {similar.posters?.medium || similar.posters?.small ? (
-              <PosterImage
-                src={similar.posters.medium || similar.posters.small}
-                alt={similar.title}
-                class="item-similar-poster"
-              />
-            ) : (
-              <div class="item-similar-poster item-similar-poster-placeholder" />
-            )}
-            <div class="item-similar-info">
-              <span class="item-similar-name">{similar.title}</span>
-              <span class="item-similar-year">{similar.year}</span>
-            </div>
-          </div>
+            movie={similar}
+            focused={isFocused && focusedIndex === idx}
+            onHover={() => onHoverItem?.(idx)}
+            onSelect={() => onSelectItem(similar.id, similar)}
+          />
         ))}
       </div>
     </div>

@@ -36,6 +36,7 @@ export function NewEpisodesScreen({ onSelectItem, onNavigateToMenu, isActive }: 
   const [cardMeta, setCardMeta] = useState<Map<number, MovieItem>>(new Map())
   const [loading, setLoading] = useState(true)
   const [focusedIndex, setFocusedIndex] = useState(0)
+  const [scrollWithFocus, setScrollWithFocus] = useState(true)
   const containerRef = useRef<HTMLDivElement>(null)
   const { itemsPerRow, cardWidth } = useGridLayout('.category-grid', 240, [items.length])
 
@@ -61,7 +62,10 @@ export function NewEpisodesScreen({ onSelectItem, onNavigateToMenu, isActive }: 
     itemCount: items.length,
     itemsPerRow,
     focusedIndex,
-    setFocusedIndex,
+    setFocusedIndex: (index) => {
+      setScrollWithFocus(true)
+      setFocusedIndex(index)
+    },
     onSelect: (index) => {
       const item = items[index]
       if (item) {
@@ -73,7 +77,7 @@ export function NewEpisodesScreen({ onSelectItem, onNavigateToMenu, isActive }: 
 
   useKeyboardNavigation(handlers, isActive && !loading)
 
-  const renderItem = useCallback((item: WatchingItem, _index: number, focused: boolean) => {
+  const renderItem = useCallback((item: WatchingItem, index: number, focused: boolean) => {
     const newEpisodes = item.new || 0
     const badge = newEpisodes > 0
       ? `${newEpisodes} ${t.newEpisodesCount}`
@@ -84,6 +88,10 @@ export function NewEpisodesScreen({ onSelectItem, onNavigateToMenu, isActive }: 
       <MovieCard
         movie={movie}
         focused={focused}
+        onHover={() => {
+          setScrollWithFocus(false)
+          setFocusedIndex(index)
+        }}
         onSelect={() => onSelectItem(item.id, movie)}
         badge={badge}
       />
@@ -97,6 +105,7 @@ export function NewEpisodesScreen({ onSelectItem, onNavigateToMenu, isActive }: 
       items={items}
       focusedIndex={focusedIndex}
       itemsPerRow={itemsPerRow}
+      scrollToFocused={scrollWithFocus}
       renderItem={renderItem}
       getItemKey={(item) => item.id}
       emptyMessage={t.errorNoItems}

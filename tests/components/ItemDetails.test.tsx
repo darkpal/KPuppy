@@ -58,4 +58,24 @@ describe('ItemDetails', () => {
 
     expect(container.querySelectorAll('.item-person-chip')).toHaveLength(6)
   })
+
+  it('summarizes duplicate subtitle languages without repeating codes', () => {
+    const subtitles = [
+      { lang: 'rus', shift: 0, embed: false, forced: false, file: 'a.srt', url: 'a' },
+      { lang: 'rus', shift: 0, embed: false, forced: false, file: 'b.srt', url: 'b' },
+      { lang: 'rus', shift: 0, embed: false, forced: false, file: 'c.srt', url: 'c' },
+      { lang: 'eng', shift: 0, embed: false, forced: false, file: 'd.srt', url: 'd' },
+      { lang: 'eng', shift: 0, embed: false, forced: true, file: 'e.srt', url: 'e' },
+    ]
+
+    const { container } = render(
+      <I18nProvider>
+        <ItemDetails subtitles={subtitles} />
+      </I18nProvider>
+    )
+
+    expect(container.querySelector('.item-detail-value')?.textContent).toBe(
+      'Русский ×3 · English · English Forced'
+    )
+  })
 })

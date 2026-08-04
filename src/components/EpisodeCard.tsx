@@ -5,9 +5,10 @@ interface EpisodeCardProps {
   seriesPoster?: string
   focused: boolean
   onSelect?: () => void
+  onHover?: () => void
 }
 
-export function EpisodeCard({ episode, seriesPoster, focused, onSelect }: EpisodeCardProps) {
+export function EpisodeCard({ episode, seriesPoster, focused, onSelect, onHover }: EpisodeCardProps) {
   const thumbnailUrl = episode.thumbnail || seriesPoster
 
   const formatDuration = (seconds?: number): string | null => {
@@ -23,6 +24,7 @@ export function EpisodeCard({ episode, seriesPoster, focused, onSelect }: Episod
   return (
     <div
       class={`episode-card ${focused ? 'focused' : ''} ${isWatched ? 'watched' : ''}`}
+      onMouseEnter={onHover}
       onClick={onSelect}
     >
       <div class="episode-thumbnail">

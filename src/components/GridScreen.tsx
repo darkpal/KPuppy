@@ -15,6 +15,7 @@ interface GridScreenProps<T> {
   header?: ComponentChildren
   footer?: ComponentChildren
   cardWidth?: number
+  scrollToFocused?: boolean
 }
 
 export function GridScreen<T>({
@@ -29,7 +30,8 @@ export function GridScreen<T>({
   containerRef,
   header,
   footer,
-  cardWidth
+  cardWidth,
+  scrollToFocused = true
 }: GridScreenProps<T>) {
   if (loading) {
     return (
@@ -53,6 +55,7 @@ export function GridScreen<T>({
         emptyMessage={emptyMessage}
         cardWidth={cardWidth}
         scrollContainerRef={containerRef as RefObject<HTMLElement> | undefined}
+        scrollToFocused={scrollToFocused}
       />
       {footer}
     </div>

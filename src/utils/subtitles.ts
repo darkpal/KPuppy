@@ -1,3 +1,36 @@
+import type { Subtitle } from '../api/kinopub'
+
+const SUBTITLE_LANG_NAMES: Record<string, string> = {
+  rus: 'Русский', ru: 'Русский',
+  eng: 'English', en: 'English',
+  ukr: 'Українська', uk: 'Українська',
+  tur: 'Türkçe', tr: 'Türkçe',
+  deu: 'Deutsch', de: 'Deutsch', ger: 'Deutsch',
+  fra: 'Français', fr: 'Français',
+}
+
+/** Human-readable language label for a subtitle track. */
+export function subtitleLanguageLabel(lang: string, forced = false): string {
+  const raw = (lang || '').toLowerCase().replace(/-forced$/, '')
+  const name = SUBTITLE_LANG_NAMES[raw] || (lang ? lang.toUpperCase() : 'SUB')
+  return forced ? `${name} Forced` : name
+}
+
+/**
+ * Collapse duplicate language codes for item metadata, e.g.
+ * RUS RUS RUS ENG ENG → "Русский ×3 · English ×2"
+ */
+export function summarizeSubtitleTracks(subs: Subtitle[]): string {
+  const counts = new Map<string, number>()
+  for (const sub of subs) {
+    const label = subtitleLanguageLabel(sub.lang, sub.forced)
+    counts.set(label, (counts.get(label) || 0) + 1)
+  }
+  return Array.from(counts.entries())
+    .map(([label, count]) => (count > 1 ? `${label} ×${count}` : label))
+    .join(' · ')
+}
+
 /** Convert remote SRT (or plain text) to a blob: URL for <track src>. ValeraGin-style lazy convert. */
 export async function convertSrtUrlToVtt(src: string, signal?: AbortSignal): Promise<string | null> {
   try {

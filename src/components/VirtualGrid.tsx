@@ -14,6 +14,8 @@ interface VirtualGridProps<T> {
   cardWidth?: number
   /** Scrollable parent; falls back to closest .category-screen */
   scrollContainerRef?: RefObject<HTMLElement>
+  /** When false, skip auto-scroll (pointer hover must not edge-cascade). */
+  scrollToFocused?: boolean
 }
 
 export function VirtualGrid<T>({
@@ -27,7 +29,8 @@ export function VirtualGrid<T>({
   containerClass = 'category-grid',
   emptyMessage,
   cardWidth,
-  scrollContainerRef
+  scrollContainerRef,
+  scrollToFocused = true
 }: VirtualGridProps<T>) {
   const [measuredRowHeight, setMeasuredRowHeight] = useState(0)
   const rowHeight = measuredRowHeight || itemHeight
@@ -69,6 +72,7 @@ export function VirtualGrid<T>({
   }, [focusedIndex, itemsPerRow, rowHeight, items.length, cardWidth])
 
   useEffect(() => {
+    if (!scrollToFocused) return
     const root = rootRef.current
     if (!root || items.length === 0) return
 
@@ -92,7 +96,7 @@ export function VirtualGrid<T>({
     } else if (cellBottom > viewBottom - pad) {
       container.scrollTop = cellBottom - container.clientHeight + pad
     }
-  }, [focusedIndex, itemsPerRow, rowHeight, items.length, cardWidth, scrollContainerRef])
+  }, [focusedIndex, itemsPerRow, rowHeight, items.length, cardWidth, scrollContainerRef, scrollToFocused])
 
   if (items.length === 0 && emptyMessage) {
     return <div class="category-empty">{emptyMessage}</div>

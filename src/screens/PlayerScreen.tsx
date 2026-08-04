@@ -5,7 +5,7 @@ import { withHlsAudioIndex, getStreamUrl, getAvailableQualities } from '../webos
 import { saveAudioPreference, getAudioTrackName } from '../storage'
 import { KEY_CODES } from '../hooks'
 import { useI18n } from '../i18n'
-import { convertSrtUrlToVtt, isSrtUrl } from '../utils/subtitles'
+import { convertSrtUrlToVtt, isSrtUrl, subtitleLanguageLabel } from '../utils/subtitles'
 import type { EpisodeNavigationTarget } from '../utils/episodes'
 import {
   collectLiveHlsDiagnostics,
@@ -53,16 +53,8 @@ function RemoteKeyDots({ count }: { count: 1 | 2 | 3 }) {
 }
 
 function formatPlayerSubtitleLabel(lang: string): string {
-  const code = (lang || '').toLowerCase()
-  const names: Record<string, string> = {
-    rus: 'Русский', ru: 'Русский',
-    eng: 'English', en: 'English',
-    ukr: 'Українська', uk: 'Українська',
-    tur: 'Türkçe', tr: 'Türkçe',
-    deu: 'Deutsch', de: 'Deutsch', ger: 'Deutsch',
-    fra: 'Français', fr: 'Français',
-  }
-  return names[code] || (lang ? lang.toUpperCase() : 'SUB')
+  const forced = /-forced$/i.test(lang || '')
+  return subtitleLanguageLabel(lang, forced)
 }
 
 function playVideo(video: HTMLVideoElement | null | undefined): void {

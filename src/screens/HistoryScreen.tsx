@@ -102,19 +102,27 @@ export function HistoryScreen({ onSelectItem, onNavigateToMenu, isActive }: Hist
 
   useKeyboardNavigation(handlers, isActive && !loading)
 
-  const renderSeriesItem = useCallback((item: HistoryItem, _index: number, focused: boolean) => (
+  const renderSeriesItem = useCallback((item: HistoryItem, index: number, focused: boolean) => (
     <MovieCard
       movie={item}
       focused={focused}
+      onHover={() => {
+        setActiveSection('series')
+        setFocusedIndex(index)
+      }}
       onSelect={() => onSelectItem(item.id, item)}
       episodeInfo={item.episodeInfo}
     />
   ), [onSelectItem])
 
-  const renderMovieItem = useCallback((item: HistoryItem, _index: number, focused: boolean) => (
+  const renderMovieItem = useCallback((item: HistoryItem, index: number, focused: boolean) => (
     <MovieCard
       movie={item}
       focused={focused}
+      onHover={() => {
+        setActiveSection('movies')
+        setFocusedIndex(index)
+      }}
       onSelect={() => onSelectItem(item.id, item)}
     />
   ), [onSelectItem])

@@ -202,6 +202,10 @@ export function SeasonsScreen({ itemId, onBack, onPlay, onNavigateToMenu, isActi
                   episode={episode}
                   seriesPoster={seriesPoster}
                   focused={focused}
+                  onHover={() => {
+                    setFocusedRow(seasonIndex)
+                    setFocusedCol(index)
+                  }}
                   onSelect={() => {
                     setFocusedRow(seasonIndex)
                     setFocusedCol(index)
@@ -235,6 +239,10 @@ export function SeasonsScreen({ itemId, onBack, onPlay, onNavigateToMenu, isActi
               seriesPoster={seriesPoster}
               focusedIndex={rowIndex === focusedRow ? focusedCol : null}
               onSelect={(colIndex) => {
+                setFocusedRow(rowIndex)
+                setFocusedCol(colIndex)
+              }}
+              onActivate={(colIndex) => {
                 setFocusedRow(rowIndex)
                 setFocusedCol(colIndex)
                 const episode = season.episodes[colIndex]

@@ -281,10 +281,11 @@ export function CollectionsScreen({ onSelectItem, onNavigateToMenu, isActive }: 
     enabled: isActive && !loading && viewMode === 'collections'
   })
 
-  const renderItem = useCallback((item: MovieItem, _index: number, focused: boolean) => (
+  const renderItem = useCallback((item: MovieItem, index: number, focused: boolean) => (
     <MovieCard
       movie={item}
       focused={focused}
+      onHover={() => setFocusedIndex(index)}
       onSelect={() => onSelectItem(item.id, item)}
     />
   ), [onSelectItem])

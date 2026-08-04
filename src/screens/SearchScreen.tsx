@@ -476,6 +476,10 @@ export function SearchScreen({
                 <MovieCard
                   movie={item}
                   focused={focusArea === 'results' && resultIndex === index}
+                  onHover={() => {
+                    setFocusArea('results')
+                    setResultIndex(index)
+                  }}
                   onSelect={() => onSelectItem(item.id, item)}
                 />
               </div>

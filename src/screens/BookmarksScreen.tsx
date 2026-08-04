@@ -47,6 +47,7 @@ export function BookmarksScreen({
   const [focusedIndex, setFocusedIndex] = useState(
     initialFolderId != null ? initialItemIndex : initialFolderIndex
   )
+  const [scrollWithFocus, setScrollWithFocus] = useState(true)
   const [savedFolderIndex, setSavedFolderIndex] = useState(initialFolderIndex)
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -250,8 +251,14 @@ export function BookmarksScreen({
 
     return {
       onLeft: onNavigateToMenu,
-      onUp: () => setFocusedIndex(prev => Math.max(0, prev - 1)),
-      onDown: () => setFocusedIndex(prev => Math.min(folders.length, prev + 1)),
+      onUp: () => {
+        setScrollWithFocus(true)
+        setFocusedIndex(prev => Math.max(0, prev - 1))
+      },
+      onDown: () => {
+        setScrollWithFocus(true)
+        setFocusedIndex(prev => Math.min(folders.length, prev + 1))
+      },
       onEnter: () => {
         if (focusedIndex === folders.length) {
           setShowCreateDialog(true)
@@ -280,7 +287,10 @@ export function BookmarksScreen({
       itemCount: items.length,
       itemsPerRow,
       focusedIndex,
-      setFocusedIndex,
+      setFocusedIndex: (index) => {
+        setScrollWithFocus(true)
+        setFocusedIndex(index)
+      },
       onSelect: (index) => {
         const item = items[index]
         if (item) {
@@ -318,13 +328,17 @@ export function BookmarksScreen({
     direction: 'vertical',
     center: false,
     itemCount: folders.length + 1,
-    enabled: isActive && !loading && viewMode === 'folders'
+    enabled: isActive && !loading && viewMode === 'folders' && scrollWithFocus
   })
 
-  const renderItem = useCallback((item: MovieItem, _index: number, focused: boolean) => (
+  const renderItem = useCallback((item: MovieItem, index: number, focused: boolean) => (
     <MovieCard
       movie={item}
       focused={focused}
+      onHover={() => {
+        setScrollWithFocus(false)
+        setFocusedIndex(index)
+      }}
       onSelect={() => onSelectItem(item.id, item)}
     />
   ), [onSelectItem])
@@ -355,6 +369,7 @@ export function BookmarksScreen({
         items={items}
         focusedIndex={focusedIndex}
         itemsPerRow={itemsPerRow}
+        scrollToFocused={scrollWithFocus}
         renderItem={renderItem}
         getItemKey={(item) => item.id}
         emptyMessage={t.errorNoItems}
@@ -377,6 +392,10 @@ export function BookmarksScreen({
           <div
             key={folder.id}
             class={`bookmarks-folder ${focusedIndex === index ? 'focused' : ''}`}
+            onMouseEnter={() => {
+              setScrollWithFocus(false)
+              setFocusedIndex(index)
+            }}
             onClick={() => loadFolderItems(folder, index)}
           >
             <div class="bookmarks-folder-title">{folder.title}</div>
@@ -385,6 +404,10 @@ export function BookmarksScreen({
         ))}
         <div
           class={`bookmarks-folder bookmarks-folder-create ${focusedIndex === folders.length ? 'focused' : ''}`}
+          onMouseEnter={() => {
+            setScrollWithFocus(false)
+            setFocusedIndex(folders.length)
+          }}
           onClick={() => {
             setShowCreateDialog(true)
             setNewFolderName(t.newFolderName)

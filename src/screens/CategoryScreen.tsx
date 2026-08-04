@@ -100,6 +100,7 @@ export function CategoryScreen({
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const [focusedIndex, setFocusedIndex] = useState(initialFocusIndex)
+  const [scrollWithFocus, setScrollWithFocus] = useState(true)
   const [currentPage, setCurrentPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -322,11 +323,16 @@ export function CategoryScreen({
       }
     }
 
+    const setFocusedIndexFromKeys = (index: number) => {
+      setScrollWithFocus(true)
+      setFocusedIndex(index)
+    }
+
     const gridHandlers = createGridNavigationHandlers({
       itemCount,
       itemsPerRow,
       focusedIndex,
-      setFocusedIndex,
+      setFocusedIndex: setFocusedIndexFromKeys,
       onSelect: (index) => {
         const item = items[index]
         if (item) {
@@ -459,10 +465,16 @@ export function CategoryScreen({
       items={items}
       focusedIndex={focusedIndex}
       itemsPerRow={itemsPerRow}
-      renderItem={(item, _index, focused) => (
+      scrollToFocused={scrollWithFocus}
+      renderItem={(item, index, focused) => (
         <MovieCard
           movie={item}
           focused={focused}
+          onHover={() => {
+            setScrollWithFocus(false)
+            setFocusArea('grid')
+            setFocusedIndex(index)
+          }}
           onSelect={() => onSelectItem(item.id, item)}
         />
       )}
