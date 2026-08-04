@@ -505,3 +505,43 @@
   color: rgba(255, 255, 255, 0.6);
   word-break: break-all;
 }
+
+.player-diag {
+  position: absolute;
+  left: 80px;
+  right: 80px;
+  bottom: 160px;
+  z-index: 90;
+  background: rgba(10, 10, 10, 0.92);
+  border: 2px solid rgba(229, 9, 20, 0.75);
+  border-radius: var(--radius-md);
+  padding: 28px 36px;
+  max-height: 52%;
+  overflow: auto;
+}
+
+.player-diag-title {
+  font-size: 26px;
+  font-weight: 700;
+  color: #fff;
+  margin: 0 0 16px;
+}
+
+.player-diag-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.player-diag-list li {
+  font-size: 20px;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.92);
+  margin-bottom: 10px;
+  word-break: break-word;
+}
+
+.player-diag-list li:last-child {
+  margin-bottom: 0;
+  color: rgba(255, 200, 120, 0.95);
+}

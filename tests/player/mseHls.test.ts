@@ -19,8 +19,10 @@ vi.mock('hls.js/dist/hls.light.mjs', () => {
 
 import Hls from 'hls.js/dist/hls.light.mjs'
 import {
+  collectLiveHlsDiagnostics,
   createLiveHls,
   isHlsPlaylistUrl,
+  isLivePlaybackStalled,
   recoverLiveEdge,
   seekIntoBuffered,
   shouldPreferMseHls
@@ -98,5 +100,48 @@ describe('mseHls', () => {
 
     expect(recoverLiveEdge(video)).toBe(true)
     expect(video.currentTime).toBeCloseTo(1228.5)
+  })
+
+  it('detects stalled live playback', () => {
+    expect(isLivePlaybackStalled({
+      videoWidth: 0,
+      currentTime: 0
+    } as HTMLVideoElement)).toBe(true)
+    expect(isLivePlaybackStalled({
+      videoWidth: 1920,
+      currentTime: 2
+    } as HTMLVideoElement)).toBe(false)
+  })
+
+  it('builds readable live diagnostics lines', () => {
+    const hls = {
+      levels: [{
+        height: 720,
+        videoCodec: 'avc1.4d401f',
+        audioCodec: 'mp4a.40.2',
+        attrs: { CODECS: 'avc1.4d401f,mp4a.40.2' }
+      }],
+      currentLevel: 0,
+      autoLevelEnabled: true
+    } as unknown as InstanceType<typeof Hls>
+    const video = {
+      videoWidth: 0,
+      videoHeight: 0,
+      currentTime: 0,
+      paused: true,
+      buffered: { length: 0 },
+      error: null
+    } as unknown as HTMLVideoElement
+
+    const lines = collectLiveHlsDiagnostics(hls, video, {
+      lastError: 'warn mediaError: bufferAppendError',
+      url: 'https://edge/fox/index.m3u8?token=abc'
+    })
+
+    expect(lines[0]).toMatch(/Native webOS HLS rejected/)
+    expect(lines.some(line => line.includes('0×0'))).toBe(true)
+    expect(lines.some(line => line.includes('720p'))).toBe(true)
+    expect(lines.some(line => line.includes('bufferAppendError'))).toBe(true)
+    expect(lines.some(line => line.includes('fox/index.m3u8'))).toBe(true)
   })
 })

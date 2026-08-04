@@ -15,7 +15,7 @@ import { NewEpisodesScreen } from './screens/NewEpisodesScreen'
 import { PlayerScreen } from './screens/PlayerScreen'
 import { RemoteDebugOverlay } from './components/RemoteDebugOverlay'
 import { LoadingState } from './components/LoadingSpinner'
-import { ALL_MENU_ITEMS_COUNT, getMenuIdByIndex } from './components/SideMenu'
+import { ALL_MENU_ITEMS_COUNT, getMenuIdByIndex, getMenuIndexById } from './components/SideMenu'
 import { KEY_CODES } from './hooks'
 import { ScreenManager } from './components/ScreenManager'
 import { isAuthenticated, clearTokens, getTokens, getLocalSettings, saveReturnTo, getReturnTo, clearReturnTo, getContentTypesCache, saveContentTypesCache, getSavedAudioPreference, findAudioIndex, ReturnToState } from './storage'
@@ -114,9 +114,11 @@ const CATEGORY_TITLE_KEYS: Record<string, keyof Translations> = {
 }
 
 function applyReturnTo(state: AppState, saved: ReturnToState): AppState {
+  const selectedMenuId = saved.selectedMenuId || state.selectedMenuId
   return {
     ...state,
-    selectedMenuId: saved.selectedMenuId || state.selectedMenuId,
+    selectedMenuId,
+    menuFocusIndex: getMenuIndexById(selectedMenuId),
     itemId: saved.itemId,
     seriesId: saved.seriesId,
     screenFocus: saved.screenFocus || state.screenFocus,
@@ -262,6 +264,7 @@ export function App() {
     setState(prev => ({
       ...prev,
       selectedMenuId: menuId,
+      menuFocusIndex: getMenuIndexById(menuId),
       focusArea: 'content',
       itemId: null,
       itemPreview: null,
@@ -282,6 +285,7 @@ export function App() {
       itemId: null,
       seriesId: null,
       selectedMenuId: categoryId,
+      menuFocusIndex: getMenuIndexById(categoryId),
       categoryGenreId: genreId,
       categoryFilters: { ...DEFAULT_CATEGORY_FILTERS, genreId },
       searchState: null,
@@ -329,6 +333,7 @@ export function App() {
         itemPreview: null,
         seriesId: null,
         selectedMenuId: 'search',
+        menuFocusIndex: getMenuIndexById('search'),
         searchState: { ...DEFAULT_SEARCH_STATE, query: name, field },
         categoryGenreId: null,
         categoryFilters: null,
@@ -351,6 +356,7 @@ export function App() {
         return {
           ...prev,
           selectedMenuId: 'home',
+          menuFocusIndex: getMenuIndexById('home'),
           focusArea: 'content',
           itemId: null,
           itemPreview: null,
@@ -367,6 +373,7 @@ export function App() {
       return {
         ...prev,
         selectedMenuId: target.selectedMenuId,
+        menuFocusIndex: getMenuIndexById(target.selectedMenuId),
         itemId: target.itemId,
         itemPreview: target.itemPreview,
         seriesId: null,
@@ -380,7 +387,12 @@ export function App() {
   }, [])
 
   const handleNavigateToMenu = useCallback(() => {
-    setState(prev => ({ ...prev, focusArea: 'menu' }))
+    setState(prev => ({
+      ...prev,
+      focusArea: 'menu',
+      // Land on the current section, not a stale index from an earlier visit.
+      menuFocusIndex: getMenuIndexById(prev.selectedMenuId)
+    }))
   }, [])
 
   const handleTimeUpdate = useCallback((time: number) => {

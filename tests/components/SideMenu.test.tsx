@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/preact'
 import { h } from 'preact'
-import { SideMenu, getMenuIdByIndex, ALL_MENU_ITEMS_COUNT, MENU_ITEMS_COUNT } from '../../src/components/SideMenu'
+import { SideMenu, getMenuIdByIndex, getMenuIndexById, ALL_MENU_ITEMS_COUNT, MENU_ITEMS_COUNT } from '../../src/components/SideMenu'
 import { I18nProvider } from '../../src/i18n/context'
 
 function renderWithI18n(component: preact.ComponentChild) {
@@ -184,6 +184,13 @@ describe('getMenuIdByIndex', () => {
     expect(getMenuIdByIndex(11)).toBe('bookmarks')
     expect(getMenuIdByIndex(12)).toBe('watching')
     expect(getMenuIdByIndex(13)).toBe('settings')
+  })
+
+  it('maps menu ids back to indices', () => {
+    expect(getMenuIndexById('home')).toBe(0)
+    expect(getMenuIndexById('livetv')).toBe(9)
+    expect(getMenuIndexById('user')).toBe(ALL_MENU_ITEMS_COUNT - 1)
+    expect(getMenuIndexById('missing')).toBe(0)
   })
 
   it('returns user for last index', () => {

@@ -47,6 +47,11 @@ export function getMenuIdByIndex(index: number): string | undefined {
   return ALL_MENU_IDS[index]
 }
 
+export function getMenuIndexById(id: string): number {
+  const index = ALL_MENU_IDS.indexOf(id)
+  return index >= 0 ? index : 0
+}
+
 interface SideMenuProps {
   selectedId: string
   focusedIndex: number | null

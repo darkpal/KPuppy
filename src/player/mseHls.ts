@@ -74,4 +74,72 @@ export function createLiveHls(): Hls {
   })
 }
 
+function formatBuffered(video: HTMLVideoElement | null): string {
+  if (!video?.buffered?.length) return 'none'
+  const parts: string[] = []
+  for (let i = 0; i < video.buffered.length; i++) {
+    parts.push(`${video.buffered.start(i).toFixed(1)}–${video.buffered.end(i).toFixed(1)}s`)
+  }
+  return parts.join(', ')
+}
+
+function summarizeLevels(hls: Hls): string {
+  const levels = hls.levels || []
+  if (!levels.length) return 'none yet'
+  return levels.slice(0, 6).map((level, i) => {
+    const codecs = level.attrs?.CODECS || [level.videoCodec, level.audioCodec].filter(Boolean).join(',') || '?'
+    const res = level.height ? `${level.height}p` : '?'
+    const mark = i === hls.currentLevel ? '*' : ''
+    return `${mark}${res}/${codecs}`
+  }).join(' · ')
+}
+
+/** Human-readable lines for the TV overlay when live MSE stalls or fails. */
+export function collectLiveHlsDiagnostics(
+  hls: Hls | null,
+  video: HTMLVideoElement | null,
+  options?: { lastError?: string | null; url?: string }
+): string[] {
+  const lines: string[] = [
+    'Native webOS HLS rejected this stream → hls.js (MSE) fallback',
+  ]
+
+  if (video) {
+    const mediaError = video.error
+    lines.push(
+      `Video: ${video.videoWidth}×${video.videoHeight} · t=${video.currentTime.toFixed(1)}s · paused=${video.paused}`,
+      `Buffered: ${formatBuffered(video)}`
+    )
+    if (mediaError) {
+      lines.push(`MediaError: code ${mediaError.code}${mediaError.message ? ` · ${mediaError.message}` : ''}`)
+    }
+  }
+
+  if (hls) {
+    lines.push(`Levels: ${summarizeLevels(hls)}`)
+    lines.push(`HLS level: ${hls.currentLevel} · auto=${hls.autoLevelEnabled}`)
+  } else {
+    lines.push('HLS instance: destroyed / not attached')
+  }
+
+  if (options?.lastError) {
+    lines.push(`Last HLS error: ${options.lastError}`)
+  }
+
+  const url = options?.url
+  if (url) {
+    const short = url.length > 96 ? `${url.slice(0, 96)}…` : url
+    lines.push(`URL: ${short}`)
+  }
+
+  lines.push('If PC plays this URL but TV stays black — likely codec/playlist limits on webOS')
+  return lines
+}
+
+export function isLivePlaybackStalled(video: HTMLVideoElement | null): boolean {
+  if (!video) return true
+  if (video.videoWidth > 0 && video.currentTime > 0.4) return false
+  return true
+}
+
 export { Hls }

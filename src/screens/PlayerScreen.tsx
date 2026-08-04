@@ -7,7 +7,16 @@ import { KEY_CODES } from '../hooks'
 import { useI18n } from '../i18n'
 import { convertSrtUrlToVtt, isSrtUrl } from '../utils/subtitles'
 import type { EpisodeNavigationTarget } from '../utils/episodes'
-import { createLiveHls, Hls, isHlsPlaylistUrl, recoverLiveEdge, seekIntoBuffered, shouldPreferMseHls } from '../player/mseHls'
+import {
+  collectLiveHlsDiagnostics,
+  createLiveHls,
+  Hls,
+  isHlsPlaylistUrl,
+  isLivePlaybackStalled,
+  recoverLiveEdge,
+  seekIntoBuffered,
+  shouldPreferMseHls
+} from '../player/mseHls'
 import '../styles/player.css'
 
 function IconAudio() {
@@ -124,6 +133,7 @@ export function PlayerScreen({
   const hlsRef = useRef<Hls | null>(null)
   const mseFallbackTriedRef = useRef(false)
   const liveStreamRef = useRef(false)
+  const lastHlsErrorRef = useRef<string | null>(null)
 
   const availableQualities = getAvailableQualities(files)
   const canUseMseHls = shouldPreferMseHls(url, files.length)
@@ -144,6 +154,7 @@ export function PlayerScreen({
     selectedQuality: initialQuality || availableQualities[0] || null
   })
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [liveDiagLines, setLiveDiagLines] = useState<string[] | null>(null)
   const [isLiveStream, setIsLiveStream] = useState(false)
   const [hoverPreview, setHoverPreview] = useState<{ percent: number; time: number } | null>(null)
   const [primaryControlsActive, setPrimaryControlsActive] = useState(false)
@@ -162,8 +173,10 @@ export function PlayerScreen({
     lastTimeRef.current = 0
     mseFallbackTriedRef.current = false
     liveStreamRef.current = false
+    lastHlsErrorRef.current = null
     setUseMseHls(false)
     setIsLiveStream(false)
+    setLiveDiagLines(null)
     setCurrentTime(0)
     setDuration(0)
     setBuffered(0)
@@ -224,6 +237,8 @@ export function PlayerScreen({
     }
 
     setErrorMessage(null)
+    setLiveDiagLines(null)
+    lastHlsErrorRef.current = null
     video.removeAttribute('src')
     // Avoid video.load() here — it races MediaSource attach on webOS.
 
@@ -235,23 +250,38 @@ export function PlayerScreen({
     hls.attachMedia(video)
     hls.loadSource(url)
 
+    const refreshDiag = (forceShow = false) => {
+      const lines = collectLiveHlsDiagnostics(hlsRef.current, video, {
+        lastError: lastHlsErrorRef.current,
+        url
+      })
+      if (forceShow || isLivePlaybackStalled(video)) {
+        setLiveDiagLines(lines)
+      }
+    }
+
     const onParsed = () => {
       if (!startupSeekDone) {
         startupSeekDone = seekIntoBuffered(video) || startupSeekDone
       }
       playVideo(video)
+      refreshDiag(false)
     }
     const onLevelLoaded = (_event: string, data: { details?: { live?: boolean } }) => {
       if (data.details && data.details.live === false) {
         liveStreamRef.current = false
         setIsLiveStream(false)
       }
+      refreshDiag(false)
     }
     const onFragBuffered = () => {
       if (!startupSeekDone) {
         startupSeekDone = seekIntoBuffered(video) || startupSeekDone
       }
       if (video.paused) playVideo(video)
+      if (!isLivePlaybackStalled(video)) {
+        setLiveDiagLines(null)
+      }
     }
     const onWaiting = () => {
       if (!liveStreamRef.current) return
@@ -260,21 +290,26 @@ export function PlayerScreen({
       playVideo(video)
     }
     const onHlsError = (_event: string, data: { fatal?: boolean; type?: string; details?: string }) => {
+      lastHlsErrorRef.current = `${data.fatal ? 'fatal' : 'warn'} ${data.type || '?'}: ${data.details || '?'}`
       if (!data.fatal) {
         if (data.details === 'bufferStalledError' || data.details === 'bufferNudgeOnStall') {
           recoverLiveEdge(video)
           playVideo(video)
         }
+        refreshDiag(false)
         return
       }
       if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
         hls.startLoad()
+        refreshDiag(true)
         return
       }
       if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
         hls.recoverMediaError()
+        refreshDiag(true)
         return
       }
+      refreshDiag(true)
       setErrorMessage(`HLS.js ${data.type || 'ERROR'}: ${data.details || 'fatal'}`)
       hls.destroy()
       if (hlsRef.current === hls) hlsRef.current = null
@@ -286,7 +321,14 @@ export function PlayerScreen({
     hls.on(Hls.Events.ERROR, onHlsError)
     video.addEventListener('waiting', onWaiting)
 
+    const stallTimer = window.setTimeout(() => {
+      if (hlsRef.current === hls && isLivePlaybackStalled(video)) {
+        refreshDiag(true)
+      }
+    }, 7000)
+
     return () => {
+      window.clearTimeout(stallTimer)
       video.removeEventListener('waiting', onWaiting)
       hls.off(Hls.Events.MANIFEST_PARSED, onParsed)
       hls.off(Hls.Events.LEVEL_LOADED, onLevelLoaded)
@@ -948,6 +990,17 @@ export function PlayerScreen({
           <div class="player-error-title">Playback Error</div>
           <div class="player-error-message">{errorMessage}</div>
           <div class="player-error-url">{url.substring(0, 80)}...</div>
+        </div>
+      )}
+
+      {!errorMessage && liveDiagLines && (
+        <div class="player-diag" role="status">
+          <div class="player-diag-title">Live stream diagnostics</div>
+          <ul class="player-diag-list">
+            {liveDiagLines.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
         </div>
       )}
 
