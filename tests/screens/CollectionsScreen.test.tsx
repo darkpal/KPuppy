@@ -102,8 +102,8 @@ describe('CollectionsScreen', () => {
       renderWithI18n(<CollectionsScreen {...mockProps} />)
 
       await waitFor(() => {
-        expect(document.querySelector('.bookmarks-folders')).toBeDefined()
-        expect(document.querySelector('.bookmarks-folder')).toBeDefined()
+        expect(document.querySelector('.collections-list')).toBeDefined()
+        expect(document.querySelector('.collections-item')).toBeDefined()
       })
     })
 
@@ -129,8 +129,22 @@ describe('CollectionsScreen', () => {
       renderWithI18n(<CollectionsScreen {...mockProps} />)
 
       await waitFor(() => {
-        const focusedCollection = document.querySelector('.bookmarks-folder.focused')
+        const focusedCollection = document.querySelector('.collections-item.focused')
         expect(focusedCollection).toBeDefined()
+      })
+    })
+
+    it('shows navigation hints', async () => {
+      vi.mocked(kinopub.getCollections).mockResolvedValue({
+        items: [mockCollection],
+        pagination: { current: 1, total: 1, totalItems: 1, perpage: 40 }
+      })
+
+      renderWithI18n(<CollectionsScreen {...mockProps} />)
+
+      await waitFor(() => {
+        expect(screen.getByText(/Shuffle/)).toBeDefined()
+        expect(document.querySelector('.collections-hint')).not.toBeNull()
       })
     })
 

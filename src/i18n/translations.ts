@@ -149,6 +149,9 @@ export interface Translations {
   deleteFolder: string
   newFolderName: string
   confirmDelete: string
+  collectionsShuffle: string
+  collectionsPageDown: string
+  collectionsJumpTop: string
   bookmarkAdded: string
   bookmarkRemoved: string
 
@@ -321,6 +324,9 @@ const en: Translations = {
   deleteFolder: 'Delete Folder',
   newFolderName: 'New Folder',
   confirmDelete: 'Delete this folder?',
+  collectionsShuffle: 'Shuffle',
+  collectionsPageDown: 'Page down',
+  collectionsJumpTop: 'Jump to top',
   bookmarkAdded: 'Added to bookmarks',
   bookmarkRemoved: 'Removed from bookmarks',
 
@@ -487,6 +493,9 @@ const ru: Translations = {
   deleteFolder: 'Удалить папку',
   newFolderName: 'Новая папка',
   confirmDelete: 'Удалить эту папку?',
+  collectionsShuffle: 'Перемешать',
+  collectionsPageDown: 'Страница вниз',
+  collectionsJumpTop: 'В начало',
   bookmarkAdded: 'Добавлено в закладки',
   bookmarkRemoved: 'Удалено из закладок',
 
@@ -653,6 +662,9 @@ const de: Translations = {
   deleteFolder: 'Ordner löschen',
   newFolderName: 'Neuer Ordner',
   confirmDelete: 'Diesen Ordner löschen?',
+  collectionsShuffle: 'Mischen',
+  collectionsPageDown: 'Seite nach unten',
+  collectionsJumpTop: 'Nach oben',
   bookmarkAdded: 'Zu Lesezeichen hinzugefügt',
   bookmarkRemoved: 'Aus Lesezeichen entfernt',
 

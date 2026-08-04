@@ -6,9 +6,12 @@ import { useKeyboardNavigation, useGridLayout, createGridNavigationHandlers, use
 import { LoadingState } from '../components/LoadingSpinner'
 import { useI18n } from '../i18n'
 import '../styles/category.css'
-import '../styles/bookmarks.css'
+import '../styles/collections.css'
 
 const COLLECTIONS_PER_PAGE = 40
+const COLLECTIONS_COLUMNS = 2
+/** Jump ~5 visual rows at a time on the 2-column list. */
+const PAGE_JUMP = COLLECTIONS_COLUMNS * 5
 
 interface CollectionsScreenProps {
   onSelectItem: (itemId: number, preview?: MovieItem) => void
@@ -17,6 +20,17 @@ interface CollectionsScreenProps {
 }
 
 type ViewMode = 'collections' | 'items'
+
+function shuffleInPlace<T>(items: T[]): T[] {
+  const next = items.slice()
+  for (let i = next.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1))
+    const tmp = next[i]
+    next[i] = next[j]
+    next[j] = tmp
+  }
+  return next
+}
 
 export function CollectionsScreen({ onSelectItem, onNavigateToMenu, isActive }: CollectionsScreenProps) {
   const { t } = useI18n()
@@ -97,26 +111,65 @@ export function CollectionsScreen({ onSelectItem, onNavigateToMenu, isActive }: 
     setFocusedIndex(savedCollectionIndex)
   }, [savedCollectionIndex])
 
-  const collectionsHandlers = useMemo(() => ({
-    onLeft: onNavigateToMenu,
-    onUp: () => setFocusedIndex(prev => Math.max(0, prev - 1)),
-    onDown: () => {
-      setFocusedIndex(prev => {
-        const next = Math.min(collections.length - 1, prev + 1)
-        if (next >= collections.length - 3 && hasMore) {
+  const jumpBy = useCallback((delta: number) => {
+    setFocusedIndex(prev => {
+      const next = Math.max(0, Math.min(collections.length - 1, prev + delta))
+      if (next >= collections.length - PAGE_JUMP && hasMore) {
+        loadMore()
+      }
+      return next
+    })
+  }, [collections.length, hasMore, loadMore])
+
+  const jumpToTop = useCallback(() => {
+    setFocusedIndex(0)
+  }, [])
+
+  const shuffleCollections = useCallback(() => {
+    setCollections(prev => shuffleInPlace(prev))
+    setFocusedIndex(0)
+  }, [])
+
+  const collectionsHandlers = useMemo(() => {
+    const gridHandlers = createGridNavigationHandlers({
+      itemCount: collections.length,
+      itemsPerRow: COLLECTIONS_COLUMNS,
+      focusedIndex,
+      setFocusedIndex,
+      onSelect: (index) => {
+        const collection = collections[index]
+        if (collection) loadCollectionItems(collection, index)
+      },
+      onLeftEdge: onNavigateToMenu,
+      onBottomEdge: () => {
+        if (hasMore) loadMore()
+      }
+    })
+
+    return {
+      ...gridHandlers,
+      onDown: () => {
+        gridHandlers.onDown?.()
+        const nextRowStart = focusedIndex + COLLECTIONS_COLUMNS
+        if (nextRowStart >= collections.length - PAGE_JUMP && hasMore) {
           loadMore()
         }
-        return next
-      })
-    },
-    onEnter: () => {
-      const collection = collections[focusedIndex]
-      if (collection) {
-        loadCollectionItems(collection, focusedIndex)
-      }
-    },
-    onBack: undefined
-  }), [collections, focusedIndex, onNavigateToMenu, loadCollectionItems, hasMore, loadMore])
+      },
+      onGreen: shuffleCollections,
+      onYellow: () => jumpBy(PAGE_JUMP),
+      onBlue: jumpToTop
+    }
+  }, [
+    collections,
+    focusedIndex,
+    onNavigateToMenu,
+    loadCollectionItems,
+    hasMore,
+    loadMore,
+    shuffleCollections,
+    jumpBy,
+    jumpToTop
+  ])
 
   const itemsHandlers = useMemo(() => ({
     ...createGridNavigationHandlers({
@@ -143,7 +196,7 @@ export function CollectionsScreen({ onSelectItem, onNavigateToMenu, isActive }: 
   useScrollToFocused({
     containerRef,
     focusedIndex,
-    itemSelector: '.bookmarks-folder',
+    itemSelector: '.collections-item',
     direction: 'vertical',
     center: false,
     itemCount: collections.length,
@@ -196,16 +249,26 @@ export function CollectionsScreen({ onSelectItem, onNavigateToMenu, isActive }: 
   return (
     <div class="category-screen" ref={containerRef}>
       <h1 class="category-title">{t.menuCollections}</h1>
-      <div class="bookmarks-folders">
+      {collections.length > 0 && (
+        <div class="collections-hint">
+          <span class="collections-hint-key">Green</span> — {t.collectionsShuffle}
+          {' · '}
+          <span class="collections-hint-key">Yellow</span> — {t.collectionsPageDown}
+          {' · '}
+          <span class="collections-hint-key">Blue</span> — {t.collectionsJumpTop}
+        </div>
+      )}
+      <div class="collections-list">
         {collections.map((collection, index) => (
           <div
             key={collection.id}
-            class={`bookmarks-folder ${focusedIndex === index ? 'focused' : ''}`}
+            class={`collections-item ${focusedIndex === index ? 'focused' : ''}`}
             onClick={() => loadCollectionItems(collection, index)}
+            onMouseEnter={() => setFocusedIndex(index)}
           >
-            <div class="bookmarks-folder-title">{collection.title}</div>
+            <div class="collections-item-title">{collection.title}</div>
             {collection.count > 0 && (
-              <div class="bookmarks-folder-count">{collection.count}</div>
+              <div class="collections-item-count">{collection.count}</div>
             )}
           </div>
         ))}
