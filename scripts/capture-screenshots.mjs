@@ -21,7 +21,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const ROOT = resolve(__dirname, '..')
 const OUT_DIR = resolve(ROOT, '.github/screenshots')
 const TOKENS_PATH = resolve(ROOT, '.kpuppy-tokens.json')
-const BASE_URL = process.env.KPUPPY_BASE_URL || 'http://127.0.0.1:5173'
+const BASE_URL = process.env.KPUPPY_BASE_URL || 'http://127.0.0.1:4173'
 const VIEWPORT = { width: 1920, height: 1080 }
 const API = 'https://api.service-kp.com'
 const CLIENT_ID = 'xbmc'
@@ -162,21 +162,47 @@ async function waitForServer(url, timeoutMs = 60_000) {
   throw new Error(`Server not ready: ${url}`)
 }
 
-function startDevServer() {
+function startPreviewServer() {
   if (process.env.KPUPPY_BASE_URL) return null
-  console.log('Starting vite dev server…')
-  const child = spawn('npm', ['run', 'dev', '--', '--host', '127.0.0.1', '--port', '5173'], {
+  const hasDist = existsSync(resolve(ROOT, 'dist/index.html'))
+  const start = () => {
+    console.log('Starting vite preview (no debug REMOTE overlay)…')
+    const child = spawn(
+      'npm',
+      ['run', 'preview', '--', '--host', '127.0.0.1', '--port', '4173'],
+      {
+        cwd: ROOT,
+        stdio: ['ignore', 'pipe', 'pipe'],
+        env: { ...process.env },
+      }
+    )
+    child.stdout.on('data', (d) => {
+      if (process.env.DEBUG) process.stdout.write(d)
+    })
+    child.stderr.on('data', (d) => {
+      if (process.env.DEBUG) process.stderr.write(d)
+    })
+    return child
+  }
+  if (hasDist && process.env.KPUPPY_FORCE_BUILD !== '1') {
+    console.log('Using existing dist/ for screenshots')
+    return Promise.resolve(start())
+  }
+  console.log('Building production bundle for screenshots…')
+  const build = spawn('npm', ['run', 'build'], {
     cwd: ROOT,
     stdio: ['ignore', 'pipe', 'pipe'],
     env: { ...process.env },
   })
-  child.stdout.on('data', (d) => {
-    if (process.env.DEBUG) process.stdout.write(d)
+  return new Promise((resolve, reject) => {
+    build.on('exit', (code) => {
+      if (code !== 0) {
+        reject(new Error(`npm run build failed with ${code}`))
+        return
+      }
+      resolve(start())
+    })
   })
-  child.stderr.on('data', (d) => {
-    if (process.env.DEBUG) process.stderr.write(d)
-  })
-  return child
 }
 
 async function injectAuth(page, tokens) {
@@ -187,7 +213,8 @@ async function injectAuth(page, tokens) {
     localStorage.setItem(
       'kpuppy_settings',
       JSON.stringify({
-        defaultQuality: 'auto',
+        // Desktop Chromium often cannot decode 4K/HEVC — prefer 720p for captures.
+        defaultQuality: '720p',
         playerType: 'builtin',
         showContinueWatching: true,
         pinSideMenu: false,
@@ -213,36 +240,55 @@ async function capture(page, name) {
   console.log(`Wrote ${path}`)
 }
 
-async function openFirstMovie(page) {
-  const card = page.locator('.movie-row .movie-card').first()
-  await card.click()
-  await page.waitForSelector('.item-screen, .item-details, .item-button-primary', { timeout: 30_000 })
-  await sleep(2000)
+async function openTitleCard(page) {
+  // Prefer popular row over "continue watching".
+  const popular = page.locator('.movie-row').nth(1).locator('.movie-card').first()
+  if (await popular.count()) {
+    await popular.click()
+  } else {
+    await page.locator('.movie-row .movie-card').first().click()
+  }
+  await page.waitForSelector('.item-summary .item-button-primary', { timeout: 30_000 })
+  await page.waitForSelector('.item-scroll-hint', { timeout: 15_000 })
+  // Stay on the summary ("first") screen — do not open full information.
+  await sleep(2200)
 }
 
-async function expandDetailsAndScrollSimilar(page) {
-  // Open "full info" if present, then scroll toward similar grid
-  const detailsBtn = page.locator('button, .item-button').filter({ hasText: /подробн|details|info|информация/i }).first()
-  if (await detailsBtn.count()) {
-    try {
-      await detailsBtn.click({ timeout: 2000 })
-      await sleep(800)
-    } catch {
-      /* optional */
+async function goHome(page) {
+  await goMenu(page, 'home')
+  await waitForHome(page)
+}
+
+async function capturePlayer(page) {
+  async function backToMoviesGrid() {
+    for (let n = 0; n < 4; n++) {
+      if ((await page.locator('.category-grid .movie-card').count()) >= 2) return
+      await page.keyboard.press('Backspace')
+      await sleep(500)
     }
-  }
-  const similar = page.locator('.item-similar-grid, [data-similar-index]').first()
-  if (await similar.count()) {
-    await similar.scrollIntoViewIfNeeded()
-    await sleep(800)
-  } else {
-    // Scroll the item screen down a bit to show plot / similar
-    await page.evaluate(() => {
-      const el = document.querySelector('.item-screen, .screen-content, main') || document.scrollingElement
-      if (el) el.scrollTop = Math.min(el.scrollHeight, 600)
+    await goMenu(page, 'movies')
+    await page.waitForSelector('.category-grid .movie-card, .movie-card img.movie-card-image', {
+      timeout: 45_000,
     })
-    await sleep(500)
+    await sleep(1000)
   }
+
+  await backToMoviesGrid()
+  const card = page.locator('.category-grid .movie-card, .movie-card').first()
+  await card.click()
+  await page.waitForSelector('.item-button-primary', { timeout: 20_000 })
+  await sleep(900)
+  await page.locator('.item-button-primary').first().click()
+  await page.waitForSelector('.player-screen', { timeout: 20_000 })
+  await sleep(2500)
+
+  // Desktop Chromium often cannot decode the stream — hide the error overlay for README shots.
+  await page.addStyleTag({
+    content: '.player-error, .player-error-title, .player-error-message, .player-error-url { display: none !important; }',
+  })
+  await page.keyboard.press('ArrowUp')
+  await sleep(800)
+  await capture(page, 'screen4.png')
 }
 
 /** Indices match SideMenu MENU_ITEM_CONFIGS order. */
@@ -259,7 +305,6 @@ const MENU_INDEX = {
 async function goMenu(page, menuId) {
   const index = MENU_INDEX[menuId]
   if (index == null) throw new Error(`Unknown menu: ${menuId}`)
-  // Hover expands labels; click works on icons even when collapsed.
   const items = page.locator('.side-menu-items > .side-menu-item')
   await items.nth(index).click()
   await sleep(1500)
@@ -267,74 +312,47 @@ async function goMenu(page, menuId) {
 
 async function run() {
   const tokens = await ensureTokens()
-  const server = startDevServer()
+  const server = await startPreviewServer()
   try {
     await waitForServer(BASE_URL)
-    const browser = await chromium.launch({ headless: true })
+    const browser = await chromium.launch({
+      headless: true,
+      args: ['--autoplay-policy=no-user-gesture-required'],
+    })
     const context = await browser.newContext({
       viewport: VIEWPORT,
       deviceScaleFactor: 1,
     })
     const page = await context.newPage()
     await injectAuth(page, tokens)
-    await page.goto(BASE_URL, { waitUntil: 'networkidle', timeout: 60_000 })
+    await page.goto(BASE_URL, { waitUntil: 'domcontentloaded', timeout: 60_000 })
     await waitForHome(page)
 
-    // screen1 — Home
-    await capture(page, 'screen1.png')
+    const only = (process.env.KPUPPY_ONLY || '').split(',').map((s) => s.trim()).filter(Boolean)
+    const want = (n) => only.length === 0 || only.includes(String(n))
 
-    // screen2 — Item details (+ similar if available)
-    await openFirstMovie(page)
-    await expandDetailsAndScrollSimilar(page)
-    await capture(page, 'screen2.png')
-
-    // Back to home then movies catalog
-    await page.keyboard.press('Escape')
-    await sleep(800)
-    await page.keyboard.press('Backspace')
-    await sleep(500)
-    // Prefer clicking home then movies via menu
-    const backOrHome = page.locator('.side-menu-item').first()
-    if (await page.locator('.item-button-primary, .item-screen').count()) {
-      await page.keyboard.press('Escape')
-      await sleep(600)
+    if (want(1)) {
+      await capture(page, 'screen1.png')
     }
 
-    // screen3 — Movies category or Search
-    try {
+    if (want(2)) {
+      await openTitleCard(page)
+      await capture(page, 'screen2.png')
+    }
+
+    if (want(3) || want(4)) {
+      if (want(2) || !want(1)) {
+        // may already be on an item card
+      }
+      await goHome(page)
       await goMenu(page, 'movies')
       await page.waitForSelector('.movie-card img.movie-card-image', { timeout: 45_000 })
       await sleep(1500)
-      await capture(page, 'screen3.png')
-    } catch {
-      await goMenu(page, 'search')
-      await sleep(2000)
-      await capture(page, 'screen3.png')
+      if (want(3)) await capture(page, 'screen3.png')
     }
 
-    // screen4 — Player: open first card from current grid/home and play
-    try {
-      const card = page.locator('.movie-card').first()
-      await card.click()
-      await page.waitForSelector('.item-button-primary', { timeout: 30_000 })
-      await sleep(1200)
-      await page.locator('.item-button-primary').first().click()
-      await page.waitForSelector('video, .player-screen, .player-controls', { timeout: 45_000 })
-      await sleep(3500)
-      // Nudge controls visible
-      await page.keyboard.press('ArrowUp')
-      await sleep(800)
-      await capture(page, 'screen4.png')
-    } catch (err) {
-      console.warn('Player capture failed, retrying from home:', err.message)
-      await page.goto(BASE_URL, { waitUntil: 'networkidle' })
-      await waitForHome(page)
-      await openFirstMovie(page)
-      await page.locator('.item-button-primary').first().click()
-      await sleep(4000)
-      await page.keyboard.press('ArrowUp')
-      await sleep(500)
-      await capture(page, 'screen4.png')
+    if (want(4)) {
+      await capturePlayer(page)
     }
 
     await browser.close()

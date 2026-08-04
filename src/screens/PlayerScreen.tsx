@@ -138,6 +138,10 @@ export function PlayerScreen({
   const [subtitleLoading, setSubtitleLoading] = useState(false)
   const vttCacheRef = useRef<Map<string, string>>(new Map())
   const subtitleRequestRef = useRef(0)
+  const audioApplyTimerRef = useRef<number>(0)
+  const pendingAudioIndexRef = useRef<number | null>(null)
+  /** Debounce HLS reload while browsing the audio list with Up/Down. */
+  const AUDIO_SELECT_DEBOUNCE_MS = 500
   const [controls, setControls] = useState<ControlsState>({
     visible: true,
     activePanel: 'none',
@@ -472,19 +476,6 @@ export function PlayerScreen({
     }
   }, [])
 
-  const handleSurfaceClick = useCallback((event: JSX.TargetedMouseEvent<HTMLDivElement>) => {
-    const target = event.target as HTMLElement | null
-    if (!target) return
-    if (target.closest('.player-progress-bar, .player-panel, .player-state-button, .player-episode-button, .player-hints')) {
-      return
-    }
-    if (controls.activePanel !== 'none') {
-      setControls(prev => ({ ...prev, activePanel: 'none' }))
-      return
-    }
-    togglePlay()
-  }, [togglePlay, controls.activePanel])
-
   const playAdjacentEpisode = useCallback((callback?: () => void) => {
     if (!callback) return
     videoRef.current?.pause()
@@ -492,9 +483,15 @@ export function PlayerScreen({
     callback()
   }, [flushTime])
 
-  const selectAudio = useCallback((listIndex: number) => {
+  const clearAudioApplyTimer = useCallback(() => {
+    if (audioApplyTimerRef.current) {
+      window.clearTimeout(audioApplyTimerRef.current)
+      audioApplyTimerRef.current = 0
+    }
+  }, [])
+
+  const applyAudioTrack = useCallback((listIndex: number) => {
     const video = videoRef.current
-    setControls(prev => ({ ...prev, selectedAudioIndex: listIndex }))
     const selected = audios[listIndex]
     if (itemId > 0 && selected) {
       saveAudioPreference(itemId, selected)
@@ -518,6 +515,50 @@ export function PlayerScreen({
       audioTracks[i].enabled = i === trackIndex
     }
   }, [url, reloadStream, audios, itemId])
+
+  const flushAudioSelection = useCallback(() => {
+    clearAudioApplyTimer()
+    const pending = pendingAudioIndexRef.current
+    if (pending == null) return
+    pendingAudioIndexRef.current = null
+    applyAudioTrack(pending)
+  }, [clearAudioApplyTimer, applyAudioTrack])
+
+  const selectAudio = useCallback((listIndex: number, options?: { debounce?: boolean }) => {
+    setControls(prev => ({ ...prev, selectedAudioIndex: listIndex }))
+    pendingAudioIndexRef.current = listIndex
+
+    if (!options?.debounce) {
+      clearAudioApplyTimer()
+      pendingAudioIndexRef.current = null
+      applyAudioTrack(listIndex)
+      return
+    }
+
+    clearAudioApplyTimer()
+    audioApplyTimerRef.current = window.setTimeout(() => {
+      audioApplyTimerRef.current = 0
+      const pending = pendingAudioIndexRef.current
+      pendingAudioIndexRef.current = null
+      if (pending != null) applyAudioTrack(pending)
+    }, AUDIO_SELECT_DEBOUNCE_MS)
+  }, [clearAudioApplyTimer, applyAudioTrack])
+
+  useEffect(() => () => clearAudioApplyTimer(), [clearAudioApplyTimer])
+
+  const handleSurfaceClick = useCallback((event: JSX.TargetedMouseEvent<HTMLDivElement>) => {
+    const target = event.target as HTMLElement | null
+    if (!target) return
+    if (target.closest('.player-progress-bar, .player-panel, .player-state-button, .player-episode-button, .player-hints')) {
+      return
+    }
+    if (controls.activePanel !== 'none') {
+      if (controls.activePanel === 'audio') flushAudioSelection()
+      setControls(prev => ({ ...prev, activePanel: 'none' }))
+      return
+    }
+    togglePlay()
+  }, [togglePlay, controls.activePanel, flushAudioSelection])
 
   const selectQuality = useCallback((quality: string) => {
     const video = videoRef.current
@@ -596,13 +637,14 @@ export function PlayerScreen({
 
   const openAudioPanel = useCallback(() => {
     if (audios.length === 0) return
-    setControls(prev => ({
-      ...prev,
-      visible: true,
-      activePanel: prev.activePanel === 'audio' ? 'none' : 'audio'
-    }))
+    if (controls.activePanel === 'audio') {
+      flushAudioSelection()
+      setControls(prev => ({ ...prev, activePanel: 'none' }))
+    } else {
+      setControls(prev => ({ ...prev, visible: true, activePanel: 'audio' }))
+    }
     showControls()
-  }, [audios.length, showControls])
+  }, [audios.length, showControls, controls.activePanel, flushAudioSelection])
 
   const openSubtitlesPanel = useCallback(() => {
     if (!hasSubtitles) return
@@ -783,7 +825,7 @@ export function PlayerScreen({
         switch (e.keyCode) {
           case KEY_CODES.UP:
             if (controls.activePanel === 'audio' && currentIndex > 0) {
-              selectAudio(currentIndex - 1)
+              selectAudio(currentIndex - 1, { debounce: true })
             } else if (controls.activePanel === 'subtitles' && currentIndex > -1) {
               selectSubtitle(currentIndex - 1)
             }
@@ -791,7 +833,7 @@ export function PlayerScreen({
             break
           case KEY_CODES.DOWN:
             if (controls.activePanel === 'audio' && currentIndex < items.length - 1) {
-              selectAudio(currentIndex + 1)
+              selectAudio(currentIndex + 1, { debounce: true })
             } else if (controls.activePanel === 'subtitles' && currentIndex < items.length - 1) {
               selectSubtitle(currentIndex + 1)
             }
@@ -799,15 +841,18 @@ export function PlayerScreen({
             break
           case KEY_CODES.ENTER:
           case KEY_CODES.BACK:
+            if (controls.activePanel === 'audio') flushAudioSelection()
             setControls(prev => ({ ...prev, activePanel: 'none' }))
             e.preventDefault()
             break
           case KEY_CODES.RED:
+            if (controls.activePanel === 'audio') flushAudioSelection()
             openQualityPanel()
             e.preventDefault()
             break
           case KEY_CODES.GREEN:
             if (controls.activePanel === 'audio') {
+              flushAudioSelection()
               setControls(prev => ({ ...prev, activePanel: 'none' }))
             } else {
               openAudioPanel()
@@ -815,6 +860,7 @@ export function PlayerScreen({
             e.preventDefault()
             break
           case KEY_CODES.YELLOW:
+            if (controls.activePanel === 'audio') flushAudioSelection()
             if (controls.activePanel === 'subtitles') {
               setControls(prev => ({ ...prev, activePanel: 'none' }))
             } else {
@@ -934,6 +980,7 @@ export function PlayerScreen({
     togglePlay,
     seek,
     selectAudio,
+    flushAudioSelection,
     selectSubtitle,
     selectQuality,
     showControls,
