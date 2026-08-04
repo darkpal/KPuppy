@@ -18,6 +18,8 @@ export function LiveTVScreen({ onNavigateToMenu, onPlayChannel, isActive, initia
   const [channels, setChannels] = useState<TVChannel[]>([])
   const [loading, setLoading] = useState(true)
   const [focusedIndex, setFocusedIndex] = useState(initialFocusIndex)
+  // Pointer hover must not auto-scroll — near the edge it cascades endlessly.
+  const [scrollWithFocus, setScrollWithFocus] = useState(true)
   const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -39,8 +41,14 @@ export function LiveTVScreen({ onNavigateToMenu, onPlayChannel, isActive, initia
     onFocusChange?.(focusedIndex)
   }, [focusedIndex])
 
+  const setFocusedIndexFromKeys = useCallback((index: number) => {
+    setScrollWithFocus(true)
+    setFocusedIndex(index)
+  }, [])
+
   const handlePlayChannel = useCallback((channel: TVChannel, index: number) => {
     if (!channel.url) return
+    setScrollWithFocus(false)
     setFocusedIndex(index)
     onPlayChannel(channel.url, channel.title)
   }, [onPlayChannel])
@@ -50,7 +58,7 @@ export function LiveTVScreen({ onNavigateToMenu, onPlayChannel, isActive, initia
       itemCount: channels.length,
       itemsPerRow: 4,
       focusedIndex,
-      setFocusedIndex,
+      setFocusedIndex: setFocusedIndexFromKeys,
       onSelect: (index) => {
         const channel = channels[index]
         if (channel) {
@@ -60,7 +68,7 @@ export function LiveTVScreen({ onNavigateToMenu, onPlayChannel, isActive, initia
       onLeftEdge: onNavigateToMenu
     }),
     onBack: onNavigateToMenu
-  }), [channels, focusedIndex, onNavigateToMenu, handlePlayChannel])
+  }), [channels, focusedIndex, onNavigateToMenu, handlePlayChannel, setFocusedIndexFromKeys])
 
   useKeyboardNavigation(handlers, isActive && !loading)
 
@@ -69,7 +77,7 @@ export function LiveTVScreen({ onNavigateToMenu, onPlayChannel, isActive, initia
     focusedIndex,
     itemSelector: '[data-channel-index]',
     itemCount: channels.length,
-    enabled: isActive && !loading
+    enabled: isActive && !loading && scrollWithFocus
   })
 
   if (loading) {
@@ -90,7 +98,10 @@ export function LiveTVScreen({ onNavigateToMenu, onPlayChannel, isActive, initia
             key={channel.id}
             data-channel-index={index}
             class={`livetv-card ${focusedIndex === index ? 'focused' : ''}`}
-            onMouseEnter={() => setFocusedIndex(index)}
+            onMouseEnter={() => {
+              setScrollWithFocus(false)
+              setFocusedIndex(index)
+            }}
             onClick={() => handlePlayChannel(channel, index)}
           >
             {channel.logo ? (

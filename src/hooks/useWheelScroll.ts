@@ -29,13 +29,12 @@ export function useWheelScroll({
         if (target?.closest?.(ignoreSelector)) return
       }
 
-      const delta = direction === 'horizontal'
-        ? (Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY)
-        : event.deltaY
-
-      if (!delta) return
-
       if (direction === 'horizontal') {
+        // Only real horizontal gestures (trackpad swipe). Vertical mouse-wheel
+        // must bubble so the parent page can scroll (home shelves).
+        if (Math.abs(event.deltaX) <= Math.abs(event.deltaY)) return
+        const delta = event.deltaX
+        if (!delta) return
         const max = container.scrollWidth - container.clientWidth
         if (max <= 0) return
         const next = Math.max(0, Math.min(max, container.scrollLeft + delta))
@@ -43,14 +42,17 @@ export function useWheelScroll({
         event.preventDefault()
         event.stopPropagation()
         container.scrollLeft = next
-      } else {
-        const max = container.scrollHeight - container.clientHeight
-        if (max <= 0) return
-        const next = Math.max(0, Math.min(max, container.scrollTop + delta))
-        if (next === container.scrollTop) return
-        event.preventDefault()
-        container.scrollTop = next
+        return
       }
+
+      const delta = event.deltaY
+      if (!delta) return
+      const max = container.scrollHeight - container.clientHeight
+      if (max <= 0) return
+      const next = Math.max(0, Math.min(max, container.scrollTop + delta))
+      if (next === container.scrollTop) return
+      event.preventDefault()
+      container.scrollTop = next
     }
 
     container.addEventListener('wheel', onWheel, { passive: false })
