@@ -542,7 +542,13 @@ export function PlayerScreen({
         4: 'MEDIA_ERR_SRC_NOT_SUPPORTED'
       }
       const errorType = errorCodes[error?.code || 0] || 'UNKNOWN'
-      const msg = `${errorType} (${error?.code}): ${error?.message || 'No details'}`
+      const details = error?.message || 'No details'
+      const isHls = /\.m3u8(\?|$)/i.test(url)
+      // webOS often reports unsupported codecs / playlist tags this way for live HLS.
+      const hint = error?.code === 4 && isHls
+        ? ' This live stream format is likely unsupported on this TV (codec/playlist), not a broken app URL.'
+        : ''
+      const msg = `${errorType} (${error?.code}): ${details}${hint}`
       setErrorMessage(msg)
     }
 
@@ -565,7 +571,7 @@ export function PlayerScreen({
       video.removeEventListener('progress', handleProgress)
       video.removeEventListener('loadedmetadata', handleLoadedMetadata)
     }
-  }, [startTime, onTimeUpdate, onPlayNextEpisode, flushTime])
+  }, [startTime, onTimeUpdate, onPlayNextEpisode, flushTime, url])
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

@@ -152,6 +152,7 @@ export interface Translations {
   collectionsShuffle: string
   collectionsPageDown: string
   collectionsJumpTop: string
+  collectionsSortAz: string
   bookmarkAdded: string
   bookmarkRemoved: string
 
@@ -327,6 +328,7 @@ const en: Translations = {
   collectionsShuffle: 'Shuffle',
   collectionsPageDown: 'Page down',
   collectionsJumpTop: 'Jump to top',
+  collectionsSortAz: 'A–Z',
   bookmarkAdded: 'Added to bookmarks',
   bookmarkRemoved: 'Removed from bookmarks',
 
@@ -496,6 +498,7 @@ const ru: Translations = {
   collectionsShuffle: 'Перемешать',
   collectionsPageDown: 'Страница вниз',
   collectionsJumpTop: 'В начало',
+  collectionsSortAz: 'А–Я',
   bookmarkAdded: 'Добавлено в закладки',
   bookmarkRemoved: 'Удалено из закладок',
 
@@ -665,6 +668,7 @@ const de: Translations = {
   collectionsShuffle: 'Mischen',
   collectionsPageDown: 'Seite nach unten',
   collectionsJumpTop: 'Nach oben',
+  collectionsSortAz: 'A–Z',
   bookmarkAdded: 'Zu Lesezeichen hinzugefügt',
   bookmarkRemoved: 'Aus Lesezeichen entfernt',
 

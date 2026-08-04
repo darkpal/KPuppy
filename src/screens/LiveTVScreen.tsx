@@ -39,8 +39,9 @@ export function LiveTVScreen({ onNavigateToMenu, onPlayChannel, isActive, initia
     onFocusChange?.(focusedIndex)
   }, [focusedIndex])
 
-  const handlePlayChannel = useCallback((channel: TVChannel) => {
+  const handlePlayChannel = useCallback((channel: TVChannel, index: number) => {
     if (!channel.url) return
+    setFocusedIndex(index)
     onPlayChannel(channel.url, channel.title)
   }, [onPlayChannel])
 
@@ -53,7 +54,7 @@ export function LiveTVScreen({ onNavigateToMenu, onPlayChannel, isActive, initia
       onSelect: (index) => {
         const channel = channels[index]
         if (channel) {
-          handlePlayChannel(channel)
+          handlePlayChannel(channel, index)
         }
       },
       onLeftEdge: onNavigateToMenu
@@ -67,7 +68,8 @@ export function LiveTVScreen({ onNavigateToMenu, onPlayChannel, isActive, initia
     containerRef,
     focusedIndex,
     itemSelector: '[data-channel-index]',
-    itemCount: channels.length
+    itemCount: channels.length,
+    enabled: isActive && !loading
   })
 
   if (loading) {
@@ -88,7 +90,8 @@ export function LiveTVScreen({ onNavigateToMenu, onPlayChannel, isActive, initia
             key={channel.id}
             data-channel-index={index}
             class={`livetv-card ${focusedIndex === index ? 'focused' : ''}`}
-            onClick={() => handlePlayChannel(channel)}
+            onMouseEnter={() => setFocusedIndex(index)}
+            onClick={() => handlePlayChannel(channel, index)}
           >
             {channel.logo ? (
               <img src={channel.logo} alt={channel.title} class="livetv-logo" />

@@ -10,8 +10,8 @@ import '../styles/collections.css'
 
 const COLLECTIONS_PER_PAGE = 40
 const COLLECTIONS_COLUMNS = 2
-/** Jump ~5 visual rows at a time on the 2-column list. */
-const PAGE_JUMP = COLLECTIONS_COLUMNS * 5
+/** Fallback when row height is not measurable yet (~13 visible rows). */
+const DEFAULT_VISIBLE_ROWS = 13
 
 interface CollectionsScreenProps {
   onSelectItem: (itemId: number, preview?: MovieItem) => void
@@ -32,8 +32,19 @@ function shuffleInPlace<T>(items: T[]): T[] {
   return next
 }
 
+/** LG Magic Remote: red=1, green=2, yellow=3, blue=4 dots (same language as player). */
+function RemoteKeyDots({ count }: { count: 1 | 2 | 3 | 4 }) {
+  return (
+    <span class={`collections-hint-key-dots dots-${count}`} aria-hidden="true">
+      {Array.from({ length: count }, (_, i) => (
+        <span key={i} class="collections-hint-key-dot" />
+      ))}
+    </span>
+  )
+}
+
 export function CollectionsScreen({ onSelectItem, onNavigateToMenu, isActive }: CollectionsScreenProps) {
-  const { t } = useI18n()
+  const { t, language } = useI18n()
   const [collections, setCollections] = useState<Collection[]>([])
   const [items, setItems] = useState<MovieItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -45,6 +56,12 @@ export function CollectionsScreen({ onSelectItem, onNavigateToMenu, isActive }: 
   const [focusedIndex, setFocusedIndex] = useState(0)
   const [savedCollectionIndex, setSavedCollectionIndex] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
+  const collectionsRef = useRef(collections)
+  collectionsRef.current = collections
+  const hasMoreRef = useRef(hasMore)
+  hasMoreRef.current = hasMore
+  const currentPageRef = useRef(currentPage)
+  currentPageRef.current = currentPage
   const { itemsPerRow, cardWidth } = useGridLayout('.category-grid', 240, [items.length, viewMode])
 
   const loadCollectionsPage = useCallback(async (page: number, append: boolean) => {
@@ -83,10 +100,60 @@ export function CollectionsScreen({ onSelectItem, onNavigateToMenu, isActive }: 
   }, [loadCollectionsPage])
 
   const loadMore = useCallback(() => {
-    if (!loadingMore && hasMore) {
-      loadCollectionsPage(currentPage + 1, true)
+    if (!loadingMore && hasMoreRef.current) {
+      loadCollectionsPage(currentPageRef.current + 1, true)
     }
-  }, [loadingMore, hasMore, currentPage, loadCollectionsPage])
+  }, [loadingMore, loadCollectionsPage])
+
+  /** Fetch every remaining page so shuffle / A–Z operate on the full catalog. */
+  const ensureAllLoaded = useCallback(async (): Promise<Collection[]> => {
+    let all = collectionsRef.current.slice()
+    if (!hasMoreRef.current) return all
+
+    setLoadingMore(true)
+    try {
+      let page = currentPageRef.current
+      let more: boolean = true
+      const seen = new Set(all.map(c => c.id))
+      while (more) {
+        page += 1
+        const response = await getCollections(page, COLLECTIONS_PER_PAGE)
+        for (const item of response.items) {
+          if (!seen.has(item.id)) {
+            seen.add(item.id)
+            all.push(item)
+          }
+        }
+        more = page < response.pagination.total
+      }
+      setCollections(all)
+      setCurrentPage(page)
+      setHasMore(false)
+      return all
+    } catch (err) {
+      if (import.meta.env.DEV) console.error('Failed to load all collections:', err)
+      return all
+    } finally {
+      setLoadingMore(false)
+    }
+  }, [])
+
+  const getPageJumpSize = useCallback(() => {
+    const container = containerRef.current
+    const item = container?.querySelector('.collections-item') as HTMLElement | null
+    if (!container || !item) {
+      return COLLECTIONS_COLUMNS * DEFAULT_VISIBLE_ROWS
+    }
+    const style = window.getComputedStyle(item)
+    const marginY = (parseFloat(style.marginTop) || 0) + (parseFloat(style.marginBottom) || 0)
+    const rowHeight = item.offsetHeight + marginY
+    const toolbar = container.querySelector('.collections-toolbar') as HTMLElement | null
+    const title = container.querySelector('.category-title') as HTMLElement | null
+    const chrome = (toolbar?.offsetHeight || 0) + (title?.offsetHeight || 0) + 40
+    const available = Math.max(rowHeight, container.clientHeight - chrome)
+    const rows = Math.max(1, Math.floor(available / rowHeight))
+    return rows * COLLECTIONS_COLUMNS
+  }, [])
 
   const loadCollectionItems = useCallback(async (collection: Collection, collectionIndex: number) => {
     setLoading(true)
@@ -111,24 +178,35 @@ export function CollectionsScreen({ onSelectItem, onNavigateToMenu, isActive }: 
     setFocusedIndex(savedCollectionIndex)
   }, [savedCollectionIndex])
 
-  const jumpBy = useCallback((delta: number) => {
+  const jumpByPage = useCallback(() => {
+    const delta = getPageJumpSize()
     setFocusedIndex(prev => {
-      const next = Math.max(0, Math.min(collections.length - 1, prev + delta))
-      if (next >= collections.length - PAGE_JUMP && hasMore) {
+      const next = Math.max(0, Math.min(collectionsRef.current.length - 1, prev + delta))
+      if (next >= collectionsRef.current.length - delta && hasMoreRef.current) {
         loadMore()
       }
       return next
     })
-  }, [collections.length, hasMore, loadMore])
+  }, [getPageJumpSize, loadMore])
 
   const jumpToTop = useCallback(() => {
     setFocusedIndex(0)
   }, [])
 
-  const shuffleCollections = useCallback(() => {
-    setCollections(prev => shuffleInPlace(prev))
+  const shuffleCollections = useCallback(async () => {
+    const all = await ensureAllLoaded()
+    setCollections(shuffleInPlace(all))
     setFocusedIndex(0)
-  }, [])
+  }, [ensureAllLoaded])
+
+  const sortCollectionsAz = useCallback(async () => {
+    const all = await ensureAllLoaded()
+    const locale = language === 'ru' ? 'ru' : language === 'de' ? 'de' : 'en'
+    setCollections(
+      [...all].sort((a, b) => a.title.localeCompare(b.title, locale, { sensitivity: 'base' }))
+    )
+    setFocusedIndex(0)
+  }, [ensureAllLoaded, language])
 
   const collectionsHandlers = useMemo(() => {
     const gridHandlers = createGridNavigationHandlers({
@@ -151,12 +229,13 @@ export function CollectionsScreen({ onSelectItem, onNavigateToMenu, isActive }: 
       onDown: () => {
         gridHandlers.onDown?.()
         const nextRowStart = focusedIndex + COLLECTIONS_COLUMNS
-        if (nextRowStart >= collections.length - PAGE_JUMP && hasMore) {
+        if (nextRowStart >= collections.length - getPageJumpSize() && hasMore) {
           loadMore()
         }
       },
-      onGreen: shuffleCollections,
-      onYellow: () => jumpBy(PAGE_JUMP),
+      onRed: () => { void sortCollectionsAz() },
+      onGreen: () => { void shuffleCollections() },
+      onYellow: jumpByPage,
       onBlue: jumpToTop
     }
   }, [
@@ -166,8 +245,10 @@ export function CollectionsScreen({ onSelectItem, onNavigateToMenu, isActive }: 
     loadCollectionItems,
     hasMore,
     loadMore,
+    getPageJumpSize,
+    sortCollectionsAz,
     shuffleCollections,
-    jumpBy,
+    jumpByPage,
     jumpToTop
   ])
 
@@ -250,12 +331,39 @@ export function CollectionsScreen({ onSelectItem, onNavigateToMenu, isActive }: 
     <div class="category-screen" ref={containerRef}>
       <h1 class="category-title">{t.menuCollections}</h1>
       {collections.length > 0 && (
-        <div class="collections-hint">
-          <span class="collections-hint-key">Green</span> — {t.collectionsShuffle}
-          {' · '}
-          <span class="collections-hint-key">Yellow</span> — {t.collectionsPageDown}
-          {' · '}
-          <span class="collections-hint-key">Blue</span> — {t.collectionsJumpTop}
+        <div class="collections-toolbar">
+          <button
+            type="button"
+            class="collections-hint collections-hint-sort"
+            onClick={() => { void sortCollectionsAz() }}
+          >
+            <RemoteKeyDots count={1} />
+            <span class="collections-hint-label">{t.collectionsSortAz}</span>
+          </button>
+          <button
+            type="button"
+            class="collections-hint collections-hint-shuffle"
+            onClick={() => { void shuffleCollections() }}
+          >
+            <RemoteKeyDots count={2} />
+            <span class="collections-hint-label">{t.collectionsShuffle}</span>
+          </button>
+          <button
+            type="button"
+            class="collections-hint collections-hint-page"
+            onClick={jumpByPage}
+          >
+            <RemoteKeyDots count={3} />
+            <span class="collections-hint-label">{t.collectionsPageDown}</span>
+          </button>
+          <button
+            type="button"
+            class="collections-hint collections-hint-top"
+            onClick={jumpToTop}
+          >
+            <RemoteKeyDots count={4} />
+            <span class="collections-hint-label">{t.collectionsJumpTop}</span>
+          </button>
         </div>
       )}
       <div class="collections-list">

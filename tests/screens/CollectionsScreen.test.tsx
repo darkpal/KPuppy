@@ -134,7 +134,7 @@ describe('CollectionsScreen', () => {
       })
     })
 
-    it('shows navigation hints', async () => {
+    it('shows colored toolbar hints', async () => {
       vi.mocked(kinopub.getCollections).mockResolvedValue({
         items: [mockCollection],
         pagination: { current: 1, total: 1, totalItems: 1, perpage: 40 }
@@ -143,8 +143,9 @@ describe('CollectionsScreen', () => {
       renderWithI18n(<CollectionsScreen {...mockProps} />)
 
       await waitFor(() => {
-        expect(screen.getByText(/Shuffle/)).toBeDefined()
-        expect(document.querySelector('.collections-hint')).not.toBeNull()
+        expect(document.querySelector('.collections-toolbar')).not.toBeNull()
+        expect(document.querySelector('.collections-hint-shuffle')).not.toBeNull()
+        expect(screen.getByText('Shuffle')).toBeDefined()
       })
     })
 

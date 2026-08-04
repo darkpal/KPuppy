@@ -1,18 +1,164 @@
+.collections-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 8px 0 14px;
+  background: #141414;
+  box-shadow: 0 8px 12px #141414;
+}
+
+.collections-hint {
+  display: flex;
+  align-items: center;
+  font-size: 22px;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+  margin-right: 14px;
+  margin-bottom: 8px;
+  padding: 10px 18px;
+  min-height: 48px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.collections-hint:hover,
+.collections-hint:focus {
+  outline: none;
+  -webkit-filter: brightness(1.12);
+  filter: brightness(1.12);
+}
+
+.collections-hint > * + * {
+  margin-left: 10px;
+}
+
+.collections-hint-sort {
+  background: rgba(214, 69, 65, 0.95);
+}
+
+.collections-hint-shuffle {
+  background: rgba(61, 154, 72, 0.95);
+}
+
+.collections-hint-page {
+  background: rgba(232, 176, 32, 0.96);
+  color: #1a1a1a;
+}
+
+.collections-hint-top {
+  background: rgba(26, 127, 212, 0.95);
+}
+
+.collections-hint-key-dots {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  position: relative;
+}
+
+.collections-hint-key-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.15);
+}
+
+.collections-hint-key-dots.dots-1 .collections-hint-key-dot {
+  margin: 0 auto;
+}
+
+.collections-hint-key-dots.dots-2 .collections-hint-key-dot + .collections-hint-key-dot {
+  margin-left: 5px;
+}
+
+.collections-hint-key-dots.dots-3 {
+  width: 30px;
+  height: 26px;
+}
+
+.collections-hint-key-dots.dots-3 .collections-hint-key-dot:nth-child(1) {
+  position: absolute;
+  top: 2px;
+  left: 50%;
+  margin-left: -3.5px;
+}
+
+.collections-hint-key-dots.dots-3 .collections-hint-key-dot:nth-child(2) {
+  position: absolute;
+  bottom: 2px;
+  left: 4px;
+}
+
+.collections-hint-key-dots.dots-3 .collections-hint-key-dot:nth-child(3) {
+  position: absolute;
+  bottom: 2px;
+  right: 4px;
+}
+
+.collections-hint-key-dots.dots-4 {
+  width: 22px;
+  height: 22px;
+}
+
+.collections-hint-key-dots.dots-4 .collections-hint-key-dot {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+}
+
+.collections-hint-key-dots.dots-4 .collections-hint-key-dot:nth-child(1) {
+  top: 2px;
+  left: 2px;
+}
+
+.collections-hint-key-dots.dots-4 .collections-hint-key-dot:nth-child(2) {
+  top: 2px;
+  right: 2px;
+}
+
+.collections-hint-key-dots.dots-4 .collections-hint-key-dot:nth-child(3) {
+  bottom: 2px;
+  left: 2px;
+}
+
+.collections-hint-key-dots.dots-4 .collections-hint-key-dot:nth-child(4) {
+  bottom: 2px;
+  right: 2px;
+}
+
+.collections-hint-label {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
 .collections-list {
   display: flex;
   flex-wrap: wrap;
-  padding: 8px 0 24px;
-  margin: -6px;
+  padding: 0 0 24px;
+  margin: -8px;
 }
 
 .collections-item {
   box-sizing: border-box;
-  width: calc(50% - 12px);
-  margin: 6px;
+  width: calc(50% - 16px);
+  margin: 8px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 20px;
+  padding: 22px 24px;
   background: rgba(255, 255, 255, 0.05);
   border-radius: var(--radius-md);
   cursor: pointer;
@@ -29,11 +175,11 @@
 }
 
 .collections-item-title {
-  font-size: 20px;
-  font-weight: 500;
+  font-size: 26px;
+  font-weight: 600;
   color: #fff;
   line-height: 1.3;
-  padding-right: 12px;
+  padding-right: 16px;
   overflow: hidden;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -42,25 +188,15 @@
 
 .collections-item-count {
   flex-shrink: 0;
-  font-size: 16px;
-  color: rgba(255, 255, 255, 0.6);
-  background: rgba(255, 255, 255, 0.1);
-  padding: 4px 10px;
-  border-radius: 12px;
+  font-size: 20px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.12);
+  padding: 6px 14px;
+  border-radius: 14px;
 }
 
 .collections-item.focused .collections-item-count {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.25);
   color: #fff;
-}
-
-.collections-hint {
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.4);
-  padding: 4px 0 12px;
-  line-height: 1.5;
-}
-
-.collections-hint-key {
-  color: rgba(255, 255, 255, 0.7);
 }

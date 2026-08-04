@@ -401,21 +401,26 @@ export function App() {
   }, [])
 
   const handlePlayTrailer = useCallback((url: string, title: string) => {
-    setState(prev => ({
-      ...prev,
-      playerPreparing: false,
-      player: {
-        url,
-        title,
-        audios: [],
-        subtitles: [],
-        files: [],
-        itemId: 0,
-        video: 1,
-        startTime: 0,
-        initialAudioIndex: 0
-      }
-    }))
+    // Show the same preparing spinner as VOD so pointer clicks feel acknowledged
+    // before the player mounts (live TV / trailers have no async prefetch).
+    setState(prev => ({ ...prev, playerPreparing: true, player: null }))
+    window.setTimeout(() => {
+      setState(prev => ({
+        ...prev,
+        playerPreparing: false,
+        player: {
+          url,
+          title,
+          audios: [],
+          subtitles: [],
+          files: [],
+          itemId: 0,
+          video: 1,
+          startTime: 0,
+          initialAudioIndex: 0
+        }
+      }))
+    }, 80)
   }, [])
 
   const handlePlay = useCallback(async (itemId: number, season?: number, episode?: number, options?: { quality?: string }) => {

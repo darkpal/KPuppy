@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, waitFor, cleanup } from '@testing-library/preact'
+import { render, screen, waitFor, cleanup, fireEvent } from '@testing-library/preact'
 import { h } from 'preact'
 import { LiveTVScreen } from '../../src/screens/LiveTVScreen'
 import { I18nProvider } from '../../src/i18n/context'
@@ -173,6 +173,23 @@ describe('LiveTVScreen', () => {
       await waitFor(() => {
         expect(mockOnFocusChange).toHaveBeenCalled()
       })
+    })
+    it('moves focus on mouse enter', async () => {
+      vi.mocked(kinopub.getTVChannels).mockResolvedValue([
+        mockChannel,
+        { ...mockChannel, id: 2, title: 'Second Channel' }
+      ])
+
+      renderWithI18n(<LiveTVScreen {...mockProps} />)
+
+      await waitFor(() => {
+        expect(document.querySelectorAll('.livetv-card').length).toBe(2)
+      })
+
+      const second = document.querySelectorAll('.livetv-card')[1] as HTMLElement
+      fireEvent.mouseEnter(second)
+
+      expect(second.classList.contains('focused')).toBe(true)
     })
   })
 
