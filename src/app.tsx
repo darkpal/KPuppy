@@ -90,10 +90,6 @@ interface AppState {
     folderIndex: number
     itemIndex: number
   } | null
-  collectionsOpen: {
-    id: number
-    title: string
-  } | null
 }
 
 const ITEM_TYPE_TO_CATEGORY: Record<string, string> = {
@@ -151,8 +147,7 @@ export function App() {
       navHistory: [],
       categoryGenreId: null,
       categoryFilters: null,
-      bookmarksState: null,
-      collectionsOpen: null
+      bookmarksState: null
     }
 
     const savedReturnTo = getReturnTo()
@@ -278,7 +273,6 @@ export function App() {
       searchState: menuId === 'search' ? prev.searchState : null,
       navHistory: [],
       bookmarksState: menuId === 'bookmarks' ? prev.bookmarksState : null,
-      collectionsOpen: null,
       categoryGenreId: null,
       categoryFilters: null
     }))
@@ -355,20 +349,6 @@ export function App() {
   const handleSelectDirector = useCallback((name: string) => {
     pushPersonSearch(name, 'director')
   }, [pushPersonSearch])
-
-  const handleSelectCollection = useCallback((collectionId: number, title: string) => {
-    setState(prev => ({
-      ...prev,
-      itemId: null,
-      itemPreview: null,
-      seriesId: null,
-      selectedMenuId: 'collections',
-      menuFocusIndex: getMenuIndexById('collections'),
-      collectionsOpen: { id: collectionId, title },
-      navHistory: [],
-      focusArea: 'content'
-    }))
-  }, [])
 
   const handleBackFromSearch = useCallback(() => {
     setState(prev => {
@@ -818,8 +798,6 @@ export function App() {
             onSelectItem={handleSelectItem}
             onNavigateToMenu={handleNavigateToMenu}
             isActive={baseActive}
-            initialCollectionId={state.collectionsOpen?.id ?? null}
-            initialCollectionTitle={state.collectionsOpen?.title ?? null}
           />
         )
       case 'history':
@@ -902,7 +880,6 @@ export function App() {
             onSelectGenre={handleSelectGenre}
             onSelectActor={handleSelectActor}
             onSelectDirector={handleSelectDirector}
-            onSelectCollection={handleSelectCollection}
             onNavigateToMenu={handleNavigateToMenu}
             isActive={isContentActive}
           />

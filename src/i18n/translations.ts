@@ -158,7 +158,6 @@ export interface Translations {
 
   // Similar
   similar: string
-  inCollections: string
 
   // Trailer
   trailer: string
@@ -334,7 +333,6 @@ const en: Translations = {
   bookmarkRemoved: 'Removed from bookmarks',
 
   similar: 'Similar',
-  inCollections: 'In collections',
   trailer: 'Trailer',
 
   addToWatchlist: 'Want to Watch',
@@ -505,7 +503,6 @@ const ru: Translations = {
   bookmarkRemoved: 'Удалено из закладок',
 
   similar: 'Похожее',
-  inCollections: 'В подборках',
   trailer: 'Трейлер',
 
   addToWatchlist: 'Буду смотреть',
@@ -676,7 +673,6 @@ const de: Translations = {
   bookmarkRemoved: 'Aus Lesezeichen entfernt',
 
   similar: 'Ähnlich',
-  inCollections: 'In Sammlungen',
   trailer: 'Trailer',
 
   addToWatchlist: 'Merkliste',

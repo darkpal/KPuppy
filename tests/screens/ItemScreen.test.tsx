@@ -10,7 +10,6 @@ vi.mock('../../src/api/kinopub', () => ({
   getItem: vi.fn(),
   getMediaLinks: vi.fn().mockResolvedValue({ files: [], subtitles: [] }),
   getSimilarItems: vi.fn(),
-  getItemCollections: vi.fn().mockResolvedValue([]),
   getBookmarkFolders: vi.fn(),
   getItemFolders: vi.fn(),
   addToBookmark: vi.fn(),
@@ -107,7 +106,6 @@ describe('ItemScreen', () => {
     vi.mocked(kinopub.getItem).mockResolvedValue(mockMovieDetails)
     vi.mocked(kinopub.getMediaLinks).mockResolvedValue({ files: [], subtitles: [] })
     vi.mocked(kinopub.getSimilarItems).mockResolvedValue([])
-    vi.mocked(kinopub.getItemCollections).mockResolvedValue([])
     vi.mocked(kinopub.isItemInWatchlist).mockResolvedValue(false)
   })
 

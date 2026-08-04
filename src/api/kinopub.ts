@@ -153,8 +153,6 @@ export interface ItemDetails extends MovieItem {
   actors: Person[]
   countries: Country[]
   genres: Genre[]
-  /** Kinopub подборки that include this title (when API sends them). */
-  collections?: Array<{ id: number; title: string }>
   videos?: Video[]
   seasons?: Season[]
   duration?: {
@@ -940,14 +938,6 @@ export async function getItem(id: number): Promise<ItemDetails> {
       ? parsePersonsFromString(item.cast)
       : parsePersonsFromArray(item.actors)
 
-    const parseCollections = (arr: unknown): Array<{ id: number; title: string }> => {
-      if (!Array.isArray(arr)) return []
-      return arr.map((entry: Record<string, unknown>, index: number) => ({
-        id: Number(entry.id) || index,
-        title: String(entry.title || entry.name || '').trim()
-      })).filter(c => c.title)
-    }
-
     const result: ItemDetails = {
       id: item.id,
       title: item.title,
@@ -965,7 +955,6 @@ export async function getItem(id: number): Promise<ItemDetails> {
       actors,
       countries: parseCountries(item.countries),
       genres: parseGenres(item.genres),
-      collections: parseCollections(item.collections || item.lists),
       videos: item.videos,
       seasons: item.seasons,
       duration: item.duration,
@@ -1289,36 +1278,6 @@ export async function getCollectionItems(id: number): Promise<MovieItem[]> {
 
   setCache(cacheKey, result)
   return result
-}
-
-/** Подборки that include this item (Kinopub website «В подборках»). */
-export async function getItemCollections(id: number): Promise<Array<{ id: number; title: string }>> {
-  const cacheKey = createCacheKey('item-collections', id)
-  const cached = getCached<Array<{ id: number; title: string }>>(cacheKey)
-  if (cached) return cached
-
-  return withInflight(cacheKey, async () => {
-    const response = await authFetch(`${BASE_URL}/v1/items/collections?id=${id}`)
-    if (!response.ok) {
-      // Endpoint may be absent on some API builds — treat as empty.
-      if (response.status === 404 || response.status === 400) {
-        setCache(cacheKey, [])
-        return []
-      }
-      throw new ApiError('Failed to fetch item collections', response.status)
-    }
-
-    const data = await response.json()
-    const raw = data.collections || data.items || data
-    const list = Array.isArray(raw) ? raw : []
-    const result = list.map((entry: Record<string, unknown>, index: number) => ({
-      id: Number(entry.id) || index,
-      title: String(entry.title || entry.name || '').trim()
-    })).filter((c: { title: string }) => Boolean(c.title))
-
-    setCache(cacheKey, result)
-    return result
-  })
 }
 
 export interface HistoryItem extends MovieItem {

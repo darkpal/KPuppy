@@ -72,7 +72,6 @@ vi.mock('../src/api/kinopub', () => ({
   getNewEpisodes: vi.fn(() => Promise.resolve([])),
   getChannels: vi.fn(() => Promise.resolve([])),
   getSimilarItems: vi.fn(() => Promise.resolve([])),
-  getItemCollections: vi.fn(() => Promise.resolve([])),
   getGenres: vi.fn(() => Promise.resolve([])),
   getCountries: vi.fn(() => Promise.resolve([])),
   toggleWatchlist: vi.fn(),
