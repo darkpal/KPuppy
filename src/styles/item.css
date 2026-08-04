@@ -334,6 +334,14 @@
   text-shadow: 0 1px 8px rgba(0, 0, 0, 0.7);
 }
 
+.item-collections {
+  margin-top: 18px;
+}
+
+.item-collections .item-detail-label {
+  margin-right: 10px;
+}
+
 .item-detail {
   font-size: 23px;
   color: #d2d2d2;
@@ -684,8 +692,11 @@
 
 .item-similar {
   flex-shrink: 0;
+  min-width: 0;
+  max-width: 100%;
   padding-top: 12px;
   border-top: 1px solid rgba(255, 255, 255, 0.12);
+  overflow: hidden;
 }
 
 .item-similar.active {
@@ -702,14 +713,26 @@
 
 .item-similar-row {
   display: flex;
-  gap: 20px;
-  overflow: visible;
-  padding: 10px 0;
-  margin: -10px 0;
+  overflow-x: hidden;
+  overflow-y: hidden;
+  padding: 12px 8px;
+  margin: -12px -8px;
+  scrollbar-width: none;
+  overscroll-behavior: none;
 }
 
-.item-similar-row .movie-card {
+.item-similar-row::-webkit-scrollbar {
+  display: none;
+}
+
+.item-similar-row > .movie-card {
   width: 220px;
+  margin-right: 28px;
+  flex-shrink: 0;
+}
+
+.item-similar-row > .movie-card:last-child {
+  margin-right: 8px;
 }
 
 .item-similar-row .movie-card-title {

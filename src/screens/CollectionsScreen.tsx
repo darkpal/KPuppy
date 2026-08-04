@@ -17,6 +17,9 @@ interface CollectionsScreenProps {
   onSelectItem: (itemId: number, preview?: MovieItem) => void
   onNavigateToMenu: () => void
   isActive: boolean
+  /** Open this подборка immediately (from item «В подборках»). */
+  initialCollectionId?: number | null
+  initialCollectionTitle?: string | null
 }
 
 type ViewMode = 'collections' | 'items'
@@ -43,7 +46,13 @@ function RemoteKeyDots({ count }: { count: 1 | 2 | 3 | 4 }) {
   )
 }
 
-export function CollectionsScreen({ onSelectItem, onNavigateToMenu, isActive }: CollectionsScreenProps) {
+export function CollectionsScreen({
+  onSelectItem,
+  onNavigateToMenu,
+  isActive,
+  initialCollectionId = null,
+  initialCollectionTitle = null
+}: CollectionsScreenProps) {
   const { t, language } = useI18n()
   const [collections, setCollections] = useState<Collection[]>([])
   const [items, setItems] = useState<MovieItem[]>([])
@@ -167,6 +176,19 @@ export function CollectionsScreen({ onSelectItem, onNavigateToMenu, isActive }: 
       setLoading(false)
     }
   }, [])
+
+  useEffect(() => {
+    if (initialCollectionId == null) return
+    void loadCollectionItems(
+      {
+        id: initialCollectionId,
+        title: initialCollectionTitle || '',
+        count: 0,
+        posters: { small: '', medium: '', big: '' }
+      },
+      0
+    )
+  }, [initialCollectionId, initialCollectionTitle, loadCollectionItems])
 
   const goBackToCollections = useCallback(() => {
     setViewMode('collections')

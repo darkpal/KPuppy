@@ -1,5 +1,5 @@
 import { useEffect, useCallback, useMemo, useReducer, useRef } from 'preact/hooks'
-import { getItem, getMediaLinks, getSimilarItems, getBookmarkFolders, getItemFolders, addToBookmark, removeFromBookmark, toggleWatchlist, isItemInWatchlist, ItemDetails as ItemDetailsType, MovieItem, VideoFile, BookmarkFolder } from '../api/kinopub'
+import { getItem, getMediaLinks, getSimilarItems, getItemCollections, getBookmarkFolders, getItemFolders, addToBookmark, removeFromBookmark, toggleWatchlist, isItemInWatchlist, ItemDetails as ItemDetailsType, MovieItem, VideoFile, BookmarkFolder } from '../api/kinopub'
 import { getLocalSettings } from '../storage'
 import { useDecodedImage, useEventListener, useKeyboardNavigation, useWheelScroll } from '../hooks'
 import { LoadingState, LoadingSpinner } from '../components/LoadingSpinner'
@@ -25,6 +25,7 @@ interface ItemScreenProps {
   onSelectGenre?: (genreId: number, itemType: string) => void
   onSelectActor?: (name: string) => void
   onSelectDirector?: (name: string) => void
+  onSelectCollection?: (collectionId: number, title: string) => void
   onNavigateToMenu: () => void
   isActive: boolean
 }
@@ -71,6 +72,7 @@ interface ItemScreenState {
   dropdownFocusIndex: number
   similarItems: MovieItem[]
   similarFocusIndex: number
+  itemCollections: Array<{ id: number; title: string }>
   metaFocusIndex: number
   watchlistLoading: boolean
   showFolderDialog: boolean
@@ -88,6 +90,7 @@ type ItemScreenAction =
   | { type: 'UPDATE_MEDIA'; item: ItemDetailsType; selectedQuality: string | null }
   | { type: 'LOAD_ERROR'; error: string }
   | { type: 'SET_SIMILAR_ITEMS'; items: MovieItem[] }
+  | { type: 'SET_ITEM_COLLECTIONS'; collections: Array<{ id: number; title: string }> }
   | { type: 'SET_IS_WATCHING'; value: boolean }
   | { type: 'SET_FOCUS_AREA'; area: FocusArea }
   | { type: 'SET_SELECTED_QUALITY'; quality: string }
@@ -113,6 +116,7 @@ const initialState: ItemScreenState = {
   dropdownFocusIndex: 0,
   similarItems: [],
   similarFocusIndex: 0,
+  itemCollections: [],
   metaFocusIndex: 0,
   watchlistLoading: false,
   showFolderDialog: false,
@@ -141,6 +145,8 @@ function itemScreenReducer(state: ItemScreenState, action: ItemScreenAction): It
       return { ...state, loading: false, error: action.error }
     case 'SET_SIMILAR_ITEMS':
       return { ...state, similarItems: action.items }
+    case 'SET_ITEM_COLLECTIONS':
+      return { ...state, itemCollections: action.collections }
     case 'SET_IS_WATCHING':
       return { ...state, isWatching: action.value }
     case 'SET_FOCUS_AREA':
@@ -176,10 +182,10 @@ function itemScreenReducer(state: ItemScreenState, action: ItemScreenAction): It
   }
 }
 
-export function ItemScreen({ itemId, preview = null, onBack, onPlay, onPlayTrailer, onSelectSeries, onSelectItem, onSelectGenre, onSelectActor, onSelectDirector, onNavigateToMenu, isActive }: ItemScreenProps) {
+export function ItemScreen({ itemId, preview = null, onBack, onPlay, onPlayTrailer, onSelectSeries, onSelectItem, onSelectGenre, onSelectActor, onSelectDirector, onSelectCollection, onNavigateToMenu, isActive }: ItemScreenProps) {
   const { t } = useI18n()
   const [state, dispatch] = useReducer(itemScreenReducer, initialState)
-  const { item, loading, error, focusArea, selectedQuality, dropdownFocusIndex, similarItems, similarFocusIndex, metaFocusIndex, watchlistLoading, showFolderDialog, folders, itemFolderIds, folderFocusIndex, isWatching, watchingToggleLoading, detailsExpanded } = state
+  const { item, loading, error, focusArea, selectedQuality, dropdownFocusIndex, similarItems, similarFocusIndex, itemCollections, metaFocusIndex, watchlistLoading, showFolderDialog, folders, itemFolderIds, folderFocusIndex, isWatching, watchingToggleLoading, detailsExpanded } = state
   const detailsPageRef = useRef<HTMLElement>(null)
   const bannerCanvasRef = useRef<HTMLCanvasElement>(null)
   // Landscape banner only — never use list medium/big (portrait) as full-bleed art.
@@ -229,6 +235,9 @@ export function ItemScreen({ itemId, preview = null, onBack, onPlay, onPlayTrail
         // The item payload is enough to render the card. Do not keep the whole
         // screen behind a spinner while the supplemental media request is slow.
         dispatch({ type: 'LOAD_SUCCESS', item: data, focusArea: newFocusArea, selectedQuality: quality })
+        if (data.collections && data.collections.length > 0) {
+          dispatch({ type: 'SET_ITEM_COLLECTIONS', collections: data.collections })
+        }
 
         // media-links returns the full subtitle/file set (item payload can be incomplete)
         const mediaId = data.videos?.[0]?.id || data.seasons?.[0]?.episodes?.[0]?.id
@@ -288,6 +297,14 @@ export function ItemScreen({ itemId, preview = null, onBack, onPlay, onPlayTrail
           if (!cancelled) dispatch({ type: 'SET_SIMILAR_ITEMS', items })
         }).catch(err => {
           if (import.meta.env.DEV) console.error('getSimilarItems failed:', err)
+        })
+
+        getItemCollections(itemId).then(collections => {
+          if (!cancelled && collections.length > 0) {
+            dispatch({ type: 'SET_ITEM_COLLECTIONS', collections })
+          }
+        }).catch(err => {
+          if (import.meta.env.DEV) console.error('getItemCollections failed:', err)
         })
 
         if (hasSeries) {
@@ -937,6 +954,23 @@ export function ItemScreen({ itemId, preview = null, onBack, onPlay, onPlayTrail
                   <h3 class="item-details-section-title">{t.synopsis}</h3>
                   <p class="item-plot-full">{item.plot}</p>
                 </>
+              )}
+              {itemCollections.length > 0 && (
+                <div class="item-detail item-detail-inline item-collections">
+                  <span class="item-detail-label">{t.inCollections}:</span>
+                  <div class="item-cast-list">
+                    {itemCollections.map((collection) => (
+                      <button
+                        key={collection.id}
+                        type="button"
+                        class="item-person-chip"
+                        onClick={() => onSelectCollection?.(collection.id, collection.title)}
+                      >
+                        {collection.title}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
             <ItemDetails
