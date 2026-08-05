@@ -226,6 +226,9 @@ describe('PlayerScreen', () => {
       expect(document.querySelector('.player-panel')).not.toBeNull()
       expect(document.querySelectorAll('.player-panel-item').length).toBe(subtitles.length + 1)
 
+      const labels = Array.from(document.querySelectorAll('.player-panel-item'), el => el.textContent)
+      expect(labels.slice(0, 4)).toEqual(['Off', 'Русский', 'Українська', 'English'])
+
       for (let i = 0; i < 8; i++) {
         fireEvent.keyDown(document, { keyCode: 40 })
       }
@@ -234,7 +237,31 @@ describe('PlayerScreen', () => {
       const list = document.querySelector('.player-panel-list')
       expect(selected).not.toBeNull()
       expect(list?.contains(selected)).toBe(true)
-      expect(selected?.textContent).toMatch(/^Português/)
+      expect(selected?.textContent).toMatch(/^Français/)
+      expect(document.querySelector('.player-overlay')).not.toBeNull()
+    })
+
+    it('keeps player controls visible while browsing subtitles', () => {
+      const subtitles = ['ron', 'rus', 'spa'].map((lang) => ({
+        lang,
+        shift: 0,
+        embed: false,
+        forced: false,
+        file: `${lang}.srt`,
+        url: `https://example.com/${lang}.srt`
+      }))
+
+      renderWithI18n(<PlayerScreen {...mockProps} subtitles={subtitles} />)
+      const video = document.querySelector('.player-video') as HTMLVideoElement
+      fireEvent.play(video)
+      fireEvent.keyDown(document, { keyCode: 405 })
+      fireEvent.keyDown(document, { keyCode: 40 })
+      vi.advanceTimersByTime(6000)
+      fireEvent.keyDown(document, { keyCode: 40 })
+
+      expect(document.querySelector('.player-overlay')).not.toBeNull()
+      expect(document.querySelector('.player-panel-title')?.textContent).toBe('Subtitles')
+      expect(document.querySelector('.player-panel-item.selected')?.textContent).toBe('Español')
     })
   })
 

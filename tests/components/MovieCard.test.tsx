@@ -120,6 +120,7 @@ describe('MovieCard', () => {
     it('picks localized title for Russian UI', () => {
       expect(cardTitleForLanguage('Интерстеллар / Interstellar', 'ru')).toBe('Интерстеллар')
       expect(cardTitleForLanguage('Валериан/Valerian', 'ru')).toBe('Валериан')
+      expect(cardTitleForLanguage('Інтерстеллар / Interstellar', 'uk')).toBe('Інтерстеллар')
     })
 
     it('picks original title for English and German UI', () => {

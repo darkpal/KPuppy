@@ -69,13 +69,45 @@ export function subtitleLanguageLabel(lang: string, forced = false): string {
   return forced || /-forced$/i.test(lang || '') ? `${name} Forced` : name
 }
 
+const SUBTITLE_LANG_PRIORITY: Record<string, number> = {
+  ru: 0, rus: 0,
+  uk: 1, ukr: 1,
+  en: 2, eng: 2,
+}
+
+function isForcedSubtitle(sub: { lang: string; forced?: boolean }): boolean {
+  return Boolean(sub.forced) || /-forced$/i.test(sub.lang || '')
+}
+
+/** RU / UK / EN first, then A–Z by visible name. Forced stays next to its language. */
+export function sortSubtitleTracks<T extends { lang: string; forced?: boolean }>(subs: T[]): T[] {
+  return subs
+    .map((sub, index) => ({ sub, index }))
+    .sort((a, b) => {
+      const pa = SUBTITLE_LANG_PRIORITY[normalizeSubtitleLang(a.sub.lang)] ?? 100
+      const pb = SUBTITLE_LANG_PRIORITY[normalizeSubtitleLang(b.sub.lang)] ?? 100
+      if (pa !== pb) return pa - pb
+      if (pa === 100) {
+        const byName = subtitleLanguageLabel(a.sub.lang, false).localeCompare(
+          subtitleLanguageLabel(b.sub.lang, false),
+          'uk'
+        )
+        if (byName !== 0) return byName
+      }
+      const forced = Number(isForcedSubtitle(a.sub)) - Number(isForcedSubtitle(b.sub))
+      if (forced !== 0) return forced
+      return a.index - b.index
+    })
+    .map(({ sub }) => sub)
+}
+
 /**
  * Collapse duplicate language codes for item metadata, e.g.
  * RUS RUS RUS ENG ENG → "Русский ×3 · English ×2"
  */
 export function summarizeSubtitleTracks(subs: Subtitle[]): string {
   const counts = new Map<string, number>()
-  for (const sub of subs) {
+  for (const sub of sortSubtitleTracks(subs)) {
     const label = subtitleLanguageLabel(sub.lang, sub.forced)
     counts.set(label, (counts.get(label) || 0) + 1)
   }

@@ -24,14 +24,14 @@ interface MovieCardProps {
 
 /**
  * Kinopub titles are usually "Localized / Original".
- * Russian UI keeps the local name; other UI languages prefer the original.
+ * Russian/Ukrainian UI keeps the local name; other UI languages prefer the original.
  */
 export function cardTitleForLanguage(title: string, language: Language): string {
   const idx = title.indexOf('/')
   if (idx < 0) return title.trim()
   const local = title.slice(0, idx).trim()
   const original = title.slice(idx + 1).trim()
-  if (language === 'ru') return local || original
+  if (language === 'ru' || language === 'uk') return local || original
   return original || local
 }
 

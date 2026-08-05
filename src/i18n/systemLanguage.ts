@@ -6,6 +6,7 @@ export function mapLocaleToLanguage(locale: string | null | undefined): Language
   if (!locale) return null
   const primary = locale.trim().toLowerCase().replace('_', '-').split('-')[0]
   if (primary === 'ru') return 'ru'
+  if (primary === 'uk') return 'uk'
   if (primary === 'de') return 'de'
   if (primary === 'en') return 'en'
   return null

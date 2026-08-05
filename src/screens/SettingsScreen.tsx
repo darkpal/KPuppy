@@ -127,8 +127,8 @@ export function SettingsScreen({ onNavigateToMenu, isActive }: SettingsScreenPro
       }))
     }
     if (key === 'language') {
-      return languages.map(lang => ({
-        id: lang.id === 'en' ? 1 : lang.id === 'ru' ? 2 : 3,
+      return languages.map((lang, index) => ({
+        id: index + 1,
         label: lang.label,
         selected: lang.id === language ? 1 : 0
       }))

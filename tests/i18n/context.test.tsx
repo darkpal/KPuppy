@@ -65,7 +65,7 @@ describe('I18nContext', () => {
         </I18nProvider>
       )
 
-      expect(screen.getByTestId('languages-count').textContent).toBe('3')
+      expect(screen.getByTestId('languages-count').textContent).toBe('4')
     })
 
     it('falls back to system language for invalid stored language', () => {

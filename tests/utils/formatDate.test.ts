@@ -26,6 +26,7 @@ describe('formatUnixDate', () => {
     })
     const ts = Date.UTC(2026, 5, 15) / 1000 // June 15, 2026 UTC
     expect(formatUnixDate(ts, 'ru')).toBe('15.06.2026')
+    expect(formatUnixDate(ts, 'uk')).toBe('15.06.2026')
     expect(formatUnixDate(ts, 'en')).toBe('06/15/2026')
   })
 })

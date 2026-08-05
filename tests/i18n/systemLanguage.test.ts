@@ -4,6 +4,7 @@ import { mapLocaleToLanguage, detectSystemLanguage } from '../../src/i18n/system
 describe('systemLanguage', () => {
   it('maps locale tags to app languages', () => {
     expect(mapLocaleToLanguage('ru-RU')).toBe('ru')
+    expect(mapLocaleToLanguage('uk-UA')).toBe('uk')
     expect(mapLocaleToLanguage('de_DE')).toBe('de')
     expect(mapLocaleToLanguage('en')).toBe('en')
     expect(mapLocaleToLanguage('fr-FR')).toBeNull()

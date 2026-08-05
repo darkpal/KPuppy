@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { subtitleLanguageLabel, summarizeSubtitleTracks } from '../../src/utils/subtitles'
+import { subtitleLanguageLabel, summarizeSubtitleTracks, sortSubtitleTracks } from '../../src/utils/subtitles'
 
 describe('subtitleLanguageLabel', () => {
   it('maps ISO codes from Kinopub to readable names', () => {
@@ -14,6 +14,29 @@ describe('subtitleLanguageLabel', () => {
   it('keeps forced tracks distinct', () => {
     expect(subtitleLanguageLabel('eng', true)).toBe('English Forced')
     expect(subtitleLanguageLabel('rus-forced')).toBe('Русский Forced')
+  })
+})
+
+describe('sortSubtitleTracks', () => {
+  it('puts Russian, Ukrainian and English first, then A–Z', () => {
+    const sorted = sortSubtitleTracks([
+      { lang: 'spa', forced: false },
+      { lang: 'eng', forced: true },
+      { lang: 'ron', forced: false },
+      { lang: 'ukr', forced: false },
+      { lang: 'rus', forced: false },
+      { lang: 'deu', forced: false },
+      { lang: 'rus', forced: true },
+    ])
+    expect(sorted.map(sub => `${sub.lang}${sub.forced ? '-forced' : ''}`)).toEqual([
+      'rus',
+      'rus-forced',
+      'ukr',
+      'eng-forced',
+      'deu',
+      'spa',
+      'ron',
+    ])
   })
 })
 

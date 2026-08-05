@@ -1,6 +1,7 @@
 /** Locale for date formatting from app language code. */
 function dateLocale(language: string): string {
   if (language === 'ru') return 'ru-RU'
+  if (language === 'uk') return 'uk-UA'
   if (language === 'de') return 'de-DE'
   return 'en-US'
 }

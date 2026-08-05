@@ -24,7 +24,7 @@ Packages are published via [GitHub Releases](https://github.com/darkpal/KPuppy/r
 - Continue watching, bookmarks, «Я смотрю», history, search (webOS keyboard / Magic Remote voice)
 - Title card with plot, cast, similar titles (grid), playback quality
 - Built-in and native webOS players; audio tracks and subtitles; resume from last position
-- Magic Remote pointer/click across the UI; languages: Russian, English, German
+- Magic Remote pointer/click across the UI; languages: Russian, Ukrainian, English, German
 
 ## Screenshots
 

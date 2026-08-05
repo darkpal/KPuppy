@@ -1,10 +1,15 @@
-export type Language = 'en' | 'ru' | 'de'
+export type Language = 'en' | 'ru' | 'uk' | 'de'
 
 export const LANGUAGES: { id: Language; label: string }[] = [
   { id: 'en', label: 'English' },
   { id: 'ru', label: 'Русский' },
+  { id: 'uk', label: 'Українська' },
   { id: 'de', label: 'Deutsch' },
 ]
+
+export function isLanguage(value: string | null | undefined): value is Language {
+  return value === 'en' || value === 'ru' || value === 'uk' || value === 'de'
+}
 
 export interface Translations {
   // App
@@ -707,7 +712,177 @@ const de: Translations = {
   freshSeries: 'Frische Serien',
 }
 
-export const translations: Record<Language, Translations> = { en, ru, de }
+const uk: Translations = {
+  appName: 'KPuppy',
+  loading: 'Завантаження...',
+  loadingContent: 'Завантаження вмісту...',
+
+  menuHome: 'Головна',
+  menuSearch: 'Пошук',
+  menuContinue: 'Продовжити',
+  menuNewEpisodes: 'Нові епізоди',
+  menuWatching: 'Я дивлюся',
+  menuBookmarks: 'Закладки',
+  menuCollections: 'Добірки',
+  menuHistory: 'Історія',
+  menuMovies: 'Фільми',
+  menuSeries: 'Серіали',
+  menuConcerts: 'Концерти',
+  menu3D: '3D',
+  menuDocs: 'Документальні',
+  menuTvShows: 'ТБ-шоу',
+  menuLiveTV: 'Прямий ефір',
+  menuSettings: 'Налаштування',
+  menuProfile: 'Профіль',
+
+  categoryMovies: 'Фільми',
+  categorySeries: 'Серіали',
+  categoryConcerts: 'Концерти',
+  category3D: '3D',
+  categoryDocs: 'Документальні',
+  categoryTvShows: 'ТБ-шоу',
+  categoryContinueWatching: 'Продовжити перегляд',
+
+  popularMovies: 'Популярні фільми',
+  newMovies: 'Нові фільми',
+  popularSeries: 'Популярні серіали',
+  newSeries: 'Нові серіали',
+  newConcerts: 'Нові концерти',
+  new3D: 'Нове 3D',
+  newDocs: 'Нові документальні',
+  newDocuseries: 'Нові докусеріали',
+  newTvShows: 'Нові ТБ-шоу',
+
+  searchPlaceholder: 'Пошук...',
+  searchHint: 'Введіть запит',
+  searchNoResults: 'Нічого не знайдено',
+  searchResults: 'Результати пошуку',
+
+  play: 'Дивитися',
+  seasons: 'Сезони',
+  season: 'Сезон',
+  episode: 'Серія',
+  previousEpisode: 'Попередня',
+  nextEpisode: 'Наступна',
+  director: 'Режисер',
+  cast: 'У ролях',
+  country: 'Країна',
+  fullInfo: 'Повна інформація',
+  backToSummary: 'До основного екрана',
+  synopsis: 'Опис',
+  hourShort: 'год',
+  minuteShort: 'хв',
+  typeMovie: 'Фільм',
+  typeSeries: 'Серіал',
+  typeDocumentary: 'Документальний фільм',
+  typeDocuseries: 'Документальний серіал',
+  typeTvShow: 'ТБ-шоу',
+  typeConcert: 'Концерт',
+  type3D: '3D',
+
+  settings: 'Налаштування',
+  clientSettings: 'Відтворення',
+  localSettings: 'Застосунок',
+  support4k: 'Підтримка 4K',
+  supportHevc: 'HEVC/H.265',
+  supportHdr: 'HDR',
+  supportSsl: 'SSL/HTTPS',
+  mixedPlaylist: 'Змішаний плейлист',
+  server: 'Сервер',
+  streaming: 'Тип потоку',
+  language: 'Мова',
+  on: 'Увімк',
+  off: 'Вимк',
+  notSelected: 'Не вибрано',
+  saving: 'Збереження...',
+
+  profile: 'Профіль',
+  subscription: 'Підписка',
+  subscriptionActive: 'Активна',
+  subscriptionInactive: 'Неактивна',
+  expires: 'Закінчується',
+  daysLeft: 'днів залишилось',
+  logout: 'Вийти',
+
+  authTitle: 'Вхід',
+  authInstructions: 'Для входу перейдіть на:',
+  authVisit: 'kino.watch/device',
+  authEnterCode: 'Введіть код:',
+  authWaiting: 'Очікування авторизації...',
+
+  errorLoading: 'Помилка завантаження',
+  errorNoItems: 'Нічого не знайдено',
+  retry: 'Повторити',
+  noSeasonsAvailable: 'Сезони недоступні',
+  newEpisodesCount: 'нових',
+
+  loadingMore: 'Завантаження...',
+
+  quality: 'Якість відео',
+  qualityAuto: 'Авто (найкраща)',
+  quality4k: '4K (2160p)',
+  quality1080p: 'Full HD (1080p)',
+  quality720p: 'HD (720p)',
+  quality480p: 'SD (480p)',
+
+  audio: 'Озвучення',
+  subtitles: 'Субтитри',
+  subtitlesOff: 'Вимк',
+  original: 'Оригінал',
+
+  player: 'Плеєр',
+  playerNative: 'Нативний (webOS)',
+  playerBuiltin: 'Вбудований',
+
+  addToBookmarks: 'Додати до закладок',
+  removeFromBookmarks: 'Видалити із закладок',
+  createFolder: 'Створити теку',
+  deleteFolder: 'Видалити теку',
+  newFolderName: 'Нова тека',
+  confirmDelete: 'Видалити цю теку?',
+  collectionsShuffle: 'Перемішати',
+  collectionsPageDown: 'Сторінка вниз',
+  collectionsJumpTop: 'На початок',
+  collectionsSortAz: 'А–Я',
+  bookmarkAdded: 'Додано до закладок',
+  bookmarkRemoved: 'Видалено із закладок',
+
+  similar: 'Схоже',
+  trailer: 'Трейлер',
+
+  addToWatchlist: 'Буду дивитися',
+  removeFromWatchlist: 'Прибрати зі списку',
+
+  genre: 'Жанр',
+  allGenres: 'Усі жанри',
+  allCountries: 'Усі країни',
+  allTypes: 'Усі типи',
+  type: 'Тип',
+  sort: 'Сортування',
+  sortNewest: 'Новинки',
+  sortRating: 'Рейтинг',
+  sortViews: 'Перегляди',
+  sortYear: 'Рік',
+  sortTitle: 'Назва',
+  year: 'Рік',
+  allYears: 'Усі роки',
+  filter4k: 'Лише 4K',
+  allQualities: 'Будь-яка якість',
+  searchField: 'Шукати в',
+  searchFieldAny: 'Скрізь',
+  searchFieldTitle: 'Назва',
+  searchFieldActor: 'Актор',
+  searchFieldDirector: 'Режисер',
+  applyRecommendedSettings: 'Застосувати рекомендовані налаштування',
+  recommendedSettingsApplied: 'Рекомендовані налаштування застосовано',
+
+  showContinueWatching: 'Показувати «Продовжити перегляд» на головній',
+  pinSideMenu: 'Не ховати бічну панель',
+  freshMovies: 'Свіжі фільми',
+  freshSeries: 'Свіжі серіали',
+}
+
+export const translations: Record<Language, Translations> = { en, ru, uk, de }
 
 export function getTranslations(lang: Language): Translations {
   return translations[lang] || translations.en

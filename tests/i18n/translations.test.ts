@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { translations, getTranslations, LANGUAGES, Language, Translations } from '../../src/i18n/translations'
 
 describe('translations', () => {
-  const allLanguages: Language[] = ['en', 'ru', 'de']
+  const allLanguages: Language[] = ['en', 'ru', 'uk', 'de']
   const englishKeys = Object.keys(translations.en) as (keyof Translations)[]
 
   describe('all languages have all keys', () => {
@@ -45,8 +45,8 @@ describe('translations', () => {
 
   describe('LANGUAGES constant', () => {
     it('includes all supported languages', () => {
-      expect(LANGUAGES).toHaveLength(3)
-      expect(LANGUAGES.map(l => l.id)).toEqual(['en', 'ru', 'de'])
+      expect(LANGUAGES).toHaveLength(4)
+      expect(LANGUAGES.map(l => l.id)).toEqual(['en', 'ru', 'uk', 'de'])
     })
 
     it('has labels for all languages', () => {
@@ -66,6 +66,11 @@ describe('translations', () => {
     it('returns Russian translations for ru', () => {
       const t = getTranslations('ru')
       expect(t).toBe(translations.ru)
+    })
+
+    it('returns Ukrainian translations for uk', () => {
+      const t = getTranslations('uk')
+      expect(t).toBe(translations.uk)
     })
 
     it('returns German translations for de', () => {

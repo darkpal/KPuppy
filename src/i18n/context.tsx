@@ -1,6 +1,6 @@
 import { createContext } from 'preact'
 import { useContext, useState, useCallback, useEffect } from 'preact/hooks'
-import { Language, Translations, getTranslations, LANGUAGES } from './translations'
+import { Language, Translations, getTranslations, LANGUAGES, isLanguage } from './translations'
 import { detectSystemLanguage, fetchWebOSUiLanguage } from './systemLanguage'
 
 interface I18nContextValue {
@@ -15,8 +15,8 @@ const STORAGE_KEY = 'kpuppy_language'
 function getStoredLanguage(): Language | null {
   try {
     const stored = localStorage.getItem(STORAGE_KEY)
-    if (stored && ['en', 'ru', 'de'].includes(stored)) {
-      return stored as Language
+    if (isLanguage(stored)) {
+      return stored
     }
   } catch (err) {
     if (import.meta.env.DEV) console.warn('Failed to read stored language:', err)

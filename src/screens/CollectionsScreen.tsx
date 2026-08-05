@@ -198,7 +198,7 @@ export function CollectionsScreen({ onSelectItem, onNavigateToMenu, isActive }: 
 
   const sortCollectionsAz = useCallback(async () => {
     const all = await ensureAllLoaded()
-    const locale = language === 'ru' ? 'ru' : language === 'de' ? 'de' : 'en'
+    const locale = language === 'en' ? 'en' : language
     setCollections(
       [...all].sort((a, b) => a.title.localeCompare(b.title, locale, { sensitivity: 'base' }))
     )
