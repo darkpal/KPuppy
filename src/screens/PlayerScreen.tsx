@@ -140,6 +140,7 @@ export function PlayerScreen({
   const subtitleRequestRef = useRef(0)
   const audioApplyTimerRef = useRef<number>(0)
   const pendingAudioIndexRef = useRef<number | null>(null)
+  const panelListRef = useRef<HTMLDivElement>(null)
   /** Debounce HLS reload while browsing the audio list with Up/Down. */
   const AUDIO_SELECT_DEBOUNCE_MS = 500
   const [controls, setControls] = useState<ControlsState>({
@@ -545,6 +546,22 @@ export function PlayerScreen({
   }, [clearAudioApplyTimer, applyAudioTrack])
 
   useEffect(() => () => clearAudioApplyTimer(), [clearAudioApplyTimer])
+
+  useEffect(() => {
+    if (controls.activePanel === 'none') return
+    const list = panelListRef.current
+    if (!list) return
+    const selected = list.querySelector('.player-panel-item.selected') as HTMLElement | null
+    if (!selected) return
+
+    const listRect = list.getBoundingClientRect()
+    const itemRect = selected.getBoundingClientRect()
+    if (itemRect.top < listRect.top) {
+      list.scrollTop += itemRect.top - listRect.top
+    } else if (itemRect.bottom > listRect.bottom) {
+      list.scrollTop += itemRect.bottom - listRect.bottom
+    }
+  }, [controls.activePanel, controls.selectedSubtitleIndex, controls.selectedAudioIndex, controls.selectedQuality])
 
   const handleSurfaceClick = useCallback((event: JSX.TargetedMouseEvent<HTMLDivElement>) => {
     const target = event.target as HTMLElement | null
@@ -1183,7 +1200,7 @@ export function PlayerScreen({
           {controls.activePanel === 'audio' && (
             <div class="player-panel" onClick={(event) => event.stopPropagation()}>
               <h2 class="player-panel-title">{t.audio}</h2>
-              <div class="player-panel-list">
+              <div class="player-panel-list" ref={panelListRef}>
                 {audios.map((audio, idx) => (
                   <button
                     type="button"
@@ -1205,7 +1222,7 @@ export function PlayerScreen({
           {controls.activePanel === 'subtitles' && (
             <div class="player-panel" onClick={(event) => event.stopPropagation()}>
               <h2 class="player-panel-title">{t.subtitles}</h2>
-              <div class="player-panel-list">
+              <div class="player-panel-list" ref={panelListRef}>
                 <button
                   type="button"
                   class={`player-panel-item ${controls.selectedSubtitleIndex === -1 ? 'selected' : ''}`}
@@ -1239,7 +1256,7 @@ export function PlayerScreen({
           {controls.activePanel === 'quality' && (
             <div class="player-panel" onClick={(event) => event.stopPropagation()}>
               <h2 class="player-panel-title">{t.quality}</h2>
-              <div class="player-panel-list">
+              <div class="player-panel-list" ref={panelListRef}>
                 {availableQualities.map((q) => (
                   <button
                     type="button"

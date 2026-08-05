@@ -209,6 +209,33 @@ describe('PlayerScreen', () => {
 
       expect(document.querySelector('.player-hint-subtitles')).not.toBeNull()
     })
+
+    it('keeps a long subtitle list inside the panel while moving focus down', () => {
+      const subtitles = ['en', 'ru', 'uk', 'de', 'fr', 'es', 'it', 'pt', 'tr', 'pl', 'cs', 'hu', 'ro', 'bg', 'hr'].map((lang, i) => ({
+        lang,
+        shift: 0,
+        embed: false,
+        forced: false,
+        file: `${lang}.srt`,
+        url: `https://example.com/${lang}.srt`
+      }))
+
+      renderWithI18n(<PlayerScreen {...mockProps} subtitles={subtitles} />)
+
+      fireEvent.keyDown(document, { keyCode: 405 })
+      expect(document.querySelector('.player-panel')).not.toBeNull()
+      expect(document.querySelectorAll('.player-panel-item').length).toBe(subtitles.length + 1)
+
+      for (let i = 0; i < 8; i++) {
+        fireEvent.keyDown(document, { keyCode: 40 })
+      }
+
+      const selected = document.querySelector('.player-panel-item.selected')
+      const list = document.querySelector('.player-panel-list')
+      expect(selected).not.toBeNull()
+      expect(list?.contains(selected)).toBe(true)
+      expect(selected?.textContent).toMatch(/^PT/)
+    })
   })
 
   describe('time update callback', () => {
