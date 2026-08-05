@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, waitFor, cleanup } from '@testing-library/preact'
+import { render, screen, waitFor, cleanup, act } from '@testing-library/preact'
 import { h } from 'preact'
 import { SeasonsScreen } from '../../src/screens/SeasonsScreen'
 import { I18nProvider } from '../../src/i18n/context'
@@ -161,6 +161,51 @@ describe('SeasonsScreen', () => {
       await waitFor(() => {
         expect(document.querySelector('.seasons-empty')).toBeDefined()
       })
+    })
+  })
+
+  describe('row navigation', () => {
+    it('does not carry episode index into the next season row', async () => {
+      const episode = (id: number, number: number, title: string) => ({
+        id,
+        number,
+        title,
+        files: [{ quality: '1080p', url: { hls: 'test.m3u8' } }],
+        audios: [],
+        subtitles: [],
+        watched: 0
+      })
+      vi.mocked(kinopub.getItem).mockResolvedValue({
+        ...mockSeriesDetails,
+        seasons: [
+          { number: 1, episodes: [episode(1, 1, 'S1E1'), episode(2, 2, 'S1E2'), episode(3, 3, 'S1E3')] },
+          { number: 2, episodes: [episode(4, 1, 'S2E1'), episode(5, 2, 'S2E2'), episode(6, 3, 'S2E3')] },
+          { number: 3, episodes: [episode(7, 1, 'S3E1'), episode(8, 2, 'S3E2')] }
+        ]
+      })
+
+      renderWithI18n(<SeasonsScreen {...mockProps} />)
+      await waitFor(() => {
+        expect(document.querySelector('.episode-card.focused .episode-title')?.textContent).toBe('S1E1')
+      })
+
+      const focusedTitle = () => document.querySelector('.episode-card.focused .episode-title')?.textContent
+      const press = async (keyCode: number) => {
+        await act(() => {
+          document.dispatchEvent(new KeyboardEvent('keydown', { keyCode, bubbles: true }))
+        })
+      }
+
+      await press(39)
+      expect(focusedTitle()).toBe('S1E2')
+      await press(39)
+      expect(focusedTitle()).toBe('S1E3')
+      await press(40)
+      expect(focusedTitle()).toBe('S2E1')
+      await press(39)
+      expect(focusedTitle()).toBe('S2E2')
+      await press(38)
+      expect(focusedTitle()).toBe('S1E3')
     })
   })
 

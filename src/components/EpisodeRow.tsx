@@ -8,13 +8,15 @@ interface EpisodeRowProps {
   episodes: Episode[]
   seriesPoster?: string
   focusedIndex: number | null
+  /** Auto-scroll row to focused card (keyboard/D-pad only; not pointer hover). */
+  scrollToFocused?: boolean
   /** Focus only (mouse hover / d-pad position). */
   onSelect?: (index: number) => void
   /** Open/play episode (click / Enter). Defaults to onSelect. */
   onActivate?: (index: number) => void
 }
 
-export function EpisodeRow({ title, episodes, seriesPoster, focusedIndex, onSelect, onActivate }: EpisodeRowProps) {
+export function EpisodeRow({ title, episodes, seriesPoster, focusedIndex, scrollToFocused = true, onSelect, onActivate }: EpisodeRowProps) {
   const gridRef = useRef<HTMLDivElement>(null)
 
   useScrollToFocused({
@@ -22,7 +24,8 @@ export function EpisodeRow({ title, episodes, seriesPoster, focusedIndex, onSele
     focusedIndex,
     itemSelector: ':scope > *',
     direction: 'horizontal',
-    itemCount: episodes.length
+    itemCount: episodes.length,
+    enabled: scrollToFocused
   })
 
   if (episodes.length === 0) {

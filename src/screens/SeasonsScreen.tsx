@@ -26,6 +26,8 @@ export function SeasonsScreen({ itemId, onBack, onPlay, onNavigateToMenu, isActi
   /** Pointer hover must not auto-scroll (webOS edge cascade); keyboard/D-pad may. */
   const [scrollWithFocus, setScrollWithFocus] = useState(true)
   const containerRef = useRef<HTMLDivElement>(null)
+  /** Last focused episode per season row — same as home shelves. */
+  const rowColMemory = useRef<Record<number, number>>({ 0: 0 })
 
   useEffect(() => {
     async function loadItem() {
@@ -47,6 +49,10 @@ export function SeasonsScreen({ itemId, onBack, onPlay, onNavigateToMenu, isActi
   const isGridMode = seasons.length > 0 && seasons.length <= 2
   const { itemsPerRow: episodesPerRow, cardWidth: episodeCardWidth } = useGridLayout('.seasons-episode-grid', 240, [isGridMode, seasons.length])
 
+  useEffect(() => {
+    rowColMemory.current[focusedRow] = focusedCol
+  }, [focusedRow, focusedCol])
+
   const focusByKeyboard = useCallback((update: () => void) => {
     setScrollWithFocus(true)
     update()
@@ -57,6 +63,13 @@ export function SeasonsScreen({ itemId, onBack, onPlay, onNavigateToMenu, isActi
     setFocusedRow(seasonIndex)
     setFocusedCol(episodeIndex)
   }, [])
+
+  const focusSeasonRow = useCallback((newRow: number) => {
+    const newRowEpisodeCount = seasons[newRow]?.episodes?.length || 0
+    const rememberedCol = rowColMemory.current[newRow] ?? 0
+    setFocusedRow(newRow)
+    setFocusedCol(Math.min(rememberedCol, Math.max(0, newRowEpisodeCount - 1)))
+  }, [seasons])
 
   const handleToggleWatched = useCallback(async () => {
     const currentSeason = seasons[focusedRow]
@@ -147,22 +160,12 @@ export function SeasonsScreen({ itemId, onBack, onPlay, onNavigateToMenu, isActi
       },
       onUp: () => {
         if (focusedRow > 0) {
-          focusByKeyboard(() => {
-            const newRow = focusedRow - 1
-            const newRowEpisodeCount = seasons[newRow]?.episodes?.length || 0
-            setFocusedRow(newRow)
-            setFocusedCol(prev => Math.min(prev, newRowEpisodeCount - 1))
-          })
+          focusByKeyboard(() => focusSeasonRow(focusedRow - 1))
         }
       },
       onDown: () => {
         if (focusedRow < seasons.length - 1) {
-          focusByKeyboard(() => {
-            const newRow = focusedRow + 1
-            const newRowEpisodeCount = seasons[newRow]?.episodes?.length || 0
-            setFocusedRow(newRow)
-            setFocusedCol(prev => Math.min(prev, Math.max(0, newRowEpisodeCount - 1)))
-          })
+          focusByKeyboard(() => focusSeasonRow(focusedRow + 1))
         }
       },
       onEnter: () => {
@@ -173,9 +176,9 @@ export function SeasonsScreen({ itemId, onBack, onPlay, onNavigateToMenu, isActi
       },
       onYellow: handleToggleWatched
     }
-  }, [seasons, focusedRow, focusedCol, itemId, onBack, onPlay, onNavigateToMenu, handleToggleWatched, isGridMode, episodesPerRow, focusByKeyboard])
+  }, [seasons, focusedRow, focusedCol, itemId, onBack, onPlay, onNavigateToMenu, handleToggleWatched, isGridMode, episodesPerRow, focusByKeyboard, focusSeasonRow])
 
-  useKeyboardNavigation(handlers, isActive && !!item && seasons.length > 0)
+  useKeyboardNavigation(handlers, isActive)
 
   useScrollToFocused({
     containerRef,
@@ -257,6 +260,7 @@ export function SeasonsScreen({ itemId, onBack, onPlay, onNavigateToMenu, isActi
               episodes={season.episodes}
               seriesPoster={seriesPoster}
               focusedIndex={rowIndex === focusedRow ? focusedCol : null}
+              scrollToFocused={scrollWithFocus && rowIndex === focusedRow}
               onSelect={(colIndex) => hoverEpisode(rowIndex, colIndex)}
               onActivate={(colIndex) => {
                 hoverEpisode(rowIndex, colIndex)

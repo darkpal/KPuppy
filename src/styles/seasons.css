@@ -29,6 +29,12 @@
   flex: 1;
   overflow-y: auto;
   padding-bottom: 40px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.seasons-container::-webkit-scrollbar {
+  display: none;
 }
 
 .seasons-empty {
