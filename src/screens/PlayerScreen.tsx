@@ -52,11 +52,6 @@ function RemoteKeyDots({ count }: { count: 1 | 2 | 3 }) {
   )
 }
 
-function formatPlayerSubtitleLabel(lang: string): string {
-  const forced = /-forced$/i.test(lang || '')
-  return subtitleLanguageLabel(lang, forced)
-}
-
 function playVideo(video: HTMLVideoElement | null | undefined): void {
   if (!video) return
   video.play().catch(err => {
@@ -636,7 +631,7 @@ export function PlayerScreen({
       track.kind = 'subtitles'
       track.src = src
       track.srclang = sub.lang
-      track.label = formatPlayerSubtitleLabel(sub.forced ? `${sub.lang}-forced` : sub.lang)
+      track.label = subtitleLanguageLabel(sub.lang, sub.forced)
       track.default = true
       video.appendChild(track)
 
@@ -1245,7 +1240,7 @@ export function PlayerScreen({
                       selectSubtitle(idx)
                     }}
                   >
-                    {formatPlayerSubtitleLabel(sub.forced ? `${sub.lang}-forced` : sub.lang)}
+                    {subtitleLanguageLabel(sub.lang, sub.forced)}
                     {subtitleLoading && idx === controls.selectedSubtitleIndex ? ` (${t.loading})` : ''}
                   </button>
                 ))}

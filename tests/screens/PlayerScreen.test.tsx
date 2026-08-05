@@ -234,7 +234,7 @@ describe('PlayerScreen', () => {
       const list = document.querySelector('.player-panel-list')
       expect(selected).not.toBeNull()
       expect(list?.contains(selected)).toBe(true)
-      expect(selected?.textContent).toMatch(/^PT/)
+      expect(selected?.textContent).toMatch(/^Português/)
     })
   })
 

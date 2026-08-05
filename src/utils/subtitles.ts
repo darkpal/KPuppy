@@ -4,16 +4,69 @@ const SUBTITLE_LANG_NAMES: Record<string, string> = {
   rus: 'Русский', ru: 'Русский',
   eng: 'English', en: 'English',
   ukr: 'Українська', uk: 'Українська',
+  bel: 'Беларуская', be: 'Беларуская',
   tur: 'Türkçe', tr: 'Türkçe',
   deu: 'Deutsch', de: 'Deutsch', ger: 'Deutsch',
-  fra: 'Français', fr: 'Français',
+  fra: 'Français', fr: 'Français', fre: 'Français',
+  spa: 'Español', es: 'Español',
+  por: 'Português', pt: 'Português',
+  ita: 'Italiano', it: 'Italiano',
+  pol: 'Polski', pl: 'Polski',
+  ces: 'Čeština', cs: 'Čeština', cze: 'Čeština',
+  slk: 'Slovenčina', sk: 'Slovenčina', slo: 'Slovenčina',
+  slv: 'Slovenščina', sl: 'Slovenščina',
+  hun: 'Magyar', hu: 'Magyar',
+  ron: 'Română', ro: 'Română', rum: 'Română',
+  bul: 'Български', bg: 'Български',
+  hrv: 'Hrvatski', hr: 'Hrvatski',
+  srp: 'Srpski', sr: 'Srpski',
+  bos: 'Bosanski', bs: 'Bosanski',
+  mkd: 'Македонски', mk: 'Македонски', mac: 'Македонски',
+  dut: 'Nederlands', nld: 'Nederlands', nl: 'Nederlands',
+  nor: 'Norsk', no: 'Norsk', nob: 'Norsk', nno: 'Norsk',
+  swe: 'Svenska', sv: 'Svenska',
+  dan: 'Dansk', da: 'Dansk',
+  fin: 'Suomi', fi: 'Suomi',
+  est: 'Eesti', et: 'Eesti',
+  lav: 'Latviešu', lv: 'Latviešu',
+  lit: 'Lietuvių', lt: 'Lietuvių',
+  ice: 'Icelandic', isl: 'Icelandic', is: 'Icelandic',
+  ell: 'Greek', el: 'Greek', gre: 'Greek',
+  cat: 'Català', ca: 'Català',
+  tha: 'Thai', th: 'Thai',
+  chi: 'Chinese', zho: 'Chinese', zh: 'Chinese', cmn: 'Chinese',
+  kor: 'Korean', ko: 'Korean',
+  jpn: 'Japanese', ja: 'Japanese',
+  vie: 'Vietnamese', vi: 'Vietnamese',
+  ind: 'Indonesia', id: 'Indonesia',
+  msa: 'Melayu', may: 'Melayu', ms: 'Melayu',
+  fil: 'Filipino', tl: 'Filipino', tgl: 'Filipino',
+  ara: 'Arabic', ar: 'Arabic',
+  heb: 'Hebrew', he: 'Hebrew',
+  fas: 'Persian', fa: 'Persian', per: 'Persian',
+  hin: 'Hindi', hi: 'Hindi',
+  kaz: 'Қазақша', kk: 'Қазақша',
+  aze: 'Azərbaycan', az: 'Azərbaycan',
+  uzb: 'Oʻzbek', uz: 'Oʻzbek',
+  geo: 'Georgian', kat: 'Georgian', ka: 'Georgian',
+  arm: 'Armenian', hye: 'Armenian', hy: 'Armenian',
+  mon: 'Монгол', mn: 'Монгол',
+}
+
+function normalizeSubtitleLang(lang: string): string {
+  return (lang || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[_/]/g, '-')
+    .replace(/-forced$/, '')
+    .split('-')[0]
 }
 
 /** Human-readable language label for a subtitle track. */
 export function subtitleLanguageLabel(lang: string, forced = false): string {
-  const raw = (lang || '').toLowerCase().replace(/-forced$/, '')
-  const name = SUBTITLE_LANG_NAMES[raw] || (lang ? lang.toUpperCase() : 'SUB')
-  return forced ? `${name} Forced` : name
+  const code = normalizeSubtitleLang(lang)
+  const name = SUBTITLE_LANG_NAMES[code] || (code ? code.toUpperCase() : 'SUB')
+  return forced || /-forced$/i.test(lang || '') ? `${name} Forced` : name
 }
 
 /**
