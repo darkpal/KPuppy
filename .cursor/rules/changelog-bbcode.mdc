@@ -1,0 +1,34 @@
+---
+description: Forum changelog in BBCode — cumulative delta only, no intra-day bugs
+alwaysApply: true
+---
+
+# Changelog (BBCode, cumulative)
+
+When the user asks for a changelog («changelog», «что нового», «для форума»):
+
+## Baseline
+
+Diff **the last version already public before this batch** → **current latest**.
+
+Typical baseline: yesterday’s last release (or the last version that already had a forum changelog). Do **not** list every micro-release from the same day (`0.0.81`, `0.0.82`, …).
+
+Header example: `[b]KPuppy 0.0.84[/b] — 05.08.2026` plus `накопительно с [b]0.0.80[/b]`.
+
+## What to include
+
+Only the **final user-visible result** of that diff. Russian. BBCode (`[b]`, `[list]`, `[*]`, `[url]`). Group by area (плеер, сезоны, язык…).
+
+## What to omit
+
+- Bugs that appeared and were fixed **between** versions in the same batch (user never needed to know about the intermediate state)
+- Implementation noise: CSS tweaks, test-only changes, “поправлен интервал после рефакторинга панели”
+- Per-version narrative (“в 0.0.81 сломали, в 0.0.83 починили”)
+
+```text
+❌ Поправлена красная рамка субтитров (баг между 0.0.81 и 0.0.83)
+
+✅ Длинные списки озвучки и субтитров остаются внутри панели…
+```
+
+Compute the delta with `git diff <baseline-commit>..HEAD` (tags may be missing locally — use the release commit on `main`).

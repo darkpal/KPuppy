@@ -21,4 +21,6 @@ When shipping a new version (user asks to release / «выложи» / «соб�
    - `raw.githubusercontent.com/darkpal/KPuppy/main/homebrew/apps.json` points at `v0.0.X`
    - that manifest downloads and has `ipkHash.sha256`
 
+After a release batch, if the user wants a forum changelog: follow `.cursor/rules/changelog-bbcode.mdc` (cumulative vs last public baseline, BBCode, no intra-day bugs).
+
 See also `docs/RELEASE.md`.

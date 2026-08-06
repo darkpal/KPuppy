@@ -1845,65 +1845,83 @@ describe('kinopub API', () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({
-          items: [
+          history: [
             {
-              id: 123,
-              title: 'Watched Movie',
-              type: 'movie',
-              year: 2023,
-              posters: {},
-              watched_at: 1700000000
+              item: {
+                id: 123,
+                title: 'Watched Movie',
+                type: 'movie',
+                year: 2023,
+                posters: {},
+              },
+              last_seen: 1700000000
             }
-          ]
+          ],
+          pagination: { current: 1, total: 1, perpage: 50, total_items: 1 }
         })
       })
 
       await getHistory()
 
       const call = mockFetch.mock.calls[0]
-      expect(call[0]).toBe('https://api.service-kp.com/v1/history')
+      expect(call[0]).toBe('https://api.service-kp.com/v1/history?page=1&perpage=50')
       expect(call[1].headers['Authorization']).toBe('Bearer valid-token')
+    })
+
+    it('passes page and perpage', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ history: [], pagination: { current: 2, total: 5, perpage: 50, total_items: 200 } })
+      })
+
+      await getHistory(2, 50)
+
+      expect(mockFetch.mock.calls[0][0]).toBe('https://api.service-kp.com/v1/history?page=2&perpage=50')
     })
 
     it('parses items with watchedAt correctly', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({
-          items: [
+          history: [
             {
-              id: 123,
-              title: 'Watched Movie',
-              type: 'movie',
-              year: 2023,
-              plot: 'A movie',
-              posters: { small: 'http://s.jpg' },
-              rating: 8.0,
-              imdb_rating: 7.5,
-              kinopoisk_rating: 8.0,
-              views: 500,
-              watched_at: 1700000000
+              item: {
+                id: 123,
+                title: 'Watched Movie',
+                type: 'movie',
+                year: 2023,
+                plot: 'A movie',
+                posters: { small: 'http://s.jpg' },
+                rating: 8.0,
+                imdb_rating: 7.5,
+                kinopoisk_rating: 8.0,
+                views: 500,
+              },
+              last_seen: 1700000000
             }
-          ]
+          ],
+          pagination: { current: 1, total: 1, perpage: 50, total_items: 1 }
         })
       })
 
       const result = await getHistory()
 
-      expect(result).toHaveLength(1)
-      expect(result[0].id).toBe(123)
-      expect(result[0].title).toBe('Watched Movie')
-      expect(result[0].watchedAt).toBe(1700000000)
+      expect(result.items).toHaveLength(1)
+      expect(result.items[0].id).toBe(123)
+      expect(result.items[0].title).toBe('Watched Movie')
+      expect(result.items[0].watchedAt).toBe(1700000000)
+      expect(result.pagination.totalItems).toBe(1)
     })
 
     it('handles empty results', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ items: [] })
+        json: async () => ({ history: [], pagination: { current: 1, total: 0, perpage: 50, total_items: 0 } })
       })
 
       const result = await getHistory()
 
-      expect(result).toHaveLength(0)
+      expect(result.items).toHaveLength(0)
     })
 
     it('throws ApiError on failure', async () => {

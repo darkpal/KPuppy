@@ -68,7 +68,10 @@ vi.mock('../src/api/kinopub', () => ({
     pagination: { current: 1, total: 0, totalItems: 0, perpage: 40 }
   })),
   getCollectionItems: vi.fn(() => Promise.resolve([])),
-  getHistory: vi.fn(() => Promise.resolve([])),
+  getHistory: vi.fn(() => Promise.resolve({
+    items: [],
+    pagination: { current: 1, total: 0, totalItems: 0, perpage: 50 }
+  })),
   getNewEpisodes: vi.fn(() => Promise.resolve([])),
   getChannels: vi.fn(() => Promise.resolve([])),
   getSimilarItems: vi.fn(() => Promise.resolve([])),

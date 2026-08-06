@@ -52,11 +52,46 @@
   font-size: 15px;
 }
 
+.history-section {
+  margin-bottom: 8px;
+}
+
+.history-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 8px 0 12px;
+  min-height: 40px;
+}
+
 .history-section-title {
   font-size: 22px;
   font-weight: 600;
   color: #ffffff;
-  margin: 8px 0 12px;
+  margin: 0;
+}
+
+.history-see-all {
+  flex-shrink: 0;
+  margin-left: 16px;
+  padding: 8px 16px;
+  border: 2px solid transparent;
+  border-radius: var(--radius-sm, 6px);
+  background: transparent;
+  color: rgba(255, 255, 255, 0.75);
+  font: inherit;
+  font-size: 18px;
+  font-weight: 500;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.history-see-all.focused,
+.history-see-all:hover {
+  color: #ffffff;
+  border-color: #e50914;
+  background: rgba(229, 9, 20, 0.18);
 }
 
 .history-series-grid .movie-card {

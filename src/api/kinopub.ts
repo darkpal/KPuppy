@@ -1290,12 +1290,22 @@ export interface HistoryItem extends MovieItem {
   }
 }
 
-export async function getHistory(): Promise<HistoryItem[]> {
-  const cacheKey = 'history'
-  const cached = getCached<HistoryItem[]>(cacheKey)
+export interface HistoryResponse {
+  items: HistoryItem[]
+  pagination: Pagination
+}
+
+/** Kinopub history page — default 20, max 50 per docs. */
+export async function getHistory(page = 1, perpage = 50): Promise<HistoryResponse> {
+  const cacheKey = createCacheKey('history', page, perpage)
+  const cached = getCached<HistoryResponse>(cacheKey)
   if (cached) return cached
 
-  const response = await authFetch(`${BASE_URL}/v1/history`)
+  const searchParams = new URLSearchParams()
+  searchParams.set('page', page.toString())
+  searchParams.set('perpage', Math.min(50, Math.max(1, perpage)).toString())
+
+  const response = await authFetch(`${BASE_URL}/v1/history?${searchParams}`)
 
   if (!response.ok) {
     if (import.meta.env.DEV) console.error('History API error:', response.status)
@@ -1308,10 +1318,13 @@ export async function getHistory(): Promise<HistoryItem[]> {
   const items = data.items || data.history || []
   if (!Array.isArray(items)) {
     if (import.meta.env.DEV) console.error('History items not an array:', items)
-    return []
+    return {
+      items: [],
+      pagination: { current: page, total: 0, totalItems: 0, perpage }
+    }
   }
 
-  const result: HistoryItem[] = items.map((entry: Record<string, unknown>) => {
+  const mapped: HistoryItem[] = items.map((entry: Record<string, unknown>) => {
     const item = (entry.item || entry) as Record<string, unknown>
     const media = entry.media as Record<string, unknown> | undefined
 
@@ -1331,6 +1344,16 @@ export async function getHistory(): Promise<HistoryItem[]> {
 
     return historyItem
   })
+
+  const result: HistoryResponse = {
+    items: mapped,
+    pagination: {
+      current: data.pagination?.current ?? page,
+      total: data.pagination?.total ?? 1,
+      totalItems: data.pagination?.total_items ?? mapped.length,
+      perpage: data.pagination?.perpage ?? perpage
+    }
+  }
 
   setCache(cacheKey, result)
   return result
