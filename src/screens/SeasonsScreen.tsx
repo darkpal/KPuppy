@@ -82,41 +82,50 @@ export function SeasonsScreen({ itemId, onBack, onPlay, onNavigateToMenu, isActi
     setFocusedCol(Math.min(rememberedCol, Math.max(0, newRowEpisodeCount - 1)))
   }, [seasons])
 
-  const handleToggleWatched = useCallback(async () => {
+  const applyWatchedToggle = useCallback((row: number, col: number, markWatched: boolean) => {
+    setItem(prev => {
+      if (!prev || !prev.seasons) return prev
+      return {
+        ...prev,
+        seasons: prev.seasons.map((s, sIdx) => {
+          if (sIdx !== row) return s
+          return {
+            ...s,
+            episodes: s.episodes.map((ep, eIdx) => {
+              if (eIdx !== col) return ep
+              return {
+                ...ep,
+                watched: markWatched ? 1 : 0,
+                watching: {
+                  ...ep.watching,
+                  status: markWatched ? 1 : -1,
+                  time: markWatched ? ep.watching?.time : 0
+                }
+              }
+            })
+          }
+        })
+      }
+    })
+  }, [])
+
+  const handleToggleWatched = useCallback(() => {
     const currentSeason = seasons[focusedRow]
     const episode = currentSeason?.episodes?.[focusedCol]
     if (!episode || !item) return
 
-    try {
-      await toggleWatched({ id: item.id, season: currentSeason.number, video: episode.number })
-      setItem(prev => {
-        if (!prev || !prev.seasons) return prev
-        return {
-          ...prev,
-          seasons: prev.seasons.map((s, sIdx) => {
-            if (sIdx !== focusedRow) return s
-            return {
-              ...s,
-              episodes: s.episodes.map((ep, eIdx) => {
-                if (eIdx !== focusedCol) return ep
-                return {
-                  ...ep,
-                  watched: ep.watched === 1 ? 0 : 1,
-                  watching: {
-                    ...ep.watching,
-                    status: ep.watched === 1 ? -1 : 1,
-                    time: ep.watched === 1 ? 0 : ep.watching?.time
-                  }
-                }
-              })
-            }
-          })
-        }
+    const row = focusedRow
+    const col = focusedCol
+    const wasWatched = episode.watched === 1 || episode.watching?.status === 1
+    // Optimistic UI — don't wait for the API round-trip on a TV remote press.
+    applyWatchedToggle(row, col, !wasWatched)
+
+    void toggleWatched({ id: item.id, season: currentSeason.number, video: episode.number })
+      .catch(err => {
+        applyWatchedToggle(row, col, wasWatched)
+        if (import.meta.env.DEV) console.error('Failed to toggle watched:', err)
       })
-    } catch (err) {
-      if (import.meta.env.DEV) console.error('Failed to toggle watched:', err)
-    }
-  }, [seasons, focusedRow, focusedCol, item])
+  }, [seasons, focusedRow, focusedCol, item, applyWatchedToggle])
 
   const handlers = useMemo(() => {
     const currentSeason = seasons[focusedRow]
@@ -243,7 +252,7 @@ export function SeasonsScreen({ itemId, onBack, onPlay, onNavigateToMenu, isActi
       <button
         type="button"
         class="seasons-watched-action"
-        onClick={() => { void handleToggleWatched() }}
+        onClick={handleToggleWatched}
         aria-label={focusedWatched ? t.markUnwatched : t.markWatched}
       >
         <RemoteKeyDots count={2} />
