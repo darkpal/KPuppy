@@ -45,6 +45,12 @@ npm test
 npm run build
 ```
 
+Shared project knowledge:
+
+- [Performance baseline, backlog, and multi-agent hand-offs](docs/PERFORMANCE.md)
+- [Release and Homebrew publishing](docs/RELEASE.md)
+- [webOS large-image rendering constraints](.cursor/rules/webos-image-rendering.mdc)
+
 Capture README screenshots (device-code login once; tokens in gitignored `.kpuppy-tokens.json`):
 
 ```bash
