@@ -250,28 +250,8 @@ async function openTitleCard(page) {
   }
   await page.waitForSelector('.item-summary .item-button-primary', { timeout: 30_000 })
   await page.waitForSelector('.item-scroll-hint', { timeout: 15_000 })
-  // Full details + Similar grid (README screen2).
-  await page.locator('.item-scroll-hint').click()
-  await page.waitForSelector('.item-content.details-expanded', { timeout: 15_000 })
-  await sleep(1500)
-  const similarSection = page.locator('.item-similar')
-  try {
-    await similarSection.waitFor({ state: 'visible', timeout: 20_000 })
-    await similarSection.scrollIntoViewIfNeeded()
-    await sleep(600)
-    // Frame: plot/meta above + similar posters below.
-    await page.evaluate(() => {
-      const pageEl = document.querySelector('.item-details-page')
-      const similar = document.querySelector('.item-similar')
-      if (pageEl && similar) {
-        const top = Math.max(0, similar.offsetTop - 280)
-        pageEl.scrollTop = top
-      }
-    })
-    await sleep(1200)
-  } catch {
-    await sleep(1000)
-  }
+  // Stay on the summary ("first") screen — do not open full information.
+  await sleep(2200)
 }
 
 async function goHome(page) {
