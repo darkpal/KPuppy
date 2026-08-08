@@ -379,14 +379,36 @@ describe('ItemScreen', () => {
   })
 
   describe('series display', () => {
-    it('renders seasons button for series', async () => {
+    it('renders continue and seasons buttons for series', async () => {
       vi.mocked(kinopub.getItem).mockResolvedValue(mockSeriesDetails)
 
       renderWithI18n(<ItemScreen {...mockProps} itemId={2} />)
 
       await waitFor(() => {
+        expect(screen.getByText(/Continue · S1E1/)).toBeDefined()
         expect(screen.getByText(/Seasons/)).toBeDefined()
       })
+    })
+
+    it('plays continue episode from the primary button', async () => {
+      vi.mocked(kinopub.getItem).mockResolvedValue({
+        ...mockSeriesDetails,
+        seasons: [{
+          number: 2,
+          episodes: [
+            { id: 1, number: 1, title: 'E1', files: [], audios: [], watched: 1, watching: { status: 1 } },
+            { id: 2, number: 5, title: 'E5', files: [], audios: [], watched: 0, watching: { status: 0, time: 10 } }
+          ]
+        }]
+      })
+
+      renderWithI18n(<ItemScreen {...mockProps} itemId={2} />)
+
+      await waitFor(() => {
+        expect(screen.getByText(/Continue · S2E5/)).toBeDefined()
+      })
+      fireEvent.click(screen.getByText(/Continue · S2E5/))
+      expect(mockProps.onPlay).toHaveBeenCalledWith(2, 2, 5, expect.any(Object))
     })
 
     it('checks watchlist status for series', async () => {

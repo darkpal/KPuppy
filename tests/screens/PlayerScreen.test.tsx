@@ -194,6 +194,77 @@ describe('PlayerScreen', () => {
     })
   })
 
+  describe('episodes panel', () => {
+    const seasonsSummary = [
+      {
+        number: 1,
+        episodes: [
+          { number: 1, title: 'Pilot', duration: 2400, watching: { time: 120, status: 0 } },
+          { number: 2, title: 'Next', duration: 2400 }
+        ]
+      },
+      {
+        number: 2,
+        episodes: [{ number: 1, title: 'S2E1', duration: 2500 }]
+      }
+    ]
+
+    it('shows blue episodes hint when seasonsSummary is provided', () => {
+      renderWithI18n(
+        <PlayerScreen
+          {...mockProps}
+          season={1}
+          episode={1}
+          seasonsSummary={seasonsSummary}
+          onPlayEpisode={vi.fn()}
+        />
+      )
+
+      expect(document.querySelector('.player-hint-episodes')).not.toBeNull()
+      expect(screen.getByText('Episodes')).toBeDefined()
+    })
+
+    it('opens episodes panel on Blue and plays selected episode on Enter', () => {
+      const onPlayEpisode = vi.fn()
+      const onPlayNextEpisode = vi.fn()
+      renderWithI18n(
+        <PlayerScreen
+          {...mockProps}
+          season={1}
+          episode={1}
+          seasonsSummary={seasonsSummary}
+          nextEpisode={{ season: 1, episode: 2 }}
+          onPlayNextEpisode={onPlayNextEpisode}
+          onPlayEpisode={onPlayEpisode}
+        />
+      )
+
+      fireEvent.keyDown(document, { keyCode: 406 })
+      expect(document.querySelector('.player-panel-episodes')).not.toBeNull()
+      expect(document.querySelector('.player-episode-item.current')?.textContent).toContain('Pilot')
+
+      fireEvent.keyDown(document, { keyCode: 40 })
+      fireEvent.keyDown(document, { keyCode: 13 })
+
+      expect(onPlayEpisode).toHaveBeenCalledWith(1, 2)
+      expect(onPlayNextEpisode).not.toHaveBeenCalled()
+    })
+
+    it('does not open episodes panel without seasonsSummary', () => {
+      renderWithI18n(
+        <PlayerScreen
+          {...mockProps}
+          nextEpisode={{ season: 1, episode: 2 }}
+          onPlayNextEpisode={vi.fn()}
+        />
+      )
+
+      fireEvent.keyDown(document, { keyCode: 406 })
+      expect(document.querySelector('.player-panel-episodes')).toBeNull()
+      expect(document.querySelector('.player-hint-episodes')).toBeNull()
+    })
+  })
+
   describe('subtitles', () => {
     it('shows subtitle button immediately when subtitle URLs exist', () => {
       const subtitles = [{

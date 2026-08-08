@@ -146,6 +146,8 @@ export interface Episode {
 export interface Season {
   number: number
   episodes: Episode[]
+  watching?: WatchingProgress
+  title?: string
 }
 
 export interface ItemDetails extends MovieItem {
@@ -155,6 +157,8 @@ export interface ItemDetails extends MovieItem {
   genres: Genre[]
   videos?: Video[]
   seasons?: Season[]
+  /** 1 = series finished airing (Kinopub). */
+  finished?: number | boolean
   duration?: {
     average: number
     total: number
@@ -197,6 +201,8 @@ export interface ItemsParams {
   country?: number
   year?: string
   quality?: '4k'
+  /** Finished series only (Kinopub top-level flag). */
+  finished?: 1
   /** e.g. ["created>=1710000000"] — same fields as sort */
   conditions?: string[]
 }
@@ -224,6 +230,7 @@ export function buildItemsQuery(params: ItemsParams): string {
   if (params.country) parts.push(`country=${encodeQueryValue(params.country)}`)
   if (params.year) parts.push(`year=${encodeQueryValue(params.year)}`)
   if (params.quality) parts.push(`quality=${encodeQueryValue(params.quality)}`)
+  if (params.finished === 1) parts.push(`finished=${encodeQueryValue(1)}`)
   if (params.conditions) {
     params.conditions.forEach((condition, index) => {
       // PHP array keys must be encoded the same way as ValeraGin normalizeArrayParams
@@ -559,6 +566,8 @@ export async function getItems(params: ItemsParams = {}): Promise<ItemsResponse>
     params.genre,
     params.country,
     params.year,
+    params.quality,
+    params.finished,
     ...(params.conditions || [])
   )
   const cached = getCached<ItemsResponse>(cacheKey)

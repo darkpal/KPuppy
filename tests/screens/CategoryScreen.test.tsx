@@ -149,7 +149,10 @@ describe('CategoryScreen', () => {
             countryId: 3,
             sort: 'views-',
             year: 2020,
-            only4k: true
+            only4k: true,
+            kpRatingFrom: null,
+            imdbRatingFrom: null,
+            finishedOnly: false
           }}
           onFiltersChange={onFiltersChange}
         />
@@ -161,7 +164,10 @@ describe('CategoryScreen', () => {
           countryId: 3,
           sort: 'views-',
           year: 2020,
-          only4k: true
+          only4k: true,
+          kpRatingFrom: null,
+          imdbRatingFrom: null,
+          finishedOnly: false
         })
       })
 

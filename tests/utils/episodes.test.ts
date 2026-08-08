@@ -1,17 +1,64 @@
 import { describe, expect, it } from 'vitest'
 import type { Season } from '../../src/api/kinopub'
-import { getEpisodeNeighbors } from '../../src/utils/episodes'
+import { buildSeasonsSummary, getContinueEpisode, getEpisodeNeighbors } from '../../src/utils/episodes'
 
-function episode(id: number, number: number) {
+function episode(id: number, number: number, watching?: { status?: number; time?: number }, extras?: { title?: string; duration?: number; watched?: number }) {
   return {
     id,
     number,
-    title: `Episode ${number}`,
+    title: extras?.title ?? `Episode ${number}`,
+    duration: extras?.duration,
     files: [],
     audios: [],
-    watched: 0
+    watched: extras?.watched ?? (watching?.status === 1 ? 1 : 0),
+    watching
   }
 }
+
+describe('getContinueEpisode', () => {
+  it('returns null without seasons', () => {
+    expect(getContinueEpisode(undefined)).toBeNull()
+    expect(getContinueEpisode([])).toBeNull()
+  })
+
+  it('starts at S1E1 when nothing watched', () => {
+    const seasons: Season[] = [
+      { number: 1, episodes: [episode(1, 1), episode(2, 2)] },
+      { number: 2, episodes: [episode(3, 1)] }
+    ]
+    expect(getContinueEpisode(seasons)).toEqual({ season: 1, episode: 1 })
+  })
+
+  it('skips finished episodes and seasons', () => {
+    const seasons: Season[] = [
+      {
+        number: 1,
+        watching: { status: 1 },
+        episodes: [episode(1, 1, { status: 1 }), episode(2, 2, { status: 1 })]
+      },
+      {
+        number: 2,
+        episodes: [
+          episode(3, 1, { status: 1 }),
+          episode(4, 2, { status: 0, time: 120 }),
+          episode(5, 3)
+        ]
+      }
+    ]
+    expect(getContinueEpisode(seasons)).toEqual({ season: 2, episode: 2 })
+  })
+
+  it('falls back to S1E1 when everything is finished', () => {
+    const seasons: Season[] = [
+      {
+        number: 1,
+        watching: { status: 1 },
+        episodes: [episode(1, 1, { status: 1 })]
+      }
+    ]
+    expect(getContinueEpisode(seasons)).toEqual({ season: 1, episode: 1 })
+  })
+})
 
 describe('getEpisodeNeighbors', () => {
   const seasons: Season[] = [
@@ -57,5 +104,73 @@ describe('getEpisodeNeighbors', () => {
         value: originalFlatMap
       })
     }
+  })
+})
+
+describe('buildSeasonsSummary', () => {
+  it('returns undefined without seasons', () => {
+    expect(buildSeasonsSummary(undefined)).toBeUndefined()
+    expect(buildSeasonsSummary([])).toBeUndefined()
+  })
+
+  it('keeps light metadata and drops media payloads', () => {
+    const seasons: Season[] = [
+      {
+        number: 2,
+        episodes: [
+          {
+            id: 20,
+            number: 1,
+            title: 'Later',
+            duration: 1800,
+            files: [{ quality: '1080p', url: { hls: 'https://x.m3u8' } }],
+            audios: [],
+            watched: 0,
+            watching: { status: 0, time: 90 }
+          }
+        ]
+      },
+      {
+        number: 1,
+        episodes: [
+          episode(2, 2, undefined, { title: 'Second', duration: 2400, watched: 1 }),
+          episode(1, 1, { status: 0, time: 12 }, { title: 'First', duration: 2100 })
+        ]
+      }
+    ]
+
+    expect(buildSeasonsSummary(seasons)).toEqual([
+      {
+        number: 1,
+        episodes: [
+          {
+            number: 1,
+            title: 'First',
+            duration: 2100,
+            watched: 0,
+            watching: { status: 0, time: 12 }
+          },
+          {
+            number: 2,
+            title: 'Second',
+            duration: 2400,
+            watched: 1,
+            watching: undefined
+          }
+        ]
+      },
+      {
+        number: 2,
+        episodes: [
+          {
+            number: 1,
+            title: 'Later',
+            duration: 1800,
+            watched: 0,
+            watching: { status: 0, time: 90 }
+          }
+        ]
+      }
+    ])
   })
 })

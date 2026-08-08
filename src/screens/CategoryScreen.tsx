@@ -15,6 +15,9 @@ export interface CategoryFilters {
   sort: CategorySortOption
   year: number | null
   only4k: boolean
+  kpRatingFrom: number | null
+  imdbRatingFrom: number | null
+  finishedOnly: boolean
 }
 
 export const DEFAULT_CATEGORY_FILTERS: CategoryFilters = {
@@ -22,7 +25,10 @@ export const DEFAULT_CATEGORY_FILTERS: CategoryFilters = {
   countryId: null,
   sort: 'created-',
   year: null,
-  only4k: false
+  only4k: false,
+  kpRatingFrom: null,
+  imdbRatingFrom: null,
+  finishedOnly: false
 }
 
 interface CategoryScreenProps {
@@ -48,13 +54,14 @@ const CATEGORY_PARAMS: Record<string, ItemsParams> = {
 }
 
 const ITEMS_PER_PAGE = 48
-const FILTER_COUNT = 5
 const CURRENT_YEAR = new Date().getFullYear()
 const YEAR_OPTIONS = Array.from({ length: CURRENT_YEAR - 1969 }, (_, i) => CURRENT_YEAR - i)
+const RATING_OPTIONS = [6, 7, 8] as const
+const SERIES_TYPES = new Set(['serial', 'docuserial', 'tvshow'])
 
 type FocusArea = 'filter' | 'grid'
 type SortOption = CategorySortOption
-type FilterKind = 'genre' | 'country' | 'sort' | 'year' | 'quality'
+type FilterKind = 'genre' | 'country' | 'sort' | 'year' | 'quality' | 'kp' | 'imdb' | 'finished'
 
 function resolveInitialFilters(
   initialFilters?: CategoryFilters | null,
@@ -81,7 +88,17 @@ const SORT_OPTIONS: { id: SortOption; labelKey: 'sortNewest' | 'sortRating' | 's
   { id: 'title', labelKey: 'sortTitle' },
 ]
 
-const FILTER_KINDS: FilterKind[] = ['genre', 'country', 'sort', 'year', 'quality']
+const BASE_FILTER_KINDS: FilterKind[] = ['genre', 'country', 'sort', 'year', 'quality', 'kp', 'imdb']
+
+function ratingLabel(
+  value: number | null,
+  t: { ratingAny: string; ratingFrom6: string; ratingFrom7: string; ratingFrom8: string }
+): string {
+  if (value === 6) return t.ratingFrom6
+  if (value === 7) return t.ratingFrom7
+  if (value === 8) return t.ratingFrom8
+  return t.ratingAny
+}
 
 export function CategoryScreen({
   categoryId,
@@ -119,13 +136,22 @@ export function CategoryScreen({
   const [selectedSort, setSelectedSort] = useState<SortOption>(resolvedInitial.sort)
   const [selectedYear, setSelectedYear] = useState<number | null>(resolvedInitial.year)
   const [only4k, setOnly4k] = useState(resolvedInitial.only4k)
+  const [kpRatingFrom, setKpRatingFrom] = useState<number | null>(resolvedInitial.kpRatingFrom)
+  const [imdbRatingFrom, setImdbRatingFrom] = useState<number | null>(resolvedInitial.imdbRatingFrom)
+  const [finishedOnly, setFinishedOnly] = useState(resolvedInitial.finishedOnly)
   const [focusArea, setFocusArea] = useState<FocusArea>('grid')
   const [filterFocusIndex, setFilterFocusIndex] = useState(0)
   const [filterDropdownOpen, setFilterDropdownOpen] = useState(false)
   const [dropdownFocusIndex, setDropdownFocusIndex] = useState(0)
 
   const showFilters = categoryId !== 'watching' && !!CATEGORY_PARAMS[categoryId]
-  const activeFilter = FILTER_KINDS[filterFocusIndex]
+  const supportsFinished = SERIES_TYPES.has(CATEGORY_PARAMS[categoryId]?.type || '')
+  const filterKinds = useMemo(
+    () => (supportsFinished ? [...BASE_FILTER_KINDS, 'finished' as const] : BASE_FILTER_KINDS),
+    [supportsFinished]
+  )
+  const filterCount = filterKinds.length
+  const activeFilter = filterKinds[filterFocusIndex] || 'genre'
 
   useEffect(() => {
     onFocusChangeRef.current?.(focusedIndex)
@@ -137,9 +163,18 @@ export function CategoryScreen({
       countryId: selectedCountry,
       sort: selectedSort,
       year: selectedYear,
-      only4k
+      only4k,
+      kpRatingFrom,
+      imdbRatingFrom,
+      finishedOnly: supportsFinished ? finishedOnly : false
     })
-  }, [selectedGenre, selectedCountry, selectedSort, selectedYear, only4k])
+  }, [selectedGenre, selectedCountry, selectedSort, selectedYear, only4k, kpRatingFrom, imdbRatingFrom, finishedOnly, supportsFinished])
+
+  useEffect(() => {
+    if (filterFocusIndex >= filterCount) {
+      setFilterFocusIndex(Math.max(0, filterCount - 1))
+    }
+  }, [filterCount, filterFocusIndex])
 
   useEffect(() => {
     if (showFilters) {
@@ -182,6 +217,9 @@ export function CategoryScreen({
       } else {
         const params = CATEGORY_PARAMS[categoryId]
         if (params) {
+          const conditions: string[] = []
+          if (kpRatingFrom) conditions.push(`kinopoisk_rating>=${kpRatingFrom}`)
+          if (imdbRatingFrom) conditions.push(`imdb_rating>=${imdbRatingFrom}`)
           const filterParams: ItemsParams = {
             ...params,
             page,
@@ -190,7 +228,9 @@ export function CategoryScreen({
             ...(selectedGenre && { genre: selectedGenre }),
             ...(selectedCountry && { country: selectedCountry }),
             ...(selectedYear && { year: String(selectedYear) }),
-            ...(only4k && { quality: '4k' })
+            ...(only4k && { quality: '4k' }),
+            ...(supportsFinished && finishedOnly && { finished: 1 }),
+            ...(conditions.length > 0 && { conditions })
           }
           const response = await getItems(filterParams)
           if (append) {
@@ -207,7 +247,7 @@ export function CategoryScreen({
       setLoading(false)
       setLoadingMore(false)
     }
-  }, [categoryId, selectedGenre, selectedCountry, selectedSort, selectedYear, only4k])
+  }, [categoryId, selectedGenre, selectedCountry, selectedSort, selectedYear, only4k, kpRatingFrom, imdbRatingFrom, finishedOnly, supportsFinished])
 
   useEffect(() => {
     const categoryChanged = prevCategoryIdRef.current !== categoryId
@@ -223,6 +263,9 @@ export function CategoryScreen({
       setSelectedSort(next.sort)
       setSelectedYear(next.year)
       setOnly4k(next.only4k)
+      setKpRatingFrom(next.kpRatingFrom)
+      setImdbRatingFrom(next.imdbRatingFrom)
+      setFinishedOnly(next.finishedOnly)
       setFocusArea('grid')
       setFilterFocusIndex(0)
       setFilterDropdownOpen(false)
@@ -235,7 +278,7 @@ export function CategoryScreen({
     // initialFilters / initialGenreId are only applied when the category changes;
     // otherwise filters stay in local state and are reported via onFiltersChange.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [categoryId, selectedGenre, selectedCountry, selectedSort, selectedYear, only4k, loadItems])
+  }, [categoryId, selectedGenre, selectedCountry, selectedSort, selectedYear, only4k, kpRatingFrom, imdbRatingFrom, finishedOnly, loadItems])
 
   const loadMore = useCallback(() => {
     if (!loadingMore && hasMore) {
@@ -252,6 +295,9 @@ export function CategoryScreen({
       case 'sort': return SORT_OPTIONS.length
       case 'year': return YEAR_OPTIONS.length + 1
       case 'quality': return 2
+      case 'kp':
+      case 'imdb': return RATING_OPTIONS.length + 1
+      case 'finished': return 2
       default: return 0
     }
   }, [activeFilter, genres.length, countries.length])
@@ -273,6 +319,15 @@ export function CategoryScreen({
       case 'quality':
         setOnly4k(index === 1)
         break
+      case 'kp':
+        setKpRatingFrom(index === 0 ? null : RATING_OPTIONS[index - 1] || null)
+        break
+      case 'imdb':
+        setImdbRatingFrom(index === 0 ? null : RATING_OPTIONS[index - 1] || null)
+        break
+      case 'finished':
+        setFinishedOnly(index === 1)
+        break
     }
     setFilterDropdownOpen(false)
   }, [activeFilter, genres, countries])
@@ -289,10 +344,16 @@ export function CategoryScreen({
       initial = selectedYear ? YEAR_OPTIONS.indexOf(selectedYear) + 1 : 0
     } else if (kind === 'quality') {
       initial = only4k ? 1 : 0
+    } else if (kind === 'kp') {
+      initial = kpRatingFrom ? RATING_OPTIONS.indexOf(kpRatingFrom as 6 | 7 | 8) + 1 : 0
+    } else if (kind === 'imdb') {
+      initial = imdbRatingFrom ? RATING_OPTIONS.indexOf(imdbRatingFrom as 6 | 7 | 8) + 1 : 0
+    } else if (kind === 'finished') {
+      initial = finishedOnly ? 1 : 0
     }
     setDropdownFocusIndex(Math.max(0, initial))
     setFilterDropdownOpen(true)
-  }, [activeFilter, selectedGenre, selectedCountry, selectedSort, selectedYear, only4k, genres, countries])
+  }, [activeFilter, selectedGenre, selectedCountry, selectedSort, selectedYear, only4k, kpRatingFrom, imdbRatingFrom, finishedOnly, genres, countries])
 
   const handlers = useMemo(() => {
     const itemCount = items.length
@@ -317,7 +378,7 @@ export function CategoryScreen({
             onNavigateToMenu()
           }
         },
-        onRight: () => setFilterFocusIndex(prev => Math.min(FILTER_COUNT - 1, prev + 1)),
+        onRight: () => setFilterFocusIndex(prev => Math.min(filterCount - 1, prev + 1)),
         onDown: () => setFocusArea('grid'),
         onEnter: openDropdown
       }
@@ -357,7 +418,7 @@ export function CategoryScreen({
         }
       }
     }
-  }, [items, focusedIndex, onNavigateToMenu, onSelectItem, itemsPerRow, hasMore, loadMore, focusArea, filterFocusIndex, filterDropdownOpen, dropdownFocusIndex, dropdownOptionCount, applyDropdownSelection, openDropdown, showFilters])
+  }, [items, focusedIndex, onNavigateToMenu, onSelectItem, itemsPerRow, hasMore, loadMore, focusArea, filterFocusIndex, filterCount, filterDropdownOpen, dropdownFocusIndex, dropdownOptionCount, applyDropdownSelection, openDropdown, showFilters])
 
   useKeyboardNavigation(handlers, isActive)
 
@@ -442,12 +503,35 @@ export function CategoryScreen({
         </div>
       )
     }
-    return (
-      <div class="category-filter-dropdown">
-        <div class={`category-filter-option ${dropdownFocusIndex === 0 ? 'focused' : ''}`}>{t.allQualities}</div>
-        <div class={`category-filter-option ${dropdownFocusIndex === 1 ? 'focused' : ''}`}>{t.filter4k}</div>
-      </div>
-    )
+    if (kind === 'quality') {
+      return (
+        <div class="category-filter-dropdown">
+          <div class={`category-filter-option ${dropdownFocusIndex === 0 ? 'focused' : ''}`}>{t.allQualities}</div>
+          <div class={`category-filter-option ${dropdownFocusIndex === 1 ? 'focused' : ''}`}>{t.filter4k}</div>
+        </div>
+      )
+    }
+    if (kind === 'kp' || kind === 'imdb') {
+      return (
+        <div class="category-filter-dropdown">
+          <div class={`category-filter-option ${dropdownFocusIndex === 0 ? 'focused' : ''}`}>{t.ratingAny}</div>
+          {RATING_OPTIONS.map((rating, idx) => (
+            <div key={rating} class={`category-filter-option ${dropdownFocusIndex === idx + 1 ? 'focused' : ''}`}>
+              {ratingLabel(rating, t)}
+            </div>
+          ))}
+        </div>
+      )
+    }
+    if (kind === 'finished') {
+      return (
+        <div class="category-filter-dropdown">
+          <div class={`category-filter-option ${dropdownFocusIndex === 0 ? 'focused' : ''}`}>{t.finishedAny}</div>
+          <div class={`category-filter-option ${dropdownFocusIndex === 1 ? 'focused' : ''}`}>{t.finishedOnly}</div>
+        </div>
+      )
+    }
+    return null
   }
 
   const filterDefs: { kind: FilterKind; label: string; value: string }[] = [
@@ -456,6 +540,11 @@ export function CategoryScreen({
     { kind: 'sort', label: t.sort, value: selectedSortLabel },
     { kind: 'year', label: t.year, value: selectedYear ? String(selectedYear) : t.allYears },
     { kind: 'quality', label: t.quality, value: only4k ? t.filter4k : t.allQualities },
+    { kind: 'kp', label: t.filterKp, value: ratingLabel(kpRatingFrom, t) },
+    { kind: 'imdb', label: t.filterImdb, value: ratingLabel(imdbRatingFrom, t) },
+    ...(supportsFinished
+      ? [{ kind: 'finished' as const, label: t.filterFinished, value: finishedOnly ? t.finishedOnly : t.finishedAny }]
+      : []),
   ]
 
   return (

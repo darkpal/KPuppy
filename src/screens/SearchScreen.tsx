@@ -88,6 +88,8 @@ export function SearchScreen({
   const [resultIndex, setResultIndex] = useState(initialFocusIndex)
   const [hasSearched, setHasSearched] = useState(false)
   const [resultsPerRow, setResultsPerRow] = useState(6)
+  /** Pointer hover must not auto-scroll — near the edge it cascades endlessly. */
+  const [scrollWithFocus, setScrollWithFocus] = useState(true)
   const searchTimeoutRef = useRef<number | null>(null)
   const skipDebounceRef = useRef(resolved.query.trim().length >= 2)
   const resultsContainerRef = useRef<HTMLDivElement>(null)
@@ -315,7 +317,10 @@ export function SearchScreen({
         itemCount: results.length,
         itemsPerRow: resultsPerRow,
         focusedIndex: resultIndex,
-        setFocusedIndex: setResultIndex,
+        setFocusedIndex: (index) => {
+          setScrollWithFocus(true)
+          setResultIndex(index)
+        },
         onSelect: (index) => {
           const item = results[index]
           if (item) {
@@ -335,7 +340,8 @@ export function SearchScreen({
     containerRef: resultsContainerRef,
     focusedIndex: focusArea === 'results' ? resultIndex : null,
     itemSelector: '[data-result-index]',
-    itemCount: results.length
+    itemCount: results.length,
+    enabled: scrollWithFocus
   })
 
   const selectedTypeName = useMemo(() => {
@@ -477,6 +483,7 @@ export function SearchScreen({
                   movie={item}
                   focused={focusArea === 'results' && resultIndex === index}
                   onHover={() => {
+                    setScrollWithFocus(false)
                     setFocusArea('results')
                     setResultIndex(index)
                   }}

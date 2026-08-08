@@ -6,7 +6,7 @@ import { saveAudioPreference, getAudioTrackName } from '../storage'
 import { KEY_CODES } from '../hooks'
 import { useI18n } from '../i18n'
 import { convertSrtUrlToVtt, isSrtUrl, sortSubtitleTracks, subtitleLanguageLabel } from '../utils/subtitles'
-import type { EpisodeNavigationTarget } from '../utils/episodes'
+import type { EpisodeNavigationTarget, SeasonSummary } from '../utils/episodes'
 import {
   collectLiveHlsDiagnostics,
   createLiveHls,
@@ -41,8 +41,16 @@ function IconQuality() {
   )
 }
 
-/** LG Magic Remote colored keys: red=1, green=2, yellow=3 dots. */
-function RemoteKeyDots({ count }: { count: 1 | 2 | 3 }) {
+function IconEpisodes() {
+  return (
+    <svg class="player-hint-icon" viewBox="0 0 24 24" aria-hidden="true">
+      <path fill="currentColor" d="M4 5h16a1 1 0 0 1 1 1v3H3V6a1 1 0 0 1 1-1zm-1 6h18v7a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-7zm4 2v3h2v-3H7zm4 0v3h6v-3h-6z" />
+    </svg>
+  )
+}
+
+/** LG Magic Remote colored keys: red=1, green=2, yellow=3, blue=4 dots. */
+function RemoteKeyDots({ count }: { count: 1 | 2 | 3 | 4 }) {
   return (
     <span class={`player-hint-key-dots dots-${count}`} aria-hidden="true">
       {Array.from({ length: count }, (_, i) => (
@@ -73,21 +81,49 @@ export interface PlayerProps {
   itemId?: number
   previousEpisode?: EpisodeNavigationTarget
   nextEpisode?: EpisodeNavigationTarget
+  season?: number
+  episode?: number
+  seasonsSummary?: SeasonSummary[]
   onPlayPreviousEpisode?: () => void
   onPlayNextEpisode?: () => void
+  onPlayEpisode?: (season: number, episode: number) => void
   onBack: () => void
   onTimeUpdate?: (time: number) => void
 }
 
 interface ControlsState {
   visible: boolean
-  activePanel: 'none' | 'audio' | 'subtitles' | 'quality'
+  activePanel: 'none' | 'audio' | 'subtitles' | 'quality' | 'episodes'
   selectedAudioIndex: number
   selectedSubtitleIndex: number
   selectedQuality: string | null
 }
 
+interface EpisodesPanelFocus {
+  seasonIndex: number
+  episodeIndex: number
+}
+
 type PrimaryControl = 'previous' | 'play' | 'next'
+
+function resolveEpisodesFocus(
+  seasonsSummary: SeasonSummary[] | undefined,
+  season?: number,
+  episode?: number
+): EpisodesPanelFocus {
+  if (!seasonsSummary || seasonsSummary.length === 0) {
+    return { seasonIndex: 0, episodeIndex: 0 }
+  }
+
+  let seasonIndex = seasonsSummary.findIndex(s => s.number === season)
+  if (seasonIndex < 0) seasonIndex = 0
+
+  const episodes = seasonsSummary[seasonIndex]?.episodes || []
+  let episodeIndex = episodes.findIndex(ep => ep.number === episode)
+  if (episodeIndex < 0) episodeIndex = 0
+
+  return { seasonIndex, episodeIndex }
+}
 
 export function PlayerScreen({
   url,
@@ -103,8 +139,12 @@ export function PlayerScreen({
   itemId = 0,
   previousEpisode,
   nextEpisode,
+  season,
+  episode,
+  seasonsSummary,
   onPlayPreviousEpisode,
   onPlayNextEpisode,
+  onPlayEpisode,
   onBack,
   onTimeUpdate
 }: PlayerProps) {
@@ -155,7 +195,11 @@ export function PlayerScreen({
   const [hoverPreview, setHoverPreview] = useState<{ percent: number; time: number } | null>(null)
   const [primaryControlsActive, setPrimaryControlsActive] = useState(false)
   const [primaryControlFocus, setPrimaryControlFocus] = useState<PrimaryControl>('play')
+  const [episodesFocus, setEpisodesFocus] = useState<EpisodesPanelFocus>(() => (
+    resolveEpisodesFocus(seasonsSummary, season, episode)
+  ))
 
+  const hasEpisodesPanel = Boolean(seasonsSummary && seasonsSummary.length > 0)
   const selectableSubs = useMemo(
     () => sortSubtitleTracks(subtitles.filter(sub => Boolean(sub.url))),
     [subtitles]
@@ -187,7 +231,8 @@ export function PlayerScreen({
     }))
     setPrimaryControlsActive(false)
     setPrimaryControlFocus('play')
-  }, [url, initialAudioIndex, audios.length, initialQuality, availableQualities[0]])
+    setEpisodesFocus(resolveEpisodesFocus(seasonsSummary, season, episode))
+  }, [url, initialAudioIndex, audios.length, initialQuality, availableQualities[0], seasonsSummary, season, episode])
 
   const flushTime = useCallback((time?: number) => {
     const video = videoRef.current
@@ -518,6 +563,14 @@ export function PlayerScreen({
     }
   }, [url, reloadStream, audios, itemId])
 
+  // Persist restored preference so the same voice sticks across episodes even if
+  // the user never opens the audio panel on this playback.
+  useEffect(() => {
+    if (itemId <= 0 || initialAudioIndex <= 0) return
+    const selected = audios[initialAudioIndex]
+    if (selected) saveAudioPreference(itemId, selected)
+  }, [itemId, initialAudioIndex, audios])
+
   const flushAudioSelection = useCallback(() => {
     clearAudioApplyTimer()
     const pending = pendingAudioIndexRef.current
@@ -562,7 +615,7 @@ export function PlayerScreen({
     } else if (itemRect.bottom > listRect.bottom) {
       list.scrollTop += itemRect.bottom - listRect.bottom
     }
-  }, [controls.activePanel, controls.selectedSubtitleIndex, controls.selectedAudioIndex, controls.selectedQuality])
+  }, [controls.activePanel, controls.selectedSubtitleIndex, controls.selectedAudioIndex, controls.selectedQuality, episodesFocus])
 
   const handleSurfaceClick = useCallback((event: JSX.TargetedMouseEvent<HTMLDivElement>) => {
     const target = event.target as HTMLElement | null
@@ -730,6 +783,54 @@ export function PlayerScreen({
     showControls()
   }, [availableQualities.length, showControls, controls.activePanel, flushAudioSelection, flushSubtitleSelection])
 
+  const openEpisodesPanel = useCallback(() => {
+    if (!hasEpisodesPanel) return
+    if (controls.activePanel === 'audio') flushAudioSelection()
+    if (controls.activePanel === 'subtitles') flushSubtitleSelection()
+    if (controls.activePanel === 'episodes') {
+      setControls(prev => ({ ...prev, activePanel: 'none' }))
+    } else {
+      setEpisodesFocus(resolveEpisodesFocus(seasonsSummary, season, episode))
+      setControls(prev => ({ ...prev, visible: true, activePanel: 'episodes' }))
+    }
+    showControls()
+  }, [
+    hasEpisodesPanel,
+    showControls,
+    controls.activePanel,
+    flushAudioSelection,
+    flushSubtitleSelection,
+    seasonsSummary,
+    season,
+    episode
+  ])
+
+  const playSelectedEpisode = useCallback(() => {
+    if (!seasonsSummary || !onPlayEpisode) return
+    const seasonSummary = seasonsSummary[episodesFocus.seasonIndex]
+    const episodeSummary = seasonSummary?.episodes[episodesFocus.episodeIndex]
+    if (!seasonSummary || !episodeSummary) return
+    videoRef.current?.pause()
+    flushTime()
+    onPlayEpisode(seasonSummary.number, episodeSummary.number)
+  }, [seasonsSummary, onPlayEpisode, episodesFocus, flushTime])
+
+  const selectEpisodesSeason = useCallback((seasonIndex: number) => {
+    if (!seasonsSummary) return
+    const nextSeason = seasonsSummary[seasonIndex]
+    if (!nextSeason) return
+    setEpisodesFocus(prev => ({
+      seasonIndex,
+      episodeIndex: Math.min(prev.episodeIndex, Math.max(0, nextSeason.episodes.length - 1))
+    }))
+    showControls()
+  }, [seasonsSummary, showControls])
+
+  const selectEpisodesEpisode = useCallback((episodeIndex: number) => {
+    setEpisodesFocus(prev => ({ ...prev, episodeIndex }))
+    showControls()
+  }, [showControls])
+
   useEffect(() => {
     const video = videoRef.current
     if (!video) return
@@ -876,6 +977,63 @@ export function PlayerScreen({
               openSubtitlesPanel()
               e.preventDefault()
               break
+            case KEY_CODES.BLUE:
+              openEpisodesPanel()
+              e.preventDefault()
+              break
+          }
+          return
+        }
+
+        if (controls.activePanel === 'episodes') {
+          const seasonCount = seasonsSummary?.length || 0
+          const episodeCount = seasonsSummary?.[episodesFocus.seasonIndex]?.episodes.length || 0
+          switch (e.keyCode) {
+            case KEY_CODES.UP:
+              if (episodesFocus.episodeIndex > 0) {
+                selectEpisodesEpisode(episodesFocus.episodeIndex - 1)
+              }
+              e.preventDefault()
+              break
+            case KEY_CODES.DOWN:
+              if (episodesFocus.episodeIndex < episodeCount - 1) {
+                selectEpisodesEpisode(episodesFocus.episodeIndex + 1)
+              }
+              e.preventDefault()
+              break
+            case KEY_CODES.LEFT:
+              if (episodesFocus.seasonIndex > 0) {
+                selectEpisodesSeason(episodesFocus.seasonIndex - 1)
+              }
+              e.preventDefault()
+              break
+            case KEY_CODES.RIGHT:
+              if (episodesFocus.seasonIndex < seasonCount - 1) {
+                selectEpisodesSeason(episodesFocus.seasonIndex + 1)
+              }
+              e.preventDefault()
+              break
+            case KEY_CODES.ENTER:
+              playSelectedEpisode()
+              e.preventDefault()
+              break
+            case KEY_CODES.BACK:
+            case KEY_CODES.BLUE:
+              setControls(prev => ({ ...prev, activePanel: 'none' }))
+              e.preventDefault()
+              break
+            case KEY_CODES.RED:
+              openQualityPanel()
+              e.preventDefault()
+              break
+            case KEY_CODES.GREEN:
+              openAudioPanel()
+              e.preventDefault()
+              break
+            case KEY_CODES.YELLOW:
+              openSubtitlesPanel()
+              e.preventDefault()
+              break
           }
           return
         }
@@ -933,6 +1091,12 @@ export function PlayerScreen({
             } else {
               openSubtitlesPanel()
             }
+            e.preventDefault()
+            break
+          case KEY_CODES.BLUE:
+            if (controls.activePanel === 'audio') flushAudioSelection()
+            if (controls.activePanel === 'subtitles') flushSubtitleSelection()
+            openEpisodesPanel()
             e.preventDefault()
             break
         }
@@ -1029,8 +1193,8 @@ export function PlayerScreen({
           e.preventDefault()
           break
         case KEY_CODES.BLUE:
-          if (onPlayNextEpisode) {
-            playAdjacentEpisode(onPlayNextEpisode)
+          if (hasEpisodesPanel) {
+            openEpisodesPanel()
             e.preventDefault()
           }
           break
@@ -1057,6 +1221,13 @@ export function PlayerScreen({
     openAudioPanel,
     openSubtitlesPanel,
     openQualityPanel,
+    openEpisodesPanel,
+    playSelectedEpisode,
+    selectEpisodesSeason,
+    selectEpisodesEpisode,
+    seasonsSummary,
+    episodesFocus,
+    hasEpisodesPanel,
     primaryControlsActive,
     primaryControlFocus,
     onPlayPreviousEpisode,
@@ -1244,6 +1415,20 @@ export function PlayerScreen({
                     <span class="player-hint-label">{t.subtitles}</span>
                   </button>
                 )}
+                {hasEpisodesPanel && (
+                  <button
+                    type="button"
+                    class="player-hint player-hint-episodes"
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      openEpisodesPanel()
+                    }}
+                  >
+                    <RemoteKeyDots count={4} />
+                    <IconEpisodes />
+                    <span class="player-hint-label">{t.episodes}</span>
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -1322,6 +1507,96 @@ export function PlayerScreen({
                     {q}
                   </button>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {controls.activePanel === 'episodes' && seasonsSummary && (
+            <div class="player-panel player-panel-episodes" onClick={(event) => event.stopPropagation()}>
+              <h2 class="player-panel-title">{t.episodes}</h2>
+              {seasonsSummary.length > 1 && (
+                <div class="player-episodes-seasons">
+                  {seasonsSummary.map((seasonSummary, idx) => (
+                    <button
+                      type="button"
+                      key={seasonSummary.number}
+                      class={`player-episodes-season-chip ${idx === episodesFocus.seasonIndex ? 'selected' : ''}`}
+                      onMouseEnter={() => showControls()}
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        selectEpisodesSeason(idx)
+                      }}
+                    >
+                      {t.season} {seasonSummary.number}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div class="player-panel-list" ref={panelListRef}>
+                {(seasonsSummary[episodesFocus.seasonIndex]?.episodes || []).map((episodeSummary, idx) => {
+                  const isCurrent = (
+                    seasonsSummary[episodesFocus.seasonIndex]?.number === season
+                    && episodeSummary.number === episode
+                  )
+                  const isSelected = idx === episodesFocus.episodeIndex
+                  const watchedTime = episodeSummary.watching?.time
+                  const progressPercent = (
+                    episodeSummary.duration
+                    && watchedTime
+                    && episodeSummary.duration > 0
+                  )
+                    ? Math.min(100, (watchedTime / episodeSummary.duration) * 100)
+                    : 0
+                  const showProgress = Boolean(
+                    episodeSummary.duration
+                    && watchedTime
+                    && watchedTime > 0
+                    && episodeSummary.watched !== 1
+                    && episodeSummary.watching?.status !== 1
+                  )
+
+                  return (
+                    <button
+                      type="button"
+                      key={episodeSummary.number}
+                      class={`player-panel-item player-episode-item ${isSelected ? 'selected' : ''} ${isCurrent ? 'current' : ''}`}
+                      onMouseEnter={() => {
+                        selectEpisodesEpisode(idx)
+                      }}
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        setEpisodesFocus(prev => ({ ...prev, episodeIndex: idx }))
+                        videoRef.current?.pause()
+                        flushTime()
+                        onPlayEpisode?.(
+                          seasonsSummary[episodesFocus.seasonIndex].number,
+                          episodeSummary.number
+                        )
+                      }}
+                    >
+                      <span class="player-episode-item-main">
+                        <span class="player-episode-item-title">
+                          {episodeSummary.number}. {episodeSummary.title || `${t.episode} ${episodeSummary.number}`}
+                        </span>
+                        {episodeSummary.duration != null && episodeSummary.duration > 0 && (
+                          <span class="player-episode-item-duration">
+                            {showProgress && watchedTime != null
+                              ? `${formatTime(watchedTime)} / ${formatTime(episodeSummary.duration)}`
+                              : formatTime(episodeSummary.duration)}
+                          </span>
+                        )}
+                      </span>
+                      {showProgress && (
+                        <span class="player-episode-progress" aria-hidden="true">
+                          <span
+                            class="player-episode-progress-fill"
+                            style={{ width: `${progressPercent}%` }}
+                          />
+                        </span>
+                      )}
+                    </button>
+                  )
+                })}
               </div>
             </div>
           )}

@@ -67,6 +67,7 @@ export interface Translations {
   seasons: string
   season: string
   episode: string
+  episodes: string
   previousEpisode: string
   nextEpisode: string
   director: string
@@ -188,6 +189,15 @@ export interface Translations {
   allYears: string
   filter4k: string
   allQualities: string
+  filterKp: string
+  filterImdb: string
+  ratingAny: string
+  ratingFrom6: string
+  ratingFrom7: string
+  ratingFrom8: string
+  filterFinished: string
+  finishedAny: string
+  finishedOnly: string
   searchField: string
   searchFieldAny: string
   searchFieldTitle: string
@@ -253,6 +263,7 @@ const en: Translations = {
   seasons: 'Seasons',
   season: 'Season',
   episode: 'Episode',
+  episodes: 'Episodes',
   previousEpisode: 'Previous',
   nextEpisode: 'Next',
   director: 'Director',
@@ -360,6 +371,15 @@ const en: Translations = {
   allYears: 'All Years',
   filter4k: '4K only',
   allQualities: 'All Qualities',
+  filterKp: 'Kinopoisk',
+  filterImdb: 'IMDb',
+  ratingAny: 'Any',
+  ratingFrom6: '6+',
+  ratingFrom7: '7+',
+  ratingFrom8: '8+',
+  filterFinished: 'Status',
+  finishedAny: 'All',
+  finishedOnly: 'Finished',
   searchField: 'Search in',
   searchFieldAny: 'Anywhere',
   searchFieldTitle: 'Title',
@@ -424,6 +444,7 @@ const ru: Translations = {
   seasons: 'Сезоны',
   season: 'Сезон',
   episode: 'Серия',
+  episodes: 'Серии',
   previousEpisode: 'Предыдущая',
   nextEpisode: 'Следующая',
   director: 'Режиссёр',
@@ -531,6 +552,15 @@ const ru: Translations = {
   allYears: 'Все годы',
   filter4k: 'Только 4K',
   allQualities: 'Любое качество',
+  filterKp: 'Кинопоиск',
+  filterImdb: 'IMDb',
+  ratingAny: 'Любой',
+  ratingFrom6: 'от 6',
+  ratingFrom7: 'от 7',
+  ratingFrom8: 'от 8',
+  filterFinished: 'Статус',
+  finishedAny: 'Все',
+  finishedOnly: 'Завершённые',
   searchField: 'Искать в',
   searchFieldAny: 'Везде',
   searchFieldTitle: 'Название',
@@ -595,6 +625,7 @@ const de: Translations = {
   seasons: 'Staffeln',
   season: 'Staffel',
   episode: 'Folge',
+  episodes: 'Folgen',
   previousEpisode: 'Vorherige',
   nextEpisode: 'Nächste',
   director: 'Regisseur',
@@ -702,6 +733,15 @@ const de: Translations = {
   allYears: 'Alle Jahre',
   filter4k: 'Nur 4K',
   allQualities: 'Alle Qualitäten',
+  filterKp: 'Kinopoisk',
+  filterImdb: 'IMDb',
+  ratingAny: 'Beliebig',
+  ratingFrom6: 'ab 6',
+  ratingFrom7: 'ab 7',
+  ratingFrom8: 'ab 8',
+  filterFinished: 'Status',
+  finishedAny: 'Alle',
+  finishedOnly: 'Abgeschlossen',
   searchField: 'Suchen in',
   searchFieldAny: 'Überall',
   searchFieldTitle: 'Titel',
@@ -766,6 +806,7 @@ const uk: Translations = {
   seasons: 'Сезони',
   season: 'Сезон',
   episode: 'Серія',
+  episodes: 'Серії',
   previousEpisode: 'Попередня',
   nextEpisode: 'Наступна',
   director: 'Режисер',
@@ -873,6 +914,15 @@ const uk: Translations = {
   allYears: 'Усі роки',
   filter4k: 'Лише 4K',
   allQualities: 'Будь-яка якість',
+  filterKp: 'Кінопошук',
+  filterImdb: 'IMDb',
+  ratingAny: 'Будь-який',
+  ratingFrom6: 'від 6',
+  ratingFrom7: 'від 7',
+  ratingFrom8: 'від 8',
+  filterFinished: 'Статус',
+  finishedAny: 'Усі',
+  finishedOnly: 'Завершені',
   searchField: 'Шукати в',
   searchFieldAny: 'Скрізь',
   searchFieldTitle: 'Назва',

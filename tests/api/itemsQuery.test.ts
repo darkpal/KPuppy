@@ -15,6 +15,19 @@ describe('buildItemsQuery', () => {
       'type=movie&sort=views-&page=0&perpage=20&conditions%5B0%5D=created%3E%3D1710000000'
     )
   })
+
+  it('encodes rating conditions, quality and finished', () => {
+    expect(
+      buildItemsQuery({
+        type: 'serial',
+        quality: '4k',
+        finished: 1,
+        conditions: ['kinopoisk_rating>=7', 'imdb_rating>=6']
+      })
+    ).toBe(
+      'type=serial&quality=4k&finished=1&conditions%5B0%5D=kinopoisk_rating%3E%3D7&conditions%5B1%5D=imdb_rating%3E%3D6'
+    )
+  })
 })
 
 describe('monthAgoUnix', () => {

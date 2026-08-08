@@ -7,6 +7,7 @@ import { useI18n } from '../i18n'
 import { ItemDetails } from '../components/ItemDetails'
 import { SimilarItems } from '../components/SimilarItems'
 import { FolderDialog } from '../components/FolderDialog'
+import { getContinueEpisode } from '../utils/episodes'
 import thumbUpIcon from '../assets/thumb-up.svg'
 import '../styles/item.css'
 
@@ -219,8 +220,8 @@ export function ItemScreen({ itemId, preview = null, onBack, onPlay, onPlayTrail
         if (cancelled) return
         window.clearTimeout(safetyTimer)
 
-        const hasSeries = data.seasons && data.seasons.length > 0
-        const newFocusArea: FocusArea = hasSeries ? 'seasons' : 'play'
+        const hasSeries = Boolean(data.seasons && data.seasons.length > 0)
+        const newFocusArea: FocusArea = 'play'
 
         const files = data.videos?.[0]?.files || data.seasons?.[0]?.episodes?.[0]?.files
         const available = getAvailableQualities(files)
@@ -319,7 +320,12 @@ export function ItemScreen({ itemId, preview = null, onBack, onPlay, onPlayTrail
   const subtitles = videoData?.subtitles || []
   const availableQualities = getAvailableQualities(files)
 
-  const handlePlayOrSelect = useCallback(() => {
+  const continueEpisode = useMemo(
+    () => (item?.seasons?.length ? getContinueEpisode(item.seasons) : null),
+    [item?.seasons]
+  )
+
+  const handleContinuePlay = useCallback(() => {
     if (!item) {
       if (!preview) return
       const seriesLike = preview.type === 'serial' || preview.type === 'docuserial' || preview.type === 'tvshow'
@@ -327,22 +333,23 @@ export function ItemScreen({ itemId, preview = null, onBack, onPlay, onPlayTrail
       else onPlay(itemId)
       return
     }
-    const hasSeries = item.seasons && item.seasons.length > 0
-
-    if (focusArea === 'play') {
-      const options: PlayOptions = {
-        quality: selectedQuality || undefined
-      }
-      if (hasSeries) {
-        const season = item.seasons![0]
-        onPlay(itemId, season.number, season.episodes[0]?.number || 1, options)
-      } else {
-        onPlay(itemId, undefined, undefined, options)
-      }
-    } else if (focusArea === 'seasons') {
-      onSelectSeries(itemId)
+    const options: PlayOptions = {
+      quality: selectedQuality || undefined
     }
-  }, [item, preview, focusArea, itemId, onPlay, onSelectSeries, selectedQuality])
+    if (continueEpisode) {
+      onPlay(itemId, continueEpisode.season, continueEpisode.episode, options)
+    } else {
+      onPlay(itemId, undefined, undefined, options)
+    }
+  }, [item, preview, itemId, onPlay, onSelectSeries, selectedQuality, continueEpisode])
+
+  const handlePlayOrSelect = useCallback(() => {
+    if (focusArea === 'seasons') {
+      onSelectSeries(itemId)
+      return
+    }
+    handleContinuePlay()
+  }, [focusArea, itemId, onSelectSeries, handleContinuePlay])
 
   const handleOpenFolderDialog = useCallback(async () => {
     if (watchlistLoading) return
@@ -423,9 +430,8 @@ export function ItemScreen({ itemId, preview = null, onBack, onPlay, onPlayTrail
   }, [cast.length])
 
   const closeDetails = useCallback(() => {
-    const primaryButton: FocusArea = item?.seasons?.length ? 'seasons' : 'play'
-    dispatch({ type: 'CLOSE_DETAILS', focusArea: primaryButton })
-  }, [item?.seasons?.length])
+    dispatch({ type: 'CLOSE_DETAILS', focusArea: 'play' })
+  }, [])
 
   useEffect(() => {
     if (detailsExpanded) scrollDetailsToTop()
@@ -499,7 +505,7 @@ export function ItemScreen({ itemId, preview = null, onBack, onPlay, onPlayTrail
     const hasTrailer = !!item?.trailer?.url
     const hasGenres = genres.length > 0
     const hasCast = activeCast.length > 0
-    const primaryButton: FocusArea = hasSeries ? 'seasons' : 'play'
+    const primaryButton: FocusArea = 'play'
 
     if (showFolderDialog) {
       return {
@@ -658,14 +664,18 @@ export function ItemScreen({ itemId, preview = null, onBack, onPlay, onPlayTrail
         } else if (focusArea === 'watchlist') {
           dispatch({ type: 'SET_FOCUS_AREA', area: hasSeries ? 'watching' : primaryButton })
         } else if (focusArea === 'watching') {
-          dispatch({ type: 'SET_FOCUS_AREA', area: primaryButton })
-        } else if (focusArea === 'play' || focusArea === 'seasons') {
+          dispatch({ type: 'SET_FOCUS_AREA', area: 'seasons' })
+        } else if (focusArea === 'seasons') {
+          dispatch({ type: 'SET_FOCUS_AREA', area: 'play' })
+        } else if (focusArea === 'play') {
           onNavigateToMenu()
         }
       },
       onRight: () => {
-        if (focusArea === 'play' || focusArea === 'seasons') {
-          dispatch({ type: 'SET_FOCUS_AREA', area: hasSeries ? 'watching' : 'watchlist' })
+        if (focusArea === 'play') {
+          dispatch({ type: 'SET_FOCUS_AREA', area: hasSeries ? 'seasons' : 'watchlist' })
+        } else if (focusArea === 'seasons') {
+          dispatch({ type: 'SET_FOCUS_AREA', area: 'watching' })
         } else if (focusArea === 'watching') {
           dispatch({ type: 'SET_FOCUS_AREA', area: 'watchlist' })
         } else if (focusArea === 'watchlist') {
@@ -837,69 +847,70 @@ export function ItemScreen({ itemId, preview = null, onBack, onPlay, onPlayTrail
             )}
 
             <div class="item-actions">
-                {hasSeasons ? (
+                <div class="item-play-container">
                   <button
                     type="button"
-                    class={`item-button item-button-primary ${focusArea === 'seasons' ? 'focused' : ''}`}
+                    class={`item-button item-button-primary ${focusArea === 'play' || focusArea === 'qualitySelect' ? 'focused' : ''}`}
+                    onMouseEnter={() => dispatch({ type: 'SET_FOCUS_AREA', area: 'play' })}
+                    onClick={handleContinuePlay}
+                  >
+                    <span class="item-button-icon">▶</span>
+                    {continueEpisode
+                      ? `${t.menuContinue} · S${continueEpisode.season}E${continueEpisode.episode}`
+                      : t.play}
+                    {!hasSeasons && selectedQuality && (
+                      <span class="item-quality-badge">{selectedQuality}</span>
+                    )}
+                    {!hasSeasons && availableQualities.length > 1 && (
+                      <span
+                        class="item-quality-hint"
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          const currentIdx = availableQualities.indexOf(selectedQuality || '')
+                          dispatch({ type: 'SET_DROPDOWN_FOCUS_INDEX', index: Math.max(0, currentIdx) })
+                          dispatch({ type: 'SET_FOCUS_AREA', area: 'qualitySelect' })
+                        }}
+                      >
+                        ▲
+                      </span>
+                    )}
+                  </button>
+                  {!hasSeasons && focusArea === 'qualitySelect' && (
+                    <>
+                      <div
+                        class="item-dropdown-backdrop"
+                        onClick={() => dispatch({ type: 'SET_FOCUS_AREA', area: 'play' })}
+                      />
+                      <div class="item-dropdown item-dropdown-quality">
+                        {availableQualities.map((q, idx) => (
+                          <div
+                            key={q}
+                            class={`item-dropdown-option ${dropdownFocusIndex === idx ? 'focused' : ''} ${selectedQuality === q ? 'selected' : ''}`}
+                            onMouseEnter={() => dispatch({ type: 'SET_DROPDOWN_FOCUS_INDEX', index: idx })}
+                            onClick={() => {
+                              dispatch({ type: 'SET_SELECTED_QUALITY', quality: q })
+                              dispatch({ type: 'SET_FOCUS_AREA', area: 'play' })
+                            }}
+                          >
+                            {q}
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+                {hasSeasons && (
+                  <button
+                    type="button"
+                    class={`item-button item-button-secondary ${focusArea === 'seasons' ? 'focused' : ''}`}
                     onMouseEnter={() => dispatch({ type: 'SET_FOCUS_AREA', area: 'seasons' })}
-                    onClick={handlePlayOrSelect}
+                    onClick={() => onSelectSeries(itemId)}
                   >
                     <span class="item-button-icon">≡</span>
                     {item?.seasons?.length
                       ? `${t.seasons} (${item.seasons.length})`
                       : t.seasons}
                   </button>
-                ) : (
-                  <div class="item-play-container">
-                    <button
-                      type="button"
-                      class={`item-button item-button-primary ${focusArea === 'play' || focusArea === 'qualitySelect' ? 'focused' : ''}`}
-                      onMouseEnter={() => dispatch({ type: 'SET_FOCUS_AREA', area: 'play' })}
-                      onClick={handlePlayOrSelect}
-                    >
-                      <span class="item-button-icon">▶</span>
-                      {t.play}
-                      {selectedQuality && (
-                        <span class="item-quality-badge">{selectedQuality}</span>
-                      )}
-                      {availableQualities.length > 1 && (
-                        <span
-                          class="item-quality-hint"
-                          onClick={(event) => {
-                            event.stopPropagation()
-                            const currentIdx = availableQualities.indexOf(selectedQuality || '')
-                            dispatch({ type: 'SET_DROPDOWN_FOCUS_INDEX', index: Math.max(0, currentIdx) })
-                            dispatch({ type: 'SET_FOCUS_AREA', area: 'qualitySelect' })
-                          }}
-                        >
-                          ▲
-                        </span>
-                      )}
-                    </button>
-                    {focusArea === 'qualitySelect' && (
-                      <>
-                        <div
-                          class="item-dropdown-backdrop"
-                          onClick={() => dispatch({ type: 'SET_FOCUS_AREA', area: 'play' })}
-                        />
-                        <div class="item-dropdown item-dropdown-quality">
-                          {availableQualities.map((q, idx) => (
-                            <div
-                              key={q}
-                              class={`item-dropdown-option ${dropdownFocusIndex === idx ? 'focused' : ''} ${selectedQuality === q ? 'selected' : ''}`}
-                              onMouseEnter={() => dispatch({ type: 'SET_DROPDOWN_FOCUS_INDEX', index: idx })}
-                              onClick={() => {
-                                dispatch({ type: 'SET_SELECTED_QUALITY', quality: q })
-                                dispatch({ type: 'SET_FOCUS_AREA', area: 'play' })
-                              }}
-                            >
-                              {q}
-                            </div>
-                          ))}
-                        </div>
-                      </>
-                    )}
-                  </div>
                 )}
                 {hasSeasons && (
                   <button

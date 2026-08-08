@@ -42,4 +42,19 @@ describe('audio preference', () => {
     expect(findAudioIndex(audios, { id: 999, name: getAudioTrackName(audios[1]) })).toBe(1)
     expect(findAudioIndex(audios, null)).toBe(0)
   })
+
+  it('matches the same track name across episodes with different track ids', () => {
+    saveAudioPreference(100, {
+      id: 11,
+      lang: 'rus',
+      type: { title: 'Дубляж' },
+      author: { title: 'LostFilm' }
+    })
+    const saved = getSavedAudioPreference(100)
+    const nextEpisodeAudios = [
+      { id: 50, lang: 'eng', type: { title: 'Original' }, author: null },
+      { id: 99, lang: 'rus', type: { title: 'Дубляж' }, author: { title: 'LostFilm' } }
+    ]
+    expect(findAudioIndex(nextEpisodeAudios, saved)).toBe(1)
+  })
 })
