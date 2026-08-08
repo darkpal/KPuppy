@@ -330,6 +330,35 @@ describe('App Navigation', () => {
       })
     })
 
+    it('does not remount SearchScreen while typing in the query field', async () => {
+      renderApp()
+
+      await waitFor(() => {
+        expect(screen.getByText('K')).toBeDefined()
+      })
+
+      fireEvent.keyDown(document, { keyCode: 37 })
+      await waitFor(() => {
+        expect(document.querySelector('.side-menu.expanded')).toBeDefined()
+      })
+      fireEvent.keyDown(document, { keyCode: 40 })
+      fireEvent.keyDown(document, { keyCode: 13 })
+
+      await waitFor(() => {
+        expect(document.querySelector('.search-screen')).not.toBeNull()
+      })
+
+      const input = document.querySelector('.search-query-input') as HTMLInputElement
+      expect(input).not.toBeNull()
+      input.focus()
+      fireEvent.input(input, { target: { value: 'ab' } })
+      fireEvent.input(input, { target: { value: 'abc' } })
+
+      // Same DOM node = no remount from key={`search-${query}`}; remount would kill webOS IME.
+      expect(document.querySelector('.search-query-input')).toBe(input)
+      expect((document.querySelector('.search-query-input') as HTMLInputElement).value).toBe('abc')
+    })
+
     it('returns from a person search result to the original item card', async () => {
       const firstItem = {
         id: 1,

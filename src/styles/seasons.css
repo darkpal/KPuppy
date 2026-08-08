@@ -8,7 +8,16 @@
 }
 
 .seasons-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
   margin-bottom: 24px;
+}
+
+.seasons-header-main {
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
 .seasons-title {
@@ -19,15 +28,64 @@
 }
 
 .seasons-subtitle {
+  display: block;
   font-size: 22px;
   color: #808080;
 }
 
-.seasons-hint {
-  display: block;
-  margin-top: 10px;
-  font-size: 18px;
-  color: rgba(255, 255, 255, 0.55);
+.seasons-watched-action {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  margin: 0;
+  padding: 10px 18px;
+  min-height: 48px;
+  border: none;
+  border-radius: 10px;
+  background: rgba(61, 154, 72, 0.95);
+  color: #fff;
+  font: inherit;
+  font-size: 22px;
+  font-weight: 700;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.seasons-watched-action:hover,
+.seasons-watched-action:focus {
+  outline: none;
+  -webkit-filter: brightness(1.12);
+  filter: brightness(1.12);
+}
+
+.seasons-watched-action > * + * {
+  margin-left: 10px;
+}
+
+.seasons-watched-action-label {
+  white-space: nowrap;
+}
+
+.seasons-hint-key-dots {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  position: relative;
+}
+
+.seasons-hint-key-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.15);
+}
+
+.seasons-hint-key-dots.dots-2 .seasons-hint-key-dot + .seasons-hint-key-dot {
+  margin-left: 5px;
 }
 
 .seasons-container {

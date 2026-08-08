@@ -9,6 +9,17 @@ import { useI18n } from '../i18n'
 import '../styles/seasons.css'
 import '../styles/category.css'
 
+/** LG Magic Remote: red=1, green=2, yellow=3, blue=4 dots. */
+function RemoteKeyDots({ count }: { count: 1 | 2 | 3 | 4 }) {
+  return (
+    <span class={`seasons-hint-key-dots dots-${count}`} aria-hidden="true">
+      {Array.from({ length: count }, (_, i) => (
+        <span key={i} class="seasons-hint-key-dot" />
+      ))}
+    </span>
+  )
+}
+
 interface SeasonsScreenProps {
   itemId: number
   onBack: () => void
@@ -212,16 +223,41 @@ export function SeasonsScreen({ itemId, onBack, onPlay, onNavigateToMenu, isActi
     )
   }
 
+  const focusedEpisode = seasons[focusedRow]?.episodes?.[focusedCol]
+  const focusedWatched = Boolean(
+    focusedEpisode && (focusedEpisode.watched === 1 || focusedEpisode.watching?.status === 1)
+  )
+
+  const seasonsHeader = (
+    <div class="seasons-header">
+      <div class="seasons-header-main">
+        <h1 class="seasons-title">{item!.title}</h1>
+        <span class="seasons-subtitle">
+          {isGridMode
+            ? (seasons.length === 1
+              ? `${t.season} ${seasons[0].number}`
+              : `${seasons.length} ${t.seasons}`)
+            : `${seasons.length} ${seasons.length > 1 ? t.seasons : t.season}`}
+        </span>
+      </div>
+      <button
+        type="button"
+        class="seasons-watched-action"
+        onClick={() => { void handleToggleWatched() }}
+        aria-label={focusedWatched ? t.markUnwatched : t.markWatched}
+      >
+        <RemoteKeyDots count={2} />
+        <span class="seasons-watched-action-label">
+          {focusedWatched ? t.markUnwatched : t.markWatched}
+        </span>
+      </button>
+    </div>
+  )
+
   if (isGridMode) {
     return (
       <div class="category-screen">
-        <div class="seasons-header">
-          <h1 class="seasons-title">{item.title}</h1>
-          <span class="seasons-subtitle">
-            {seasons.length === 1 ? `${t.season} ${seasons[0].number}` : `${seasons.length} ${t.seasons}`}
-          </span>
-          <span class="seasons-hint">{t.toggleWatchedHint}</span>
-        </div>
+        {seasonsHeader}
         {seasons.map((season, seasonIndex) => (
           <div key={season.number}>
             {seasons.length > 1 && (
@@ -256,11 +292,7 @@ export function SeasonsScreen({ itemId, onBack, onPlay, onNavigateToMenu, isActi
 
   return (
     <div class="seasons-screen">
-      <div class="seasons-header">
-        <h1 class="seasons-title">{item.title}</h1>
-        <span class="seasons-subtitle">{seasons.length} {seasons.length > 1 ? t.seasons : t.season}</span>
-        <span class="seasons-hint">{t.toggleWatchedHint}</span>
-      </div>
+      {seasonsHeader}
 
       <div class="seasons-container" ref={containerRef}>
         {seasons.map((season, rowIndex) => (

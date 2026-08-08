@@ -73,6 +73,8 @@ export interface Translations {
   previousEpisode: string
   nextEpisode: string
   toggleWatchedHint: string
+  markWatched: string
+  markUnwatched: string
   director: string
   cast: string
   country: string
@@ -272,6 +274,8 @@ const en: Translations = {
   previousEpisode: 'Previous',
   nextEpisode: 'Next',
   toggleWatchedHint: 'Green — mark watched / unwatched',
+  markWatched: 'Mark watched',
+  markUnwatched: 'Unmark',
   director: 'Director',
   cast: 'Cast',
   country: 'Country',
@@ -456,6 +460,8 @@ const ru: Translations = {
   previousEpisode: 'Предыдущая',
   nextEpisode: 'Следующая',
   toggleWatchedHint: 'Зелёная — отметить просмотренным',
+  markWatched: 'Отметить',
+  markUnwatched: 'Снять отметку',
   director: 'Режиссёр',
   cast: 'В ролях',
   country: 'Страна',
@@ -640,6 +646,8 @@ const de: Translations = {
   previousEpisode: 'Vorherige',
   nextEpisode: 'Nächste',
   toggleWatchedHint: 'Grün — gesehen / ungesehen',
+  markWatched: 'Gesehen',
+  markUnwatched: 'Ungesehen',
   director: 'Regisseur',
   cast: 'Besetzung',
   country: 'Land',
@@ -824,6 +832,8 @@ const uk: Translations = {
   previousEpisode: 'Попередня',
   nextEpisode: 'Наступна',
   toggleWatchedHint: 'Зелена — позначити переглянутим',
+  markWatched: 'Позначити',
+  markUnwatched: 'Зняти позначку',
   director: 'Режисер',
   cast: 'У ролях',
   country: 'Країна',

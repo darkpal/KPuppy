@@ -82,6 +82,13 @@ interface AppState {
   player: PlayerState | null
   playerPreparing: boolean
   searchState: SearchScreenState | null
+  /**
+   * Bumped only when search is opened/replaced from outside typing
+   * (actor/director chip, Back through navHistory). Must NOT include the
+   * query string — that remounted SearchScreen on every keystroke and killed
+   * the webOS system keyboard.
+   */
+  searchInstance: number
   /** Stack of previous screens for actor/director drill-down; Back pops. */
   navHistory: NavHistoryEntry[]
   categoryGenreId: number | null
@@ -145,6 +152,7 @@ export function App() {
       player: null,
       playerPreparing: false,
       searchState: null,
+      searchInstance: 0,
       navHistory: [],
       categoryGenreId: null,
       categoryFilters: null,
@@ -336,6 +344,7 @@ export function App() {
         selectedMenuId: 'search',
         menuFocusIndex: getMenuIndexById('search'),
         searchState: { ...DEFAULT_SEARCH_STATE, query: name, field },
+        searchInstance: prev.searchInstance + 1,
         categoryGenreId: null,
         categoryFilters: null,
         focusArea: 'content'
@@ -379,6 +388,10 @@ export function App() {
         itemPreview: target.itemPreview,
         seriesId: null,
         searchState: target.searchState,
+        // Remount search when restoring a previous query from the stack.
+        searchInstance: target.selectedMenuId === 'search'
+          ? prev.searchInstance + 1
+          : prev.searchInstance,
         navHistory,
         categoryGenreId: target.categoryGenreId,
         categoryFilters: target.categoryFilters,
@@ -755,12 +768,9 @@ export function App() {
       }
       case 'search': {
         const searchFocus = state.screenFocus['search'] || { row: 0, col: 0 }
-        const searchKey = state.searchState
-          ? `search-${state.searchState.field}-${state.searchState.query}`
-          : 'search'
         return (
           <SearchScreen
-            key={searchKey}
+            key={`search-${state.searchInstance}`}
             onBack={handleBackFromSearch}
             exitDirectlyOnBack={state.navHistory.length > 0}
             onSelectItem={handleSelectItem}
