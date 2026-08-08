@@ -41,21 +41,31 @@ export function NewEpisodesScreen({ onSelectItem, onNavigateToMenu, isActive }: 
   const { itemsPerRow, cardWidth } = useGridLayout('.category-grid', 240, [items.length])
 
   useEffect(() => {
+    let cancelled = false
     async function loadWatching() {
       setLoading(true)
       try {
         const data = await getWatchingSerials()
+        if (cancelled) return
         const list = data.filter(item => item.new > 0)
         setItems(list)
-        const enriched = await enrichMovieItemsMeta(list.map(watchingToMovieItem))
-        setCardMeta(new Map(enriched.map(item => [item.id, item])))
+        void enrichMovieItemsMeta(list.map(watchingToMovieItem), 3)
+          .then(enriched => {
+            if (!cancelled) setCardMeta(new Map(enriched.map(item => [item.id, item])))
+          })
+          .catch(err => {
+            if (import.meta.env.DEV) console.error('Failed to enrich watching list:', err)
+          })
       } catch (err) {
         if (import.meta.env.DEV) console.error('Failed to load watching list:', err)
       } finally {
-        setLoading(false)
+        if (!cancelled) setLoading(false)
       }
     }
     loadWatching()
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   const handlers = useMemo(() => createGridNavigationHandlers({

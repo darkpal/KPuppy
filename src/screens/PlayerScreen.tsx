@@ -153,6 +153,7 @@ export function PlayerScreen({
   const progressBarRef = useRef<HTMLDivElement>(null)
   const controlsTimeoutRef = useRef<number>(0)
   const lastTimeRef = useRef<number>(0)
+  const displayedTimeSecondRef = useRef(-1)
   const isSeekingRef = useRef(false)
   const startTimeAppliedRef = useRef(false)
   const resumeAfterReloadRef = useRef<number | null>(null)
@@ -162,7 +163,7 @@ export function PlayerScreen({
   const liveStreamRef = useRef(false)
   const lastHlsErrorRef = useRef<string | null>(null)
 
-  const availableQualities = getAvailableQualities(files)
+  const availableQualities = useMemo(() => getAvailableQualities(files), [files])
   const canUseMseHls = shouldPreferMseHls(url, files.length)
   const [useMseHls, setUseMseHls] = useState(false)
 
@@ -211,6 +212,7 @@ export function PlayerScreen({
     startTimeAppliedRef.current = false
     resumeAfterReloadRef.current = null
     lastTimeRef.current = 0
+    displayedTimeSecondRef.current = -1
     mseFallbackTriedRef.current = false
     liveStreamRef.current = false
     lastHlsErrorRef.current = null
@@ -418,7 +420,7 @@ export function PlayerScreen({
   }
 
   const showControls = useCallback(() => {
-    setControls(prev => ({ ...prev, visible: true }))
+    setControls(prev => prev.visible ? prev : { ...prev, visible: true })
     if (controlsTimeoutRef.current) {
       clearTimeout(controlsTimeoutRef.current)
     }
@@ -849,7 +851,11 @@ export function PlayerScreen({
       }
     }
     const handleTimeUpdate = () => {
-      setCurrentTime(video.currentTime)
+      const displayedSecond = Math.floor(video.currentTime)
+      if (displayedSecond !== displayedTimeSecondRef.current) {
+        displayedTimeSecondRef.current = displayedSecond
+        setCurrentTime(video.currentTime)
+      }
       if (onTimeUpdate && Math.abs(video.currentTime - lastTimeRef.current) >= 10) {
         lastTimeRef.current = video.currentTime
         onTimeUpdate(video.currentTime)

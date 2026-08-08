@@ -105,6 +105,21 @@ describe('MainScreen', () => {
       })
     })
 
+    it('renders continue watching before background metadata enrichment finishes', async () => {
+      vi.mocked(kinopub.getWatching).mockImplementation((options) => {
+        if (options?.enrich === false) return Promise.resolve([mockMovie])
+        return new Promise(() => {})
+      })
+
+      renderWithI18n(<MainScreen {...mockProps} />)
+
+      await waitFor(() => {
+        expect(screen.getByText('Test Movie')).toBeDefined()
+      })
+      expect(kinopub.getWatching).toHaveBeenCalledWith({ enrich: false })
+      expect(kinopub.getWatching).toHaveBeenCalledWith({ concurrency: 3 })
+    })
+
     it('loads popular movies via views-+month and series via watchers-', async () => {
       renderWithI18n(<MainScreen {...mockProps} />)
 

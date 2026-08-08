@@ -478,13 +478,25 @@ export async function fetchItemCardMeta(id: number): Promise<ItemCardMeta | null
   }
 }
 
-export async function enrichMovieItemsMeta(items: MovieItem[]): Promise<MovieItem[]> {
+export async function enrichMovieItemsMeta(items: MovieItem[], concurrency = 3): Promise<MovieItem[]> {
   const missing = items.filter(item =>
     item.quality <= 0 || item.year <= 0 || (item.imdbRating <= 0 && item.kinopoiskRating <= 0 && item.ratingPercentage <= 0)
   )
   if (missing.length === 0) return items
 
-  const metas = await Promise.all(missing.map(item => fetchItemCardMeta(item.id)))
+  const metas: Array<ItemCardMeta | null> = new Array(missing.length)
+  const workerCount = Math.min(missing.length, Math.max(1, Math.floor(concurrency)))
+  let nextIndex = 0
+
+  async function worker(): Promise<void> {
+    while (nextIndex < missing.length) {
+      const index = nextIndex
+      nextIndex += 1
+      metas[index] = await fetchItemCardMeta(missing[index].id)
+    }
+  }
+
+  await Promise.all(Array.from({ length: workerCount }, () => worker()))
   const byId = new Map<number, ItemCardMeta>()
   missing.forEach((item, index) => {
     const meta = metas[index]
@@ -506,24 +518,43 @@ export async function enrichMovieItemsMeta(items: MovieItem[]): Promise<MovieIte
   })
 }
 
-export async function getWatching(): Promise<MovieItem[]> {
-  const cacheKey = 'watching_v2'
-  const cached = getCached<MovieItem[]>(cacheKey)
-  if (cached) return cached
+export interface GetWatchingOptions {
+  /** Return the two watching lists immediately; fill ratings/quality later. */
+  enrich?: boolean
+  /** Maximum parallel item-detail requests used for missing card metadata. */
+  concurrency?: number
+}
 
-  const [moviesRes, serialsRes] = await Promise.all([
-    authFetch(`${BASE_URL}/v1/watching/movies?subscribed=1`),
-    authFetch(`${BASE_URL}/v1/watching/serials?subscribed=1`)
-  ])
+export async function getWatching(options: GetWatchingOptions = {}): Promise<MovieItem[]> {
+  const enrichedKey = 'watching_v2'
+  const cachedEnriched = getCached<MovieItem[]>(enrichedKey)
+  if (cachedEnriched) return cachedEnriched
 
-  const moviesData = moviesRes.ok ? await moviesRes.json() : { items: [] }
-  const serialsData = serialsRes.ok ? await serialsRes.json() : { items: [] }
+  const baseKey = 'watching_base_v2'
+  let baseItems = getCached<MovieItem[]>(baseKey)
+  if (!baseItems) {
+    baseItems = await withInflight(baseKey, async () => {
+      const [moviesRes, serialsRes] = await Promise.all([
+        authFetch(`${BASE_URL}/v1/watching/movies?subscribed=1`),
+        authFetch(`${BASE_URL}/v1/watching/serials?subscribed=1`)
+      ])
 
-  const allItems = [...(moviesData.items || []), ...(serialsData.items || [])]
+      const moviesData = moviesRes.ok ? await moviesRes.json() : { items: [] }
+      const serialsData = serialsRes.ok ? await serialsRes.json() : { items: [] }
+      const allItems = [...(moviesData.items || []), ...(serialsData.items || [])]
+      const result = allItems.map(mapToMovieItem)
+      setCache(baseKey, result)
+      return result
+    })
+  }
 
-  const result = await enrichMovieItemsMeta(allItems.map(mapToMovieItem))
-  setCache(cacheKey, result)
-  return result
+  if (options.enrich === false || baseItems.length === 0) return baseItems
+
+  return withInflight(enrichedKey, async () => {
+    const result = await enrichMovieItemsMeta(baseItems!, options.concurrency)
+    setCache(enrichedKey, result)
+    return result
+  })
 }
 
 export async function getWatchingSerials(): Promise<WatchingItem[]> {
@@ -880,15 +911,18 @@ export interface MediaLinks {
 
 /** Full files + subtitles for a media/video id (Kinopub media-links). */
 export async function getMediaLinks(mediaId: number | string): Promise<MediaLinks> {
-  const response = await authFetch(`${BASE_URL}/v1/items/media-links?mid=${mediaId}`)
-  if (!response.ok) {
-    throw new ApiError('Failed to fetch media links', response.status)
-  }
-  const data = await response.json()
-  return {
-    files: Array.isArray(data.files) ? data.files.map((f: Record<string, unknown>) => normalizeVideoFile(f)) : [],
-    subtitles: normalizeSubtitles(data.subtitles)
-  }
+  const cacheKey = createCacheKey('media-links', mediaId)
+  return cachedFetch(cacheKey, async () => {
+    const response = await authFetch(`${BASE_URL}/v1/items/media-links?mid=${mediaId}`)
+    if (!response.ok) {
+      throw new ApiError('Failed to fetch media links', response.status)
+    }
+    const data = await response.json()
+    return {
+      files: Array.isArray(data.files) ? data.files.map((f: Record<string, unknown>) => normalizeVideoFile(f)) : [],
+      subtitles: normalizeSubtitles(data.subtitles)
+    }
+  })
 }
 
 export async function getItem(id: number): Promise<ItemDetails> {
@@ -983,6 +1017,48 @@ export interface MarkTimeParams {
   season?: number
 }
 
+function patchCachedPlaybackProgress(params: MarkTimeParams): void {
+  const cacheKey = createCacheKey('item', 'nolinks', params.id)
+  const item = getCached<ItemDetails>(cacheKey)
+  if (!item) return
+
+  const progress: WatchingProgress = { time: params.time }
+  let updated: ItemDetails = item
+
+  if (params.season !== undefined && item.seasons) {
+    updated = {
+      ...item,
+      seasons: item.seasons.map(season => season.number !== params.season
+        ? season
+        : {
+            ...season,
+            episodes: season.episodes.map(episode => (
+              params.video !== undefined && episode.number !== params.video
+                ? episode
+                : { ...episode, watching: { ...episode.watching, ...progress } }
+            ))
+          })
+    }
+  } else if (item.videos?.length) {
+    updated = {
+      ...item,
+      videos: item.videos.map((video, index) => (
+        params.video !== undefined
+          ? (video.number === params.video ? { ...video, watching: { ...video.watching, ...progress } } : video)
+          : (index === 0 ? { ...video, watching: { ...video.watching, ...progress } } : video)
+      ))
+    }
+  }
+
+  setCache(cacheKey, updated)
+}
+
+/** Refresh user-specific lists once when playback closes, not on every progress ping. */
+export function invalidatePlaybackLists(): void {
+  invalidateCache('watching')
+  invalidateCache('history')
+}
+
 export async function markTime(params: MarkTimeParams): Promise<void> {
   const searchParams = new URLSearchParams()
   searchParams.set('id', params.id.toString())
@@ -990,14 +1066,9 @@ export async function markTime(params: MarkTimeParams): Promise<void> {
   if (params.video !== undefined) searchParams.set('video', params.video.toString())
   if (params.season !== undefined) searchParams.set('season', params.season.toString())
 
+  // Keep the detail card warm for Back while updating its resume position.
+  patchCachedPlaybackProgress(params)
   await authFetch(`${BASE_URL}/v1/watching/marktime?${searchParams}`)
-  invalidateCache('watching'); invalidateCache('watching_v2')
-  invalidateCache('watching_serials')
-  invalidateCache('history')
-  // getItem caches as item:nolinks:{id} — must clear that key, not only item:{id}
-  invalidateCache(createCacheKey('item', 'nolinks', params.id))
-  invalidateCache(createCacheKey('item-meta', params.id))
-  invalidateCache(createCacheKey('item', params.id))
 }
 
 export async function getWatchingProgress(
@@ -1404,16 +1475,9 @@ export async function toggleWatchlist(itemId: number): Promise<void> {
 
 export async function isItemInWatchlist(itemId: number): Promise<boolean> {
   try {
-    const [moviesRes, serialsRes] = await Promise.all([
-      authFetch(`${BASE_URL}/v1/watching/movies?subscribed=1`),
-      authFetch(`${BASE_URL}/v1/watching/serials?subscribed=1`)
-    ])
-    const moviesData = moviesRes.ok ? await moviesRes.json() : { items: [] }
-    const serialsData = serialsRes.ok ? await serialsRes.json() : { items: [] }
-    const ids = [...(moviesData.items || []), ...(serialsData.items || [])].map(
-      (item: { id?: number }) => Number(item.id)
-    )
-    return ids.includes(itemId)
+    // ItemScreen calls this only for series, so one cached serials request is enough.
+    const serials = await getWatchingSerials()
+    return serials.some(item => item.id === itemId)
   } catch (err) {
     if (import.meta.env.DEV) console.error('isItemInWatchlist failed:', err)
     return false

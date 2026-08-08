@@ -153,8 +153,12 @@ export function MainScreen({
       try {
         let items: MovieItem[]
         let hasMore = false
+        let watchingEnrichment: Promise<MovieItem[]> | null = null
         if (config.isWatching) {
-          items = await getWatching()
+          // Paint the row after the two lightweight watching requests. Missing
+          // ratings/quality are filled in the background with bounded fan-out.
+          items = await getWatching({ enrich: false })
+          watchingEnrichment = getWatching({ concurrency: 3 })
           hasMore = false
         } else if (config.feed === 'fresh') {
           const page = config.params?.page ?? 0
@@ -171,6 +175,17 @@ export function MainScreen({
         setRows(prev => prev.map((row, i) =>
           i === index ? { ...row, items, loading: false, hasMore, page: config.params?.page ?? 0 } : row
         ))
+
+        if (watchingEnrichment) {
+          void watchingEnrichment.then(enrichedItems => {
+            if (cancelled) return
+            setRows(prev => prev.map((row, i) =>
+              i === index ? { ...row, items: enrichedItems } : row
+            ))
+          }).catch(err => {
+            if (import.meta.env.DEV) console.error('Failed to enrich continue watching:', err)
+          })
+        }
       } catch (err) {
         if (import.meta.env.DEV) console.error(`Failed to load ${config.titleKey}:`, err)
         if (cancelled) return

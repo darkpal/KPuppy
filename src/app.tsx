@@ -19,7 +19,7 @@ import { ALL_MENU_ITEMS_COUNT, getMenuIdByIndex, getMenuIndexById } from './comp
 import { KEY_CODES } from './hooks'
 import { ScreenManager } from './components/ScreenManager'
 import { isAuthenticated, clearTokens, getTokens, getLocalSettings, saveReturnTo, getReturnTo, clearReturnTo, getContentTypesCache, saveContentTypesCache, getSavedAudioPreference, findAudioIndex, ReturnToState } from './storage'
-import { refreshAccessToken, getItem, getMediaLinks, setOnAuthError, getDeviceInfo, markTime, getWatchingProgress, getContentTypes, registerDevice, VideoFile, Audio, Subtitle, MovieItem } from './api/kinopub'
+import { refreshAccessToken, getItem, getMediaLinks, setOnAuthError, getDeviceInfo, markTime, invalidatePlaybackLists, getWatchingProgress, getContentTypes, registerDevice, VideoFile, Audio, Subtitle, MovieItem } from './api/kinopub'
 import { applyPreferredDeviceDefaultsOnce } from './preferredDefaults'
 import { saveTokens } from './storage'
 import { launchNativePlayer, getStreamUrl, withHlsAudioIndex, getAvailableQualities } from './webos/player'
@@ -423,6 +423,7 @@ export function App() {
   }, [])
 
   const handleClosePlayer = useCallback(() => {
+    if (stateRef.current.player?.itemId) invalidatePlaybackLists()
     setState(prev => ({ ...prev, player: null, playerPreparing: false }))
   }, [])
 
@@ -516,9 +517,10 @@ export function App() {
 
       const preferredQuality = options?.quality || (localSettings.defaultQuality === 'auto' ? undefined : localSettings.defaultQuality)
 
-      let streamingType: string | undefined
-      const selectedType = deviceResult?.settings.streamingType?.find(t => t.selected === 1)
-      streamingType = selectedType?.label?.toLowerCase()
+      const streamingType: string | undefined = deviceResult?.settings.streamingType
+        ?.find(t => t.selected === 1)
+        ?.label
+        ?.toLowerCase()
 
       let streamUrl = getStreamUrl(
         files || [],

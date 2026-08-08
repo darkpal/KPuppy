@@ -122,6 +122,8 @@ export function CategoryScreen({
   const [hasMore, setHasMore] = useState(true)
   const containerRef = useRef<HTMLDivElement>(null)
   const prevCategoryIdRef = useRef<string>(categoryId)
+  const categoryIdRef = useRef(categoryId)
+  categoryIdRef.current = categoryId
   const onFocusChangeRef = useRef(onFocusChange)
   onFocusChangeRef.current = onFocusChange
   const onFiltersChangeRef = useRef(onFiltersChange)
@@ -211,9 +213,14 @@ export function CategoryScreen({
 
     try {
       if (categoryId === 'watching') {
-        const watchingItems = await getWatching()
+        const watchingItems = await getWatching({ enrich: false })
         setItems(watchingItems)
         setHasMore(false)
+        void getWatching({ concurrency: 3 }).then(enrichedItems => {
+          if (categoryIdRef.current === 'watching') setItems(enrichedItems)
+        }).catch(err => {
+          if (import.meta.env.DEV) console.error('Failed to enrich continue watching:', err)
+        })
       } else {
         const params = CATEGORY_PARAMS[categoryId]
         if (params) {

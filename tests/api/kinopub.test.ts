@@ -5,6 +5,7 @@ import {
   refreshAccessToken,
   getItems,
   getItem,
+  getMediaLinks,
   searchItems,
   buildItemsQuery,
   monthAgoUnix,
@@ -473,6 +474,33 @@ describe('kinopub API', () => {
     })
   })
 
+  describe('getMediaLinks', () => {
+    beforeEach(() => {
+      localStorage.setItem('kpuppy_tokens', JSON.stringify({
+        access: 'valid-token',
+        refresh: 'refresh-token',
+        expiresAt: Date.now() + 3600000
+      }))
+    })
+
+    it('reuses media links for the same media id', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          files: [{ quality: '1080p', url: { hls: 'https://example.com/video.m3u8' } }],
+          subtitles: []
+        })
+      })
+
+      const first = await getMediaLinks(77)
+      const second = await getMediaLinks(77)
+
+      expect(mockFetch).toHaveBeenCalledTimes(1)
+      expect(second).toEqual(first)
+    })
+  })
+
   describe('searchItems', () => {
     beforeEach(() => {
       const tokens = {
@@ -909,6 +937,32 @@ describe('kinopub API', () => {
       const call = mockFetch.mock.calls[0]
       expect(call[1].headers['Authorization']).toBe('Bearer valid-token')
     })
+
+    it('keeps cached item details warm and patches their resume time', async () => {
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            item: {
+              id: 123,
+              title: 'Test Movie',
+              type: 'movie',
+              year: 2023,
+              posters: {},
+              videos: [{ number: 1, title: '', files: [], audios: [], watching: { time: 0 } }]
+            }
+          })
+        })
+        .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({}) })
+
+      await getItem(123)
+      await markTime({ id: 123, time: 300, video: 1 })
+      const cached = await getItem(123)
+
+      expect(mockFetch).toHaveBeenCalledTimes(2)
+      expect(cached.videos?.[0].watching?.time).toBe(300)
+    })
   })
 
   describe('toggleWatched', () => {
@@ -994,6 +1048,29 @@ describe('kinopub API', () => {
       expect(result[0].year).toBe(2023)
       expect(result[1].imdbRating).toBe(8.2)
       expect(result[1].quality).toBe(2160)
+    })
+
+    it('returns the base watching list without waiting for item metadata', async () => {
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            items: [{ id: 1, title: 'Movie 1', type: 'movie', year: 2023, posters: {} }]
+          })
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: async () => ({ items: [] })
+        })
+
+      const result = await getWatching({ enrich: false })
+
+      expect(mockFetch).toHaveBeenCalledTimes(2)
+      expect(result).toHaveLength(1)
+      expect(result[0].title).toBe('Movie 1')
+      expect(result[0].imdbRating).toBe(0)
     })
 
     it('handles empty results', async () => {

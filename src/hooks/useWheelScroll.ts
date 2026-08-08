@@ -23,6 +23,53 @@ export function useWheelScroll({
     const container = containerRef.current
     if (!container || !enabled) return
 
+    let animationFrame = 0
+    let targetPosition = direction === 'horizontal'
+      ? container.scrollLeft
+      : container.scrollTop
+
+    const readPosition = () => direction === 'horizontal'
+      ? container.scrollLeft
+      : container.scrollTop
+
+    const readMaxPosition = () => direction === 'horizontal'
+      ? container.scrollWidth - container.clientWidth
+      : container.scrollHeight - container.clientHeight
+
+    const writePosition = (value: number) => {
+      if (direction === 'horizontal') {
+        container.scrollLeft = value
+      } else {
+        container.scrollTop = value
+      }
+    }
+
+    const animate = () => {
+      // Content can resize while cards finish loading. Keep the target valid so
+      // a browser-clamped scroll position cannot leave the RAF loop running.
+      targetPosition = Math.max(0, Math.min(readMaxPosition(), targetPosition))
+      const current = readPosition()
+      const remaining = targetPosition - current
+      if (Math.abs(remaining) < 0.5) {
+        writePosition(targetPosition)
+        animationFrame = 0
+        return
+      }
+
+      // Accumulated ease-out keeps discrete Magic Remote wheel ticks smooth,
+      // while a new tick simply extends the current animation target.
+      writePosition(current + remaining * 0.32)
+      animationFrame = window.requestAnimationFrame(animate)
+    }
+
+    const addDelta = (delta: number, max: number) => {
+      if (!animationFrame) targetPosition = readPosition()
+      targetPosition = Math.max(0, Math.min(max, targetPosition + delta))
+      if (Math.abs(targetPosition - readPosition()) < 0.5) return false
+      if (!animationFrame) animationFrame = window.requestAnimationFrame(animate)
+      return true
+    }
+
     const onWheel = (event: WheelEvent) => {
       if (ignoreSelector) {
         const target = event.target as Element | null
@@ -37,11 +84,9 @@ export function useWheelScroll({
         if (!delta) return
         const max = container.scrollWidth - container.clientWidth
         if (max <= 0) return
-        const next = Math.max(0, Math.min(max, container.scrollLeft + delta))
-        if (next === container.scrollLeft) return
+        if (!addDelta(delta, max)) return
         event.preventDefault()
         event.stopPropagation()
-        container.scrollLeft = next
         return
       }
 
@@ -49,13 +94,14 @@ export function useWheelScroll({
       if (!delta) return
       const max = container.scrollHeight - container.clientHeight
       if (max <= 0) return
-      const next = Math.max(0, Math.min(max, container.scrollTop + delta))
-      if (next === container.scrollTop) return
+      if (!addDelta(delta, max)) return
       event.preventDefault()
-      container.scrollTop = next
     }
 
     container.addEventListener('wheel', onWheel, { passive: false })
-    return () => container.removeEventListener('wheel', onWheel)
+    return () => {
+      container.removeEventListener('wheel', onWheel)
+      if (animationFrame) window.cancelAnimationFrame(animationFrame)
+    }
   }, [containerRef, direction, ignoreSelector, enabled])
 }

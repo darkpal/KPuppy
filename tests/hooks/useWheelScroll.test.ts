@@ -6,6 +6,7 @@ describe('useWheelScroll', () => {
   let container: HTMLDivElement
 
   beforeEach(() => {
+    vi.useFakeTimers()
     container = document.createElement('div')
     Object.defineProperty(container, 'scrollWidth', { configurable: true, value: 2000 })
     Object.defineProperty(container, 'clientWidth', { configurable: true, value: 800 })
@@ -18,6 +19,7 @@ describe('useWheelScroll', () => {
 
   afterEach(() => {
     container.remove()
+    vi.useRealTimers()
   })
 
   it('does not steal vertical mouse-wheel for horizontal containers', () => {
@@ -37,6 +39,7 @@ describe('useWheelScroll', () => {
 
     const event = new WheelEvent('wheel', { deltaX: 80, deltaY: 0, bubbles: true, cancelable: true })
     container.dispatchEvent(event)
+    vi.runAllTimers()
 
     expect(container.scrollLeft).toBe(80)
   })
@@ -47,7 +50,20 @@ describe('useWheelScroll', () => {
 
     const event = new WheelEvent('wheel', { deltaX: 0, deltaY: 100, bubbles: true, cancelable: true })
     container.dispatchEvent(event)
+    vi.runAllTimers()
 
     expect(container.scrollTop).toBe(100)
+  })
+
+  it('accumulates wheel ticks while smooth scrolling is active', () => {
+    const ref = { current: container }
+    renderHook(() => useWheelScroll({ containerRef: ref, direction: 'vertical' }))
+
+    container.dispatchEvent(new WheelEvent('wheel', { deltaY: 100, bubbles: true, cancelable: true }))
+    vi.advanceTimersByTime(16)
+    container.dispatchEvent(new WheelEvent('wheel', { deltaY: 100, bubbles: true, cancelable: true }))
+    vi.runAllTimers()
+
+    expect(container.scrollTop).toBe(200)
   })
 })
