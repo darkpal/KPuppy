@@ -163,6 +163,28 @@ describe('ItemScreen', () => {
   })
 
   describe('movie display', () => {
+    it('picks 4K for Auto even when API lists 1080p first', async () => {
+      vi.mocked(kinopub.getItem).mockResolvedValue({
+        ...mockMovieDetails,
+        videos: [{
+          ...mockMovieDetails.videos[0],
+          files: [
+            { quality: '1080p', url: { hls: '1080.m3u8' } },
+            { quality: '2160p', url: { hls: '4k.m3u8' } },
+            { quality: '720p', url: { hls: '720.m3u8' } }
+          ]
+        }]
+      })
+
+      renderWithI18n(<ItemScreen {...mockProps} />)
+
+      await waitFor(() => {
+        expect(document.querySelector('.item-quality-badge')?.textContent).toBe('2160p')
+      })
+      fireEvent.click(screen.getByText('Play'))
+      expect(mockProps.onPlay).toHaveBeenCalledWith(1, undefined, undefined, { quality: '2160p' })
+    })
+
     it('fetches item on mount', async () => {
       renderWithI18n(<ItemScreen {...mockProps} />)
 

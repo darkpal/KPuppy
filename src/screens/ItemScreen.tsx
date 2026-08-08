@@ -1,5 +1,5 @@
 import { useEffect, useCallback, useMemo, useReducer, useRef } from 'preact/hooks'
-import { getItem, getMediaLinks, getSimilarItems, getBookmarkFolders, getItemFolders, addToBookmark, removeFromBookmark, toggleWatchlist, isItemInWatchlist, ItemDetails as ItemDetailsType, MovieItem, VideoFile, BookmarkFolder } from '../api/kinopub'
+import { getItem, getMediaLinks, getSimilarItems, getBookmarkFolders, getItemFolders, addToBookmark, removeFromBookmark, toggleWatchlist, isItemInWatchlist, ItemDetails as ItemDetailsType, MovieItem, BookmarkFolder } from '../api/kinopub'
 import { getLocalSettings } from '../storage'
 import { useDecodedImage, useEventListener, useKeyboardNavigation, useWheelScroll, useGridLayout, createGridNavigationHandlers } from '../hooks'
 import { LoadingState, LoadingSpinner } from '../components/LoadingSpinner'
@@ -8,6 +8,7 @@ import { ItemDetails } from '../components/ItemDetails'
 import { SimilarItems } from '../components/SimilarItems'
 import { FolderDialog } from '../components/FolderDialog'
 import { getContinueAction } from '../utils/episodes'
+import { getAvailableQualities } from '../webos/player'
 import thumbUpIcon from '../assets/thumb-up.svg'
 import '../styles/item.css'
 
@@ -31,13 +32,6 @@ interface ItemScreenProps {
 }
 
 type FocusArea = 'play' | 'watching' | 'watchlist' | 'trailer' | 'seasons' | 'qualitySelect' | 'genres' | 'details' | 'cast' | 'similar'
-
-const QUALITY_ORDER = ['2160p', '1080p', '720p', '480p']
-
-function getAvailableQualities(files?: VideoFile[]): string[] {
-  if (!files) return []
-  return files.map(f => f.quality).filter(q => QUALITY_ORDER.includes(q))
-}
 
 /** Draw the poster cover-cropped onto a screen-sized canvas (replaces
  * `object-fit: cover; object-position: center 18%` on the old <img>). */

@@ -93,6 +93,12 @@ vi.mock('../src/api/kinopub', () => ({
 vi.mock('../src/webos/player', () => ({
   launchNativePlayer: vi.fn(),
   getStreamUrl: vi.fn(),
+  withHlsAudioIndex: vi.fn((url: string) => url),
+  getAvailableQualities: vi.fn((files?: Array<{ quality: string }> | null) => {
+    const order = ['2160p', '1080p', '720p', '480p']
+    if (!files || files.length === 0) return []
+    return order.filter(q => files.some(f => f.quality === q))
+  }),
 }))
 
 describe('App Navigation', () => {
