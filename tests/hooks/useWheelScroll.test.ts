@@ -50,9 +50,11 @@ describe('useWheelScroll', () => {
 
     const event = new WheelEvent('wheel', { deltaX: 0, deltaY: 100, bubbles: true, cancelable: true })
     container.dispatchEvent(event)
+    expect(container.classList.contains('kpuppy-wheel-scrolling')).toBe(true)
     vi.runAllTimers()
 
     expect(container.scrollTop).toBe(100)
+    expect(container.classList.contains('kpuppy-wheel-scrolling')).toBe(false)
   })
 
   it('accumulates wheel ticks while smooth scrolling is active', () => {
@@ -65,5 +67,22 @@ describe('useWheelScroll', () => {
     vi.runAllTimers()
 
     expect(container.scrollTop).toBe(200)
+  })
+
+  it('stops wheel animation before D-pad navigation changes the scroll position', () => {
+    const ref = { current: container }
+    renderHook(() => useWheelScroll({ containerRef: ref, direction: 'vertical' }))
+
+    container.dispatchEvent(new WheelEvent('wheel', { deltaY: 400, bubbles: true, cancelable: true }))
+    vi.advanceTimersByTime(16)
+    expect(container.scrollTop).toBeGreaterThan(0)
+    expect(container.scrollTop).toBeLessThan(400)
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { keyCode: 38, bubbles: true }))
+    container.scrollTop = 25
+    vi.runAllTimers()
+
+    expect(container.scrollTop).toBe(25)
+    expect(container.classList.contains('kpuppy-wheel-scrolling')).toBe(false)
   })
 })

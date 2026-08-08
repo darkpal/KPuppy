@@ -114,3 +114,14 @@ html, body {
 .hide-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+/* Applied only during the short manual wheel animation. Chrome 53 otherwise
+   tends to repaint scrollTop changes together with the focused-card shadow. */
+.kpuppy-wheel-scrolling {
+  will-change: scroll-position;
+}
+
+.kpuppy-wheel-scrolling .movie-card.focused {
+  -webkit-filter: none;
+  filter: none;
+}

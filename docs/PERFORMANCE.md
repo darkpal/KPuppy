@@ -5,7 +5,7 @@ for humans and multiple coding agents: read it before profiling or changing a
 performance-sensitive path, and update it when a finding is confirmed, fixed,
 rejected, or superseded.
 
-Last updated: **2026-08-09**, release **v0.0.91**, commit `f5fdbba`.
+Last updated: **2026-08-09**, release **v0.0.92**.
 
 ## 1. Product and platform constraints
 
@@ -53,11 +53,11 @@ and be verified on a real TV with several large and bright posters.
 These values are reference points, not permanent budgets. Update them after a
 material performance change or dependency upgrade.
 
-| Measurement | v0.0.91 baseline | How verified |
+| Measurement | v0.0.92 baseline | How verified |
 | --- | ---: | --- |
-| Automated tests | 614 passing | `npm run test:run` |
-| Production bundle | 633.02 kB | Vite build output |
-| Production bundle, gzip | 189.85 kB | Vite build output |
+| Automated tests | 615 passing | `npm run test:run` |
+| Production bundle | 633.64 kB | Vite build output |
+| Production bundle, gzip | 190.08 kB | Vite build output |
 | Continue Watching initial network fan-out | 2 list requests | movies + serials |
 | Continue Watching metadata concurrency | maximum 3 | worker pool in `enrichMovieItemsMeta` |
 | Player time UI updates | maximum 1 per displayed second | integer-second guard |
@@ -72,6 +72,13 @@ Collections/History. There are also two existing `no-explicit-any` warnings in
 not add new lint debt.
 
 ## 4. Implemented optimizations
+
+### v0.0.92
+
+| Area | Current design | Expected effect |
+| --- | --- | --- |
+| Wheel/D-pad hand-off | A directional key cancels any active wheel ease-out before focus scrolling runs | Prevents a stale wheel target from pulling the newly focused card outside the viewport |
+| Wheel frame pacing | Scroll position follows elapsed frame time, with a temporary `scroll-position` hint and no focused-card drop-shadow while moving | Avoids the sub-pixel animation tail and reduces old-Chromium repaint work |
 
 ### v0.0.91
 
@@ -161,7 +168,8 @@ based on likely TV impact.
 ### P2 — lower expected impact
 
 1. Focused movie cards use CSS `drop-shadow`, which can be expensive on an old
-   GPU. Compare it with a simpler border/box-shadow on the actual TV.
+   GPU. It is disabled during wheel movement; compare the remaining static
+   shadow with a simpler border/box-shadow on the actual TV.
 2. Per-title audio preferences (`kpuppy_audio_*`) are not pruned. A capped map
    would prevent slow storage growth over long-lived installations.
 
@@ -268,4 +276,3 @@ For every completed performance change:
 5. Keep historical explanation concise; Git remains the detailed history.
 
 Release mechanics are documented separately in [`docs/RELEASE.md`](RELEASE.md).
-
