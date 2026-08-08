@@ -992,7 +992,11 @@ export async function markTime(params: MarkTimeParams): Promise<void> {
 
   await authFetch(`${BASE_URL}/v1/watching/marktime?${searchParams}`)
   invalidateCache('watching'); invalidateCache('watching_v2')
+  invalidateCache('watching_serials')
   invalidateCache('history')
+  // getItem caches as item:nolinks:{id} — must clear that key, not only item:{id}
+  invalidateCache(createCacheKey('item', 'nolinks', params.id))
+  invalidateCache(createCacheKey('item-meta', params.id))
   invalidateCache(createCacheKey('item', params.id))
 }
 
@@ -1044,7 +1048,10 @@ export async function toggleWatched(params: ToggleWatchedParams): Promise<void> 
 
   await authFetch(`${BASE_URL}/v1/watching/toggle?${searchParams}`)
   invalidateCache('watching'); invalidateCache('watching_v2')
+  invalidateCache('watching_serials')
   invalidateCache('history')
+  invalidateCache(createCacheKey('item', 'nolinks', params.id))
+  invalidateCache(createCacheKey('item-meta', params.id))
   invalidateCache(createCacheKey('item', params.id))
 }
 

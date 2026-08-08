@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Season } from '../../src/api/kinopub'
-import { buildSeasonsSummary, getContinueEpisode, getEpisodeNeighbors } from '../../src/utils/episodes'
+import { buildSeasonsSummary, getContinueAction, getContinueEpisode, getEpisodeNeighbors } from '../../src/utils/episodes'
 
 function episode(id: number, number: number, watching?: { status?: number; time?: number }, extras?: { title?: string; duration?: number; watched?: number }) {
   return {
@@ -14,6 +14,58 @@ function episode(id: number, number: number, watching?: { status?: number; time?
     watching
   }
 }
+
+describe('getContinueAction', () => {
+  it('returns null without seasons', () => {
+    expect(getContinueAction(undefined)).toBeNull()
+    expect(getContinueAction([])).toBeNull()
+  })
+
+  it('starts watching at S1E1 when nothing watched', () => {
+    const seasons: Season[] = [
+      { number: 1, episodes: [episode(1, 1), episode(2, 2)] },
+      { number: 2, episodes: [episode(3, 1)] }
+    ]
+    expect(getContinueAction(seasons)).toEqual({ kind: 'start', season: 1, episode: 1 })
+  })
+
+  it('continues at first unfinished episode', () => {
+    const seasons: Season[] = [
+      {
+        number: 1,
+        episodes: [
+          episode(1, 1, { status: 1 }),
+          episode(2, 2, { status: 0, time: 120 })
+        ]
+      }
+    ]
+    expect(getContinueAction(seasons)).toEqual({ kind: 'continue', season: 1, episode: 2 })
+  })
+
+  it('treats watched=1 as finished', () => {
+    const seasons: Season[] = [
+      {
+        number: 1,
+        episodes: [
+          episode(1, 1, undefined, { watched: 1 }),
+          episode(2, 2)
+        ]
+      }
+    ]
+    expect(getContinueAction(seasons)).toEqual({ kind: 'continue', season: 1, episode: 2 })
+  })
+
+  it('returns completed when every episode is finished', () => {
+    const seasons: Season[] = [
+      {
+        number: 1,
+        watching: { status: 1 },
+        episodes: [episode(1, 1, { status: 1 })]
+      }
+    ]
+    expect(getContinueAction(seasons)).toEqual({ kind: 'completed' })
+  })
+})
 
 describe('getContinueEpisode', () => {
   it('returns null without seasons', () => {

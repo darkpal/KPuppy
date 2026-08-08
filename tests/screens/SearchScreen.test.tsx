@@ -84,6 +84,42 @@ describe('SearchScreen', () => {
 
       expect(document.querySelector('.search-input-container.focused')).not.toBeNull()
     })
+
+    it('keeps query focus when results appear under the pointer', async () => {
+      vi.mocked(kinopub.searchItems).mockResolvedValue({
+        items: [{
+          id: 1,
+          title: 'Test',
+          type: 'movie',
+          year: 2024,
+          plot: '',
+          posters: { small: '', medium: '', big: '' },
+          rating: 0,
+          imdbRating: 0,
+          kinopoiskRating: 0,
+          ratingPercentage: 0,
+          quality: 0,
+          views: 0
+        }],
+        pagination: { current: 1, total: 1, totalItems: 1, perpage: 48 }
+      })
+
+      const { fireEvent } = await import('@testing-library/preact')
+      renderWithI18n(<SearchScreen {...mockProps} initialQuery="ho" />)
+
+      await waitFor(() => {
+        expect(document.querySelector('.movie-card')).not.toBeNull()
+      })
+
+      const input = document.querySelector('.search-query-input') as HTMLInputElement
+      input.focus()
+      fireEvent.focus(input)
+
+      const card = document.querySelector('.movie-card') as HTMLElement
+      fireEvent.mouseEnter(card)
+
+      expect(document.querySelector('.search-input-container.focused')).not.toBeNull()
+    })
   })
 
   describe('search results', () => {

@@ -19,7 +19,7 @@ export function EpisodeCard({ episode, seriesPoster, focused, onSelect, onHover 
 
   const duration = formatDuration(episode.duration)
 
-  const isWatched = episode.watched === 1
+  const isWatched = episode.watched === 1 || episode.watching?.status === 1
 
   return (
     <div

@@ -379,13 +379,13 @@ describe('ItemScreen', () => {
   })
 
   describe('series display', () => {
-    it('renders continue and seasons buttons for series', async () => {
+    it('renders start watching when nothing is watched', async () => {
       vi.mocked(kinopub.getItem).mockResolvedValue(mockSeriesDetails)
 
       renderWithI18n(<ItemScreen {...mockProps} itemId={2} />)
 
       await waitFor(() => {
-        expect(screen.getByText(/Continue · S1E1/)).toBeDefined()
+        expect(screen.getByText(/Start watching · S1E1/)).toBeDefined()
         expect(screen.getByText(/Seasons/)).toBeDefined()
       })
     })
@@ -409,6 +409,28 @@ describe('ItemScreen', () => {
       })
       fireEvent.click(screen.getByText(/Continue · S2E5/))
       expect(mockProps.onPlay).toHaveBeenCalledWith(2, 2, 5, expect.any(Object))
+    })
+
+    it('opens seasons when all episodes are watched', async () => {
+      vi.mocked(kinopub.getItem).mockResolvedValue({
+        ...mockSeriesDetails,
+        seasons: [{
+          number: 1,
+          watching: { status: 1 },
+          episodes: [
+            { id: 1, number: 1, title: 'E1', files: [], audios: [], watched: 1, watching: { status: 1 } }
+          ]
+        }]
+      })
+
+      renderWithI18n(<ItemScreen {...mockProps} itemId={2} />)
+
+      await waitFor(() => {
+        expect(screen.getByText('All watched')).toBeDefined()
+      })
+      fireEvent.click(screen.getByText('All watched'))
+      expect(mockProps.onSelectSeries).toHaveBeenCalledWith(2)
+      expect(mockProps.onPlay).not.toHaveBeenCalled()
     })
 
     it('checks watchlist status for series', async () => {

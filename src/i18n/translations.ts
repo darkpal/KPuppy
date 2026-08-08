@@ -64,12 +64,15 @@ export interface Translations {
 
   // Item Details
   play: string
+  startWatching: string
+  allWatched: string
   seasons: string
   season: string
   episode: string
   episodes: string
   previousEpisode: string
   nextEpisode: string
+  toggleWatchedHint: string
   director: string
   cast: string
   country: string
@@ -260,12 +263,15 @@ const en: Translations = {
   searchResults: 'Search Results',
 
   play: 'Play',
+  startWatching: 'Start watching',
+  allWatched: 'All watched',
   seasons: 'Seasons',
   season: 'Season',
   episode: 'Episode',
   episodes: 'Episodes',
   previousEpisode: 'Previous',
   nextEpisode: 'Next',
+  toggleWatchedHint: 'Green — mark watched / unwatched',
   director: 'Director',
   cast: 'Cast',
   country: 'Country',
@@ -441,12 +447,15 @@ const ru: Translations = {
   searchResults: 'Результаты поиска',
 
   play: 'Смотреть',
+  startWatching: 'Начать просмотр',
+  allWatched: 'Всё просмотрено',
   seasons: 'Сезоны',
   season: 'Сезон',
   episode: 'Серия',
   episodes: 'Серии',
   previousEpisode: 'Предыдущая',
   nextEpisode: 'Следующая',
+  toggleWatchedHint: 'Зелёная — отметить просмотренным',
   director: 'Режиссёр',
   cast: 'В ролях',
   country: 'Страна',
@@ -622,12 +631,15 @@ const de: Translations = {
   searchResults: 'Suchergebnisse',
 
   play: 'Abspielen',
+  startWatching: 'Ansehen starten',
+  allWatched: 'Alles gesehen',
   seasons: 'Staffeln',
   season: 'Staffel',
   episode: 'Folge',
   episodes: 'Folgen',
   previousEpisode: 'Vorherige',
   nextEpisode: 'Nächste',
+  toggleWatchedHint: 'Grün — gesehen / ungesehen',
   director: 'Regisseur',
   cast: 'Besetzung',
   country: 'Land',
@@ -803,12 +815,15 @@ const uk: Translations = {
   searchResults: 'Результати пошуку',
 
   play: 'Дивитися',
+  startWatching: 'Почати перегляд',
+  allWatched: 'Усе переглянуто',
   seasons: 'Сезони',
   season: 'Сезон',
   episode: 'Серія',
   episodes: 'Серії',
   previousEpisode: 'Попередня',
   nextEpisode: 'Наступна',
+  toggleWatchedHint: 'Зелена — позначити переглянутим',
   director: 'Режисер',
   cast: 'У ролях',
   country: 'Країна',

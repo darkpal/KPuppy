@@ -88,7 +88,15 @@ export function SeasonsScreen({ itemId, onBack, onPlay, onNavigateToMenu, isActi
               ...s,
               episodes: s.episodes.map((ep, eIdx) => {
                 if (eIdx !== focusedCol) return ep
-                return { ...ep, watched: ep.watched === 1 ? 0 : 1 }
+                return {
+                  ...ep,
+                  watched: ep.watched === 1 ? 0 : 1,
+                  watching: {
+                    ...ep.watching,
+                    status: ep.watched === 1 ? -1 : 1,
+                    time: ep.watched === 1 ? 0 : ep.watching?.time
+                  }
+                }
               })
             }
           })
@@ -140,7 +148,7 @@ export function SeasonsScreen({ itemId, onBack, onPlay, onNavigateToMenu, isActi
             : undefined
         }),
         onBack,
-        onYellow: handleToggleWatched
+        onGreen: handleToggleWatched
       }
     }
 
@@ -174,7 +182,7 @@ export function SeasonsScreen({ itemId, onBack, onPlay, onNavigateToMenu, isActi
           onPlay(itemId, currentSeason.number, episode.number)
         }
       },
-      onYellow: handleToggleWatched
+      onGreen: handleToggleWatched
     }
   }, [seasons, focusedRow, focusedCol, itemId, onBack, onPlay, onNavigateToMenu, handleToggleWatched, isGridMode, episodesPerRow, focusByKeyboard, focusSeasonRow])
 
@@ -212,6 +220,7 @@ export function SeasonsScreen({ itemId, onBack, onPlay, onNavigateToMenu, isActi
           <span class="seasons-subtitle">
             {seasons.length === 1 ? `${t.season} ${seasons[0].number}` : `${seasons.length} ${t.seasons}`}
           </span>
+          <span class="seasons-hint">{t.toggleWatchedHint}</span>
         </div>
         {seasons.map((season, seasonIndex) => (
           <div key={season.number}>
@@ -250,6 +259,7 @@ export function SeasonsScreen({ itemId, onBack, onPlay, onNavigateToMenu, isActi
       <div class="seasons-header">
         <h1 class="seasons-title">{item.title}</h1>
         <span class="seasons-subtitle">{seasons.length} {seasons.length > 1 ? t.seasons : t.season}</span>
+        <span class="seasons-hint">{t.toggleWatchedHint}</span>
       </div>
 
       <div class="seasons-container" ref={containerRef}>

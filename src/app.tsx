@@ -480,7 +480,6 @@ export function App() {
         }
       }
 
-      const needProgress = startTime <= 0
       const [linksResult, progressResult, deviceResult] = await Promise.all([
         mediaId
           ? getMediaLinks(mediaId).catch(err => {
@@ -488,9 +487,7 @@ export function App() {
               return null
             })
           : Promise.resolve(null),
-        needProgress
-          ? getWatchingProgress(itemId, videoNumber, season).catch(() => null)
-          : Promise.resolve(null),
+        getWatchingProgress(itemId, videoNumber, season).catch(() => null),
         getDeviceInfo().catch(() => null)
       ])
 
@@ -499,7 +496,9 @@ export function App() {
         if (linksResult.subtitles.length > 0) subtitles = linksResult.subtitles
       }
       if (progressResult) {
-        startTime = getResumeTime(progressResult)
+        startTime = getResumeTime(progressResult, season !== undefined
+          ? item.seasons?.find(s => s.number === season)?.episodes.find(e => e.number === episode)?.duration
+          : item.videos?.[0]?.duration)
       }
 
       const preferredQuality = options?.quality || (localSettings.defaultQuality === 'auto' ? undefined : localSettings.defaultQuality)

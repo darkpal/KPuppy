@@ -179,7 +179,10 @@
 }
 
 .search-results::-webkit-scrollbar {
+  width: 0;
+  height: 0;
   display: none;
+  background: transparent;
 }
 
 .search-results-grid {
@@ -192,6 +195,23 @@
 
 .search-results-grid > div {
   margin: 16px;
+}
+
+.search-results-grid .movie-card {
+  width: var(--card-width, 300px);
+  height: auto;
+}
+
+.search-results-grid .movie-card-poster {
+  width: 100%;
+}
+
+.search-results-grid .movie-card-title {
+  font-size: 20px;
+}
+
+.search-results-grid .movie-card-title-secondary {
+  font-size: 15px;
 }
 
 .search-empty,

@@ -7,7 +7,7 @@ import { useI18n } from '../i18n'
 import { ItemDetails } from '../components/ItemDetails'
 import { SimilarItems } from '../components/SimilarItems'
 import { FolderDialog } from '../components/FolderDialog'
-import { getContinueEpisode } from '../utils/episodes'
+import { getContinueAction } from '../utils/episodes'
 import thumbUpIcon from '../assets/thumb-up.svg'
 import '../styles/item.css'
 
@@ -320,8 +320,8 @@ export function ItemScreen({ itemId, preview = null, onBack, onPlay, onPlayTrail
   const subtitles = videoData?.subtitles || []
   const availableQualities = getAvailableQualities(files)
 
-  const continueEpisode = useMemo(
-    () => (item?.seasons?.length ? getContinueEpisode(item.seasons) : null),
+  const continueAction = useMemo(
+    () => (item?.seasons?.length ? getContinueAction(item.seasons) : null),
     [item?.seasons]
   )
 
@@ -333,15 +333,19 @@ export function ItemScreen({ itemId, preview = null, onBack, onPlay, onPlayTrail
       else onPlay(itemId)
       return
     }
+    if (continueAction?.kind === 'completed') {
+      onSelectSeries(itemId)
+      return
+    }
     const options: PlayOptions = {
       quality: selectedQuality || undefined
     }
-    if (continueEpisode) {
-      onPlay(itemId, continueEpisode.season, continueEpisode.episode, options)
+    if (continueAction && (continueAction.kind === 'start' || continueAction.kind === 'continue')) {
+      onPlay(itemId, continueAction.season, continueAction.episode, options)
     } else {
       onPlay(itemId, undefined, undefined, options)
     }
-  }, [item, preview, itemId, onPlay, onSelectSeries, selectedQuality, continueEpisode])
+  }, [item, preview, itemId, onPlay, onSelectSeries, selectedQuality, continueAction])
 
   const handlePlayOrSelect = useCallback(() => {
     if (focusArea === 'seasons') {
@@ -855,9 +859,13 @@ export function ItemScreen({ itemId, preview = null, onBack, onPlay, onPlayTrail
                     onClick={handleContinuePlay}
                   >
                     <span class="item-button-icon">▶</span>
-                    {continueEpisode
-                      ? `${t.menuContinue} · S${continueEpisode.season}E${continueEpisode.episode}`
-                      : t.play}
+                    {continueAction?.kind === 'completed'
+                      ? t.allWatched
+                      : continueAction?.kind === 'start'
+                        ? `${t.startWatching} · S${continueAction.season}E${continueAction.episode}`
+                        : continueAction?.kind === 'continue'
+                          ? `${t.menuContinue} · S${continueAction.season}E${continueAction.episode}`
+                          : t.play}
                     {!hasSeasons && selectedQuality && (
                       <span class="item-quality-badge">{selectedQuality}</span>
                     )}

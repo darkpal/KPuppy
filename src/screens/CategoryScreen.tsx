@@ -456,78 +456,72 @@ export function CategoryScreen({
   const renderDropdown = (kind: FilterKind) => {
     if (!(focusArea === 'filter' && activeFilter === kind && filterDropdownOpen)) return null
 
+    const option = (index: number, label: string, key?: string | number) => (
+      <div
+        key={key ?? index}
+        class={`category-filter-option ${dropdownFocusIndex === index ? 'focused' : ''}`}
+        onMouseEnter={() => setDropdownFocusIndex(index)}
+        onClick={(event) => {
+          event.stopPropagation()
+          applyDropdownSelection(index)
+        }}
+      >
+        {label}
+      </div>
+    )
+
     if (kind === 'genre') {
       return (
-        <div class="category-filter-dropdown">
-          <div class={`category-filter-option ${dropdownFocusIndex === 0 ? 'focused' : ''}`}>{t.allGenres}</div>
-          {genres.map((genre, idx) => (
-            <div key={genre.id} class={`category-filter-option ${dropdownFocusIndex === idx + 1 ? 'focused' : ''}`}>
-              {genre.title}
-            </div>
-          ))}
+        <div class="category-filter-dropdown" onClick={(event) => event.stopPropagation()}>
+          {option(0, t.allGenres)}
+          {genres.map((genre, idx) => option(idx + 1, genre.title, genre.id))}
         </div>
       )
     }
     if (kind === 'country') {
       return (
-        <div class="category-filter-dropdown">
-          <div class={`category-filter-option ${dropdownFocusIndex === 0 ? 'focused' : ''}`}>{t.allCountries}</div>
-          {countries.map((country, idx) => (
-            <div key={country.id} class={`category-filter-option ${dropdownFocusIndex === idx + 1 ? 'focused' : ''}`}>
-              {country.title}
-            </div>
-          ))}
+        <div class="category-filter-dropdown" onClick={(event) => event.stopPropagation()}>
+          {option(0, t.allCountries)}
+          {countries.map((country, idx) => option(idx + 1, country.title, country.id))}
         </div>
       )
     }
     if (kind === 'sort') {
       return (
-        <div class="category-filter-dropdown">
-          {SORT_OPTIONS.map((option, idx) => (
-            <div key={option.id} class={`category-filter-option ${dropdownFocusIndex === idx ? 'focused' : ''}`}>
-              {t[option.labelKey]}
-            </div>
-          ))}
+        <div class="category-filter-dropdown" onClick={(event) => event.stopPropagation()}>
+          {SORT_OPTIONS.map((sortOption, idx) => option(idx, t[sortOption.labelKey], sortOption.id))}
         </div>
       )
     }
     if (kind === 'year') {
       return (
-        <div class="category-filter-dropdown">
-          <div class={`category-filter-option ${dropdownFocusIndex === 0 ? 'focused' : ''}`}>{t.allYears}</div>
-          {YEAR_OPTIONS.map((year, idx) => (
-            <div key={year} class={`category-filter-option ${dropdownFocusIndex === idx + 1 ? 'focused' : ''}`}>
-              {year}
-            </div>
-          ))}
+        <div class="category-filter-dropdown" onClick={(event) => event.stopPropagation()}>
+          {option(0, t.allYears)}
+          {YEAR_OPTIONS.map((year, idx) => option(idx + 1, String(year), year))}
         </div>
       )
     }
     if (kind === 'quality') {
       return (
-        <div class="category-filter-dropdown">
-          <div class={`category-filter-option ${dropdownFocusIndex === 0 ? 'focused' : ''}`}>{t.allQualities}</div>
-          <div class={`category-filter-option ${dropdownFocusIndex === 1 ? 'focused' : ''}`}>{t.filter4k}</div>
+        <div class="category-filter-dropdown" onClick={(event) => event.stopPropagation()}>
+          {option(0, t.allQualities)}
+          {option(1, t.filter4k)}
         </div>
       )
     }
     if (kind === 'kp' || kind === 'imdb') {
       return (
-        <div class="category-filter-dropdown">
-          <div class={`category-filter-option ${dropdownFocusIndex === 0 ? 'focused' : ''}`}>{t.ratingAny}</div>
-          {RATING_OPTIONS.map((rating, idx) => (
-            <div key={rating} class={`category-filter-option ${dropdownFocusIndex === idx + 1 ? 'focused' : ''}`}>
-              {ratingLabel(rating, t)}
-            </div>
-          ))}
+        <div class="category-filter-dropdown" onClick={(event) => event.stopPropagation()}>
+          {option(0, t.ratingAny)}
+          {RATING_OPTIONS.map((rating, idx) => option(idx + 1, ratingLabel(rating, t), rating))}
         </div>
       )
     }
     if (kind === 'finished') {
       return (
-        <div class="category-filter-dropdown">
-          <div class={`category-filter-option ${dropdownFocusIndex === 0 ? 'focused' : ''}`}>{t.finishedAny}</div>
-          <div class={`category-filter-option ${dropdownFocusIndex === 1 ? 'focused' : ''}`}>{t.finishedOnly}</div>
+        <div class="category-filter-dropdown" onClick={(event) => event.stopPropagation()}>
+          {option(0, t.finishedAny)}
+          {option(1, t.finishedOnly)}
         </div>
       )
     }

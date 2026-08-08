@@ -50,30 +50,85 @@ function isFinished(status?: number): boolean {
   return status === WatchingStatus.Watched
 }
 
+function isEpisodeFinished(
+  episode: { watched?: number; watching?: { status?: number } },
+  seasonWatched?: boolean
+): boolean {
+  if (seasonWatched) return true
+  if (episode.watched === 1) return true
+  return isFinished(episode.watching?.status)
+}
+
+function episodeHasProgress(episode: {
+  watched?: number
+  watching?: { status?: number; time?: number }
+}): boolean {
+  if (episode.watched === 1) return true
+  if (isFinished(episode.watching?.status)) return true
+  if ((episode.watching?.time ?? 0) > 0) return true
+  if (episode.watching?.status === WatchingStatus.Watching) return true
+  return false
+}
+
+export type ContinueAction =
+  | { kind: 'start'; season: number; episode: number }
+  | { kind: 'continue'; season: number; episode: number }
+  | { kind: 'completed' }
+
 /**
- * First unwatched (or in-progress) episode for Continue · SxEy.
- * Skips seasons/episodes with watching.status === 1; falls back to S1E1.
+ * Primary CTA for a series card:
+ * - start → nothing watched yet
+ * - continue → first unfinished episode
+ * - completed → every episode finished
  */
-export function getContinueEpisode(
+export function getContinueAction(
   seasons: Season[] | undefined
-): EpisodeNavigationTarget | null {
+): ContinueAction | null {
   if (!seasons || seasons.length === 0) return null
 
   const orderedSeasons = seasons.slice().sort((a, b) => a.number - b.number)
+  let hasProgress = false
+  let firstUnfinished: EpisodeNavigationTarget | null = null
+
   for (const season of orderedSeasons) {
-    if (isFinished(season.watching?.status)) continue
+    const seasonWatched = isFinished(season.watching?.status)
+    if (seasonWatched) hasProgress = true
     const orderedEpisodes = season.episodes.slice().sort((a, b) => a.number - b.number)
     for (const episode of orderedEpisodes) {
-      if (!isFinished(episode.watching?.status)) {
-        return { season: season.number, episode: episode.number }
+      if (episodeHasProgress(episode) || seasonWatched) hasProgress = true
+      if (!isEpisodeFinished(episode, seasonWatched) && !firstUnfinished) {
+        firstUnfinished = { season: season.number, episode: episode.number }
       }
     }
   }
 
-  const first = orderedSeasons[0]
-  const firstEp = first?.episodes.slice().sort((a, b) => a.number - b.number)[0]
-  if (!first || !firstEp) return null
-  return { season: first.number, episode: firstEp.number }
+  if (!firstUnfinished) return { kind: 'completed' }
+
+  if (!hasProgress) {
+    return { kind: 'start', season: firstUnfinished.season, episode: firstUnfinished.episode }
+  }
+
+  return { kind: 'continue', season: firstUnfinished.season, episode: firstUnfinished.episode }
+}
+
+/**
+ * First unwatched (or in-progress) episode for Continue · SxEy.
+ * Skips seasons/episodes with watching.status === 1; falls back to S1E1.
+ * @deprecated Prefer getContinueAction for UI labels.
+ */
+export function getContinueEpisode(
+  seasons: Season[] | undefined
+): EpisodeNavigationTarget | null {
+  const action = getContinueAction(seasons)
+  if (!action) return null
+  if (action.kind === 'completed') {
+    const ordered = seasons!.slice().sort((a, b) => a.number - b.number)
+    const first = ordered[0]
+    const firstEp = first?.episodes.slice().sort((a, b) => a.number - b.number)[0]
+    if (!first || !firstEp) return null
+    return { season: first.number, episode: firstEp.number }
+  }
+  return { season: action.season, episode: action.episode }
 }
 
 /** Resolve adjacent episodes across season boundaries without mutating API data. */

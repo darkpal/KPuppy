@@ -1576,6 +1576,7 @@ export function PlayerScreen({
                     >
                       <span class="player-episode-item-main">
                         <span class="player-episode-item-title">
+                          {(episodeSummary.watched === 1 || episodeSummary.watching?.status === 1) ? '✓ ' : ''}
                           {episodeSummary.number}. {episodeSummary.title || `${t.episode} ${episodeSummary.number}`}
                         </span>
                         {episodeSummary.duration != null && episodeSummary.duration > 0 && (

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'preact/hooks'
 import { searchItems, getContentTypes, MovieItem, ContentType } from '../api/kinopub'
 import { getContentTypesCache, saveContentTypesCache } from '../storage'
 import { MovieCard } from '../components/MovieCard'
-import { useKeyboardNavigation, useScrollToFocused, createGridNavigationHandlers } from '../hooks'
+import { useKeyboardNavigation, useScrollToFocused, useGridLayout, createGridNavigationHandlers } from '../hooks'
 import { LoadingState } from '../components/LoadingSpinner'
 import { useI18n } from '../i18n'
 import '../styles/search.css'
@@ -87,7 +87,6 @@ export function SearchScreen({
   const [focusArea, setFocusArea] = useState<FocusArea>(resolved.query.trim().length >= 2 ? 'results' : 'query')
   const [resultIndex, setResultIndex] = useState(initialFocusIndex)
   const [hasSearched, setHasSearched] = useState(false)
-  const [resultsPerRow, setResultsPerRow] = useState(6)
   /** Pointer hover must not auto-scroll — near the edge it cascades endlessly. */
   const [scrollWithFocus, setScrollWithFocus] = useState(true)
   const searchTimeoutRef = useRef<number | null>(null)
@@ -103,6 +102,7 @@ export function SearchScreen({
   const [filterDropdownOpen, setFilterDropdownOpen] = useState(false)
   const [filterDropdownIndex, setFilterDropdownIndex] = useState(0)
   const [activeFilter, setActiveFilter] = useState<FilterTarget>('type')
+  const { itemsPerRow: resultsPerRow, cardWidth } = useGridLayout('.search-results-grid', 240, [results.length])
 
   useEffect(() => {
     onStateChangeRef.current?.({
@@ -115,26 +115,6 @@ export function SearchScreen({
   useEffect(() => {
     onFocusChangeRef.current?.(resultIndex)
   }, [resultIndex])
-
-  useEffect(() => {
-    const updateResultsPerRow = () => {
-      const grid = document.querySelector('.search-results-grid')
-      if (grid && grid.children.length > 0) {
-        const firstChild = grid.children[0] as HTMLElement
-        const gridWidth = grid.clientWidth
-        const itemWidth = firstChild.offsetWidth
-        const gap = 32
-        const count = Math.floor((gridWidth + gap) / (itemWidth + gap))
-        setResultsPerRow(Math.max(1, count))
-      }
-    }
-    const timer = setTimeout(updateResultsPerRow, 100)
-    window.addEventListener('resize', updateResultsPerRow)
-    return () => {
-      clearTimeout(timer)
-      window.removeEventListener('resize', updateResultsPerRow)
-    }
-  }, [results.length])
 
   useEffect(() => {
     const cached = getContentTypesCache()
@@ -153,18 +133,25 @@ export function SearchScreen({
       })
   }, [])
 
-  // Focus the real input so webOS opens the system keyboard / voice IME.
+  // Keep system IME open while focusArea is query. Do not blur on result hover —
+  // Magic Remote often lands on cards as they load and would dismiss the keyboard.
   useEffect(() => {
     if (!isActive) {
       queryInputRef.current?.blur()
       return
     }
     if (focusArea === 'query') {
-      queryInputRef.current?.focus()
-    } else {
-      queryInputRef.current?.blur()
+      const input = queryInputRef.current
+      if (input && document.activeElement !== input) {
+        input.focus()
+      }
     }
   }, [focusArea, isActive])
+
+  const leaveQueryForNavigation = useCallback((next: FocusArea) => {
+    queryInputRef.current?.blur()
+    setFocusArea(next)
+  }, [])
 
   const performSearch = useCallback(async (searchQuery: string, type: string | null, field: SearchField) => {
     if (!searchQuery.trim()) {
@@ -293,16 +280,16 @@ export function SearchScreen({
         },
         onLeft: onNavigateToMenu,
         onRight: () => {
-          setFocusArea('filter')
+          leaveQueryForNavigation('filter')
           setActiveFilter('type')
         },
         onUp: () => {
-          setFocusArea('filter')
+          leaveQueryForNavigation('filter')
           setActiveFilter('type')
         },
         onDown: () => {
           if (results.length > 0) {
-            setFocusArea('results')
+            leaveQueryForNavigation('results')
             setResultIndex(0)
           }
         },
@@ -332,7 +319,7 @@ export function SearchScreen({
       }),
       onBack: exitDirectlyOnBack ? onBack : () => setFocusArea('query')
     }
-  }, [focusArea, results, resultIndex, resultsPerRow, onBack, onSelectItem, onNavigateToMenu, filterDropdownOpen, filterDropdownIndex, currentDropdownOptions.length, activeFilter, typeOptions, isQueryInputFocused, exitDirectlyOnBack])
+  }, [focusArea, results, resultIndex, resultsPerRow, onBack, onSelectItem, onNavigateToMenu, filterDropdownOpen, filterDropdownIndex, currentDropdownOptions.length, activeFilter, typeOptions, isQueryInputFocused, exitDirectlyOnBack, leaveQueryForNavigation])
 
   useKeyboardNavigation(handlers, isActive)
 
@@ -357,7 +344,7 @@ export function SearchScreen({
 
   const openFilter = (target: FilterTarget) => {
     setActiveFilter(target)
-    setFocusArea(target === 'type' ? 'filter' : 'field')
+    leaveQueryForNavigation(target === 'type' ? 'filter' : 'field')
     let initial = 0
     if (target === 'type') {
       initial = selectedType ? typeOptions.findIndex(o => o.id === selectedType) : 0
@@ -476,7 +463,10 @@ export function SearchScreen({
         )}
 
         {!loading && results.length > 0 && (
-          <div class="search-results-grid">
+          <div
+            class="search-results-grid"
+            style={cardWidth ? { '--card-width': `${cardWidth}px` } as Record<string, string> : undefined}
+          >
             {results.map((item, index) => (
               <div key={item.id} data-result-index={index}>
                 <MovieCard
@@ -484,6 +474,10 @@ export function SearchScreen({
                   focused={focusArea === 'results' && resultIndex === index}
                   onHover={() => {
                     setScrollWithFocus(false)
+                    // Keep IME open while typing — cards often appear under the pointer.
+                    if (focusArea === 'query' || document.activeElement === queryInputRef.current) {
+                      return
+                    }
                     setFocusArea('results')
                     setResultIndex(index)
                   }}
