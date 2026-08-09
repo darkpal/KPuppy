@@ -266,6 +266,52 @@ describe('PlayerScreen', () => {
   })
 
   describe('subtitles', () => {
+    it('clears previous episode tracks when the stream URL changes', () => {
+      const subtitles = [{
+        lang: 'ru',
+        shift: 0,
+        embed: false,
+        forced: false,
+        file: 'ep1.vtt',
+        url: 'https://example.com/ep1.vtt'
+      }]
+
+      const { rerender } = renderWithI18n(
+        <PlayerScreen {...mockProps} subtitles={subtitles} />
+      )
+
+      const video = document.querySelector('.player-video') as HTMLVideoElement
+      expect(video).not.toBeNull()
+
+      // Simulate an applied subtitle track from the previous episode.
+      const staleTrack = document.createElement('track')
+      staleTrack.kind = 'subtitles'
+      staleTrack.src = 'https://example.com/ep1.vtt'
+      staleTrack.srclang = 'ru'
+      staleTrack.default = true
+      video.appendChild(staleTrack)
+      expect(video.querySelectorAll('track').length).toBe(1)
+
+      rerender(
+        <I18nProvider>
+          <PlayerScreen
+            {...mockProps}
+            url="https://example.com/episode-2.m3u8"
+            subtitles={[{
+              lang: 'ru',
+              shift: 0,
+              embed: false,
+              forced: false,
+              file: 'ep2.vtt',
+              url: 'https://example.com/ep2.vtt'
+            }]}
+          />
+        </I18nProvider>
+      )
+
+      expect(video.querySelectorAll('track').length).toBe(0)
+    })
+
     it('shows subtitle button immediately when subtitle URLs exist', () => {
       const subtitles = [{
         lang: 'en',

@@ -207,6 +207,16 @@ export function PlayerScreen({
   )
   const hasSubtitles = selectableSubs.length > 0
 
+  const clearVideoTracks = useCallback((video: HTMLVideoElement) => {
+    while (video.firstChild) {
+      video.removeChild(video.lastChild!)
+    }
+    const tracks = video.textTracks
+    for (let i = 0; i < tracks.length; i++) {
+      tracks[i].mode = 'disabled'
+    }
+  }, [])
+
   useEffect(() => {
     endedNavigationRef.current = false
     startTimeAppliedRef.current = false
@@ -216,6 +226,17 @@ export function PlayerScreen({
     mseFallbackTriedRef.current = false
     liveStreamRef.current = false
     lastHlsErrorRef.current = null
+    // Drop previous episode <track> nodes — same <video> is reused across auto-next.
+    subtitleRequestRef.current += 1
+    pendingSubtitleIndexRef.current = null
+    if (subtitleApplyTimerRef.current) {
+      window.clearTimeout(subtitleApplyTimerRef.current)
+      subtitleApplyTimerRef.current = 0
+    }
+    if (videoRef.current) {
+      clearVideoTracks(videoRef.current)
+    }
+    setSubtitleLoading(false)
     setUseMseHls(false)
     setIsLiveStream(false)
     setLiveDiagLines(null)
@@ -234,7 +255,7 @@ export function PlayerScreen({
     setPrimaryControlsActive(false)
     setPrimaryControlFocus('play')
     setEpisodesFocus(resolveEpisodesFocus(seasonsSummary, season, episode))
-  }, [url, initialAudioIndex, audios.length, initialQuality, availableQualities[0], seasonsSummary, season, episode])
+  }, [url, initialAudioIndex, audios.length, initialQuality, availableQualities[0], seasonsSummary, season, episode, clearVideoTracks])
 
   const flushTime = useCallback((time?: number) => {
     const video = videoRef.current
@@ -395,16 +416,6 @@ export function PlayerScreen({
     return () => {
       cache.forEach(url => URL.revokeObjectURL(url))
       cache.clear()
-    }
-  }, [])
-
-  const clearVideoTracks = useCallback((video: HTMLVideoElement) => {
-    while (video.firstChild) {
-      video.removeChild(video.lastChild!)
-    }
-    const tracks = video.textTracks
-    for (let i = 0; i < tracks.length; i++) {
-      tracks[i].mode = 'disabled'
     }
   }, [])
 
