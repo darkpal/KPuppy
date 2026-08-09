@@ -61,6 +61,7 @@ interface SideMenuProps {
 export function SideMenu({ selectedId, focusedIndex, onSelect }: SideMenuProps) {
   const { t } = useI18n()
   const [pinSideMenu, setPinSideMenu] = useState(() => getLocalSettings().pinSideMenu)
+  const [pointerActive, setPointerActive] = useState(false)
   const isExpanded = pinSideMenu || focusedIndex !== null
   const menuItemsRef = useRef<HTMLUListElement>(null)
 
@@ -68,6 +69,15 @@ export function SideMenu({ selectedId, focusedIndex, onSelect }: SideMenuProps) 
     const sync = () => setPinSideMenu(getLocalSettings().pinSideMenu)
     window.addEventListener('kpuppy-settings-changed', sync)
     return () => window.removeEventListener('kpuppy-settings-changed', sync)
+  }, [])
+
+  useEffect(() => {
+    // webOS can hide the Magic Remote cursor without clearing CSS :hover.
+    // Once keyboard/D-pad navigation resumes, suppress that stale hover until
+    // the pointer actually moves over the menu again.
+    const handleKeyDown = () => setPointerActive(false)
+    document.addEventListener('keydown', handleKeyDown, true)
+    return () => document.removeEventListener('keydown', handleKeyDown, true)
   }, [])
 
   // Notify grids that content width changed (no window.resize, no ResizeObserver on webOS).
@@ -105,7 +115,10 @@ export function SideMenu({ selectedId, focusedIndex, onSelect }: SideMenuProps) 
   }
 
   return (
-    <nav class={`side-menu ${isExpanded ? 'expanded' : ''}`}>
+    <nav
+      class={`side-menu ${isExpanded ? 'expanded' : ''} ${pointerActive ? 'pointer-active' : ''}`}
+      onMouseMove={() => setPointerActive(true)}
+    >
       <div class="side-menu-logo">
         {isExpanded ? t.appName : 'K'}
       </div>

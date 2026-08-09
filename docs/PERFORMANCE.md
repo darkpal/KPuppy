@@ -5,7 +5,7 @@ for humans and multiple coding agents: read it before profiling or changing a
 performance-sensitive path, and update it when a finding is confirmed, fixed,
 rejected, or superseded.
 
-Last updated: **2026-08-09**, release **v0.0.92**.
+Last updated: **2026-08-09**, release **v0.0.93**.
 
 ## 1. Product and platform constraints
 
@@ -53,11 +53,11 @@ and be verified on a real TV with several large and bright posters.
 These values are reference points, not permanent budgets. Update them after a
 material performance change or dependency upgrade.
 
-| Measurement | v0.0.92 baseline | How verified |
+| Measurement | v0.0.93 baseline | How verified |
 | --- | ---: | --- |
-| Automated tests | 615 passing | `npm run test:run` |
-| Production bundle | 633.64 kB | Vite build output |
-| Production bundle, gzip | 190.08 kB | Vite build output |
+| Automated tests | 620 passing | `npm run test:run` |
+| Production bundle | 634.43 kB | Vite build output |
+| Production bundle, gzip | 190.39 kB | Vite build output |
 | Continue Watching initial network fan-out | 2 list requests | movies + serials |
 | Continue Watching metadata concurrency | maximum 3 | worker pool in `enrichMovieItemsMeta` |
 | Player time UI updates | maximum 1 per displayed second | integer-second guard |
@@ -72,6 +72,12 @@ Collections/History. There are also two existing `no-explicit-any` warnings in
 not add new lint debt.
 
 ## 4. Implemented optimizations
+
+### v0.0.93
+
+| Area | Current design | Expected effect |
+| --- | --- | --- |
+| Episode thumbnails | A broken episode URL falls back to the series poster; silent stalls retain bounded retries; failure of both sources shows a local placeholder | Removes persistent broken-image tiles without weakening transient webOS load recovery |
 
 ### v0.0.92
 

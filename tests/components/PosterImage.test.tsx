@@ -31,6 +31,35 @@ describe('PosterImage', () => {
     expect(img.getAttribute('src')).toContain('https://example.com/p.jpg?_kpuppy_retry=')
   })
 
+  it('switches a broken primary image to its fallback after bounded retries', () => {
+    const { container } = render(
+      <PosterImage
+        src="https://example.com/broken.jpg"
+        fallbackSrc="https://example.com/series.jpg"
+        alt="Episode"
+      />
+    )
+    const img = container.querySelector('img') as HTMLImageElement
+
+    for (let attempt = 0; attempt < 4; attempt += 1) fireEvent.error(img)
+
+    expect(img.getAttribute('src')).toContain('https://example.com/series.jpg?_kpuppy_retry=')
+  })
+
+  it('reports failure after the fallback also exhausts its retries', () => {
+    const onFailure = vi.fn()
+    const { container } = render(
+      <PosterImage src="broken.jpg" fallbackSrc="series.jpg" alt="Episode" onFailure={onFailure} />
+    )
+    const img = container.querySelector('img') as HTMLImageElement
+
+    for (let attempt = 0; attempt < 7; attempt += 1) fireEvent.error(img)
+    expect(onFailure).not.toHaveBeenCalled()
+
+    fireEvent.error(img)
+    expect(onFailure).toHaveBeenCalledTimes(1)
+  })
+
   it('does not stall-retry a successfully loaded image', () => {
     const { container } = render(<PosterImage src="https://example.com/ok.jpg" alt="Poster" />)
     const img = container.querySelector('img') as HTMLImageElement

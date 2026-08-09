@@ -82,7 +82,8 @@ describe('SideMenu', () => {
       )
 
       const selectedItem = container.querySelector('.side-menu-item.selected')
-      expect(selectedItem).toBeDefined()
+      expect(selectedItem).not.toBeNull()
+      expect(selectedItem?.textContent).toContain('Search')
     })
 
     it('marks focused item with focused class', () => {
@@ -101,6 +102,19 @@ describe('SideMenu', () => {
 
       const focusedItems = container.querySelectorAll('.side-menu-item.focused')
       expect(focusedItems.length).toBe(0)
+    })
+
+    it('clears stale pointer hover mode when keyboard navigation resumes', () => {
+      const { container } = renderWithI18n(
+        <SideMenu selectedId="movies" focusedIndex={null} onSelect={() => {}} />
+      )
+
+      const menu = container.querySelector('.side-menu') as HTMLElement
+      fireEvent.mouseMove(menu)
+      expect(menu.classList.contains('pointer-active')).toBe(true)
+
+      fireEvent.keyDown(document, { keyCode: 40 })
+      expect(menu.classList.contains('pointer-active')).toBe(false)
     })
   })
 

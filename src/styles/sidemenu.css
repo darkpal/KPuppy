@@ -81,7 +81,7 @@
   margin-right: 16px;
 }
 
-.side-menu-item:hover {
+.side-menu.pointer-active .side-menu-item:hover {
   background: rgba(255, 255, 255, 0.1);
 }
 

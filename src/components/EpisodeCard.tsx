@@ -1,4 +1,6 @@
+import { useEffect, useState } from 'preact/hooks'
 import { Episode } from '../api/kinopub'
+import { PosterImage } from './PosterImage'
 
 interface EpisodeCardProps {
   episode: Episode
@@ -9,7 +11,14 @@ interface EpisodeCardProps {
 }
 
 export function EpisodeCard({ episode, seriesPoster, focused, onSelect, onHover }: EpisodeCardProps) {
-  const thumbnailUrl = episode.thumbnail || seriesPoster
+  const episodeThumbnail = episode.thumbnail?.trim() || ''
+  const fallbackPoster = seriesPoster?.trim() || ''
+  const primaryImage = episodeThumbnail || fallbackPoster
+  const [imageFailed, setImageFailed] = useState(false)
+
+  useEffect(() => {
+    setImageFailed(false)
+  }, [episodeThumbnail, fallbackPoster])
 
   const formatDuration = (seconds?: number): string | null => {
     if (!seconds) return null
@@ -28,8 +37,13 @@ export function EpisodeCard({ episode, seriesPoster, focused, onSelect, onHover 
       onClick={onSelect}
     >
       <div class="episode-thumbnail">
-        {thumbnailUrl ? (
-          <img src={thumbnailUrl} alt={episode.title} loading="lazy" />
+        {primaryImage && !imageFailed ? (
+          <PosterImage
+            src={primaryImage}
+            fallbackSrc={episodeThumbnail ? fallbackPoster : undefined}
+            alt={episode.title}
+            onFailure={() => setImageFailed(true)}
+          />
         ) : (
           <div class="episode-placeholder">
             <span class="episode-placeholder-number">{episode.number}</span>
