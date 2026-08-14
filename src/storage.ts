@@ -167,14 +167,14 @@ export interface SavedAudioPreference {
   name: string
 }
 
-/** Normalize codec for labels: ac3 → AC3 (matches Kinopub web). */
+/** Normalize codec for labels. AAC is the default — omit it (Kinopub web style). */
 export function formatAudioCodec(codec?: string | null): string {
-  const value = (codec || '').trim()
-  if (!value) return ''
-  return value.toUpperCase()
+  const value = (codec || '').trim().toUpperCase()
+  if (!value || value === 'AAC') return ''
+  return value
 }
 
-/** Display / preference label: «Дубляж (RUS) AC3». */
+/** Display / preference label: «Дубляж (RUS)» or «Дубляж (RUS) AC3». */
 export function getAudioTrackName(audio: {
   lang?: string
   codec?: string | null
@@ -206,6 +206,10 @@ export function getAudioTrackBaseName(audio: {
   author?: { title?: string } | null
 }): string {
   return getAudioTrackName({ ...audio, codec: null })
+}
+
+function stripAudioCodecSuffix(name: string): string {
+  return name.replace(/\s+(AAC|AC3|E-?AC3|EAC3|DTS(?:-?HD)?|TRUEHD|FLAC|MP3|OPUS)\s*$/i, '').trim()
 }
 
 export function getSavedAudioPreference(itemId: number): SavedAudioPreference | null {
@@ -241,9 +245,14 @@ export function findAudioIndex(
   if (!saved || audios.length === 0) return 0
   const byId = audios.findIndex(a => a.id === saved.id)
   if (byId >= 0) return byId
-  const byName = audios.findIndex(a => getAudioTrackName(a) === saved.name)
-  if (byName >= 0) return byName
-  // Prefs saved before codec was appended to the label
-  const byBase = audios.findIndex(a => getAudioTrackBaseName(a) === saved.name)
-  return byBase >= 0 ? byBase : 0
+  const savedBase = stripAudioCodecSuffix(saved.name)
+  const byName = audios.findIndex(a => {
+    const name = getAudioTrackName(a)
+    const base = getAudioTrackBaseName(a)
+    return name === saved.name
+      || base === saved.name
+      || base === savedBase
+      || stripAudioCodecSuffix(name) === savedBase
+  })
+  return byName >= 0 ? byName : 0
 }

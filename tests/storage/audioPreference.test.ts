@@ -20,7 +20,14 @@ describe('audio preference', () => {
     })).toBe('Оригинал (ENG)')
   })
 
-  it('appends codec to audio labels when present', () => {
+  it('appends non-default codecs only (hide AAC like Kinopub web)', () => {
+    expect(getAudioTrackName({
+      lang: 'rus',
+      codec: 'aac',
+      type: { title: 'Дубляж' },
+      author: null
+    })).toBe('Дубляж (RUS)')
+
     expect(getAudioTrackName({
       lang: 'rus',
       codec: 'ac3',
@@ -29,12 +36,12 @@ describe('audio preference', () => {
     })).toBe('Дубляж (RUS) AC3')
   })
 
-  it('matches legacy prefs saved without codec in the label', () => {
+  it('matches prefs saved with an AAC suffix from older builds', () => {
     const audios = [
       { id: 1, lang: 'eng', codec: 'aac', type: { title: 'Original' }, author: null },
-      { id: 7, lang: 'rus', codec: 'ac3', type: { title: 'Дубляж' }, author: { title: 'LostFilm' } }
+      { id: 7, lang: 'rus', codec: 'aac', type: { title: 'Дубляж' }, author: null }
     ]
-    expect(findAudioIndex(audios, { id: 999, name: 'Дубляж, LostFilm (RUS)' })).toBe(1)
+    expect(findAudioIndex(audios, { id: 999, name: 'Дубляж (RUS) AAC' })).toBe(1)
   })
 
   it('saves and restores audio preference by item id', () => {
