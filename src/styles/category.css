@@ -191,15 +191,17 @@
 .category-filters {
   display: flex;
   flex-wrap: wrap;
-  margin-bottom: 24px;
+  margin-bottom: 18px;
 }
 
-.category-filters > * {
-  margin-right: 12px;
-  margin-bottom: 12px;
+/* Chrome 53: no flex gap. Keep spacing tiny so the filter row stays compact.
+   Must beat `.category-filter { margin-right: 0 }` later in this file. */
+.category-filters > .category-filter {
+  margin-right: 6px;
+  margin-bottom: 6px;
 }
 
-.category-filters > *:last-child {
+.category-filters > .category-filter:last-child {
   margin-right: 0;
 }
 
@@ -208,17 +210,12 @@
   display: flex;
   align-items: center;
   padding: 12px 18px;
-  margin-right: 0;
   background: #1f1f1f;
   border: 2px solid transparent;
   border-radius: var(--radius-sm);
   color: #ffffff;
   font-size: 20px;
   cursor: pointer;
-}
-
-.category-filter:last-child {
-  margin-right: 0;
 }
 
 .category-filter-label {
