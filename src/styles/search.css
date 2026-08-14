@@ -15,15 +15,29 @@
   flex-shrink: 0;
 }
 
-/* Chrome 53 / webOS: flex `gap` is ignored — use margins. */
-.search-header > * + * {
-  margin-left: 24px;
+/* Chrome 53 / webOS: flex `gap` is ignored — use margins.
+   Avoid low-specificity `> * + *` — later `.search-filters { margin-left: 0 }`
+   and `.collections-toolbar--inline { margin: 0 }` cancel it. */
+.search-header .search-icon {
+  margin-right: 20px;
 }
 
-.search-sort {
+.search-header .search-input-container {
+  margin-right: 24px;
+}
+
+.search-header .search-filters {
+  margin-left: 0;
+  margin-right: 24px;
+  flex-shrink: 0;
+}
+
+.search-header .search-sort {
   display: flex;
   align-items: center;
   flex-shrink: 0;
+  margin: 0;
+  padding: 0;
 }
 
 .search-sort .collections-sort-label {
@@ -42,7 +56,6 @@
 .search-icon {
   width: 36px;
   height: 36px;
-  margin-right: 0;
   color: #888;
   display: flex;
   align-items: center;
@@ -97,13 +110,10 @@
 .search-filters {
   display: flex;
   align-items: center;
-  margin-left: 0;
-  flex-shrink: 0;
 }
 
 .search-filter {
   position: relative;
-  margin-left: 0;
 }
 
 .search-filter + .search-filter {
