@@ -14,6 +14,8 @@ import {
   getUser,
   getWatching,
   markTime,
+  getWatchingProgress,
+  normalizeWatchingProgress,
   toggleWatched,
   getBookmarkFolders,
   getBookmarkItems,
@@ -962,6 +964,79 @@ describe('kinopub API', () => {
 
       expect(mockFetch).toHaveBeenCalledTimes(2)
       expect(cached.videos?.[0].watching?.time).toBe(300)
+    })
+
+    it('throws when marktime request fails', async () => {
+      mockFetch.mockResolvedValueOnce({ ok: false, status: 500, json: async () => ({}) })
+
+      await expect(markTime({ id: 123, time: 300, video: 1 })).rejects.toThrow(ApiError)
+    })
+  })
+
+  describe('getWatchingProgress', () => {
+    beforeEach(() => {
+      const tokens = {
+        access: 'valid-token',
+        refresh: 'refresh-token',
+        expiresAt: Date.now() + 3600000
+      }
+      localStorage.setItem('kpuppy_tokens', JSON.stringify(tokens))
+    })
+
+    it('reads flat time/status from movie videos (Kinopub watching API shape)', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          status: 200,
+          item: {
+            id: 123,
+            type: 'movie',
+            videos: [
+              { id: 1, number: 1, title: 'Movie', duration: 6000, time: 420, status: 0, updated: 1 }
+            ]
+          }
+        })
+      })
+
+      const progress = await getWatchingProgress(123, 1)
+      expect(progress).toEqual({ time: 420, status: 0 })
+    })
+
+    it('reads flat time/status from series episodes', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          status: 200,
+          item: {
+            id: 55,
+            type: 'serial',
+            seasons: [
+              {
+                number: 2,
+                episodes: [
+                  { id: 9, number: 3, title: 'E3', duration: 2400, time: 900, status: 0 }
+                ]
+              }
+            ]
+          }
+        })
+      })
+
+      const progress = await getWatchingProgress(55, 3, 2)
+      expect(progress).toEqual({ time: 900, status: 0 })
+    })
+  })
+
+  describe('normalizeWatchingProgress', () => {
+    it('prefers nested watching, then flat time/status', () => {
+      expect(normalizeWatchingProgress({ watching: { time: 10, status: 0 }, time: 99 })).toEqual({
+        time: 10,
+        status: 0
+      })
+      expect(normalizeWatchingProgress({ time: 42, status: -1 })).toEqual({ time: 42, status: -1 })
+      expect(normalizeWatchingProgress({})).toBeUndefined()
     })
   })
 

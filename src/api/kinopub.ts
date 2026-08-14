@@ -118,6 +118,72 @@ export interface WatchingProgress {
   time?: number
 }
 
+/**
+ * Kinopub returns progress either as nested `watching: { time, status }`
+ * or as flat `time` / `status` on the video/episode (see /v1/watching docs).
+ */
+export function normalizeWatchingProgress(
+  source: Record<string, unknown> | null | undefined
+): WatchingProgress | undefined {
+  if (!source || typeof source !== 'object') return undefined
+
+  const nested = source.watching
+  if (nested && typeof nested === 'object') {
+    const watching = nested as Record<string, unknown>
+    const time = typeof watching.time === 'number' ? watching.time : undefined
+    const status = typeof watching.status === 'number' ? watching.status : undefined
+    if (time !== undefined || status !== undefined) return { time, status }
+  }
+
+  const time = typeof source.time === 'number' ? source.time : undefined
+  const status = typeof source.status === 'number' ? source.status : undefined
+  if (time !== undefined || status !== undefined) return { time, status }
+  return undefined
+}
+
+function normalizeVideoEntry(raw: Record<string, unknown>): Video {
+  const watching = normalizeWatchingProgress(raw)
+  return {
+    id: raw.id as number | string | undefined,
+    number: Number(raw.number) || 0,
+    title: (raw.title || '') as string,
+    files: Array.isArray(raw.files) ? raw.files as VideoFile[] : [],
+    audios: Array.isArray(raw.audios) ? raw.audios as Audio[] : [],
+    subtitles: Array.isArray(raw.subtitles) ? raw.subtitles as Subtitle[] : undefined,
+    duration: typeof raw.duration === 'number' ? raw.duration : undefined,
+    watched: typeof raw.watched === 'number' ? raw.watched : undefined,
+    watching
+  }
+}
+
+function normalizeEpisodeEntry(raw: Record<string, unknown>): Episode {
+  const watching = normalizeWatchingProgress(raw)
+  return {
+    id: Number(raw.id) || 0,
+    number: Number(raw.number) || 0,
+    title: (raw.title || '') as string,
+    thumbnail: (raw.thumbnail as string) || undefined,
+    duration: typeof raw.duration === 'number' ? raw.duration : undefined,
+    files: Array.isArray(raw.files) ? raw.files as VideoFile[] : [],
+    audios: Array.isArray(raw.audios) ? raw.audios as Audio[] : [],
+    subtitles: Array.isArray(raw.subtitles) ? raw.subtitles as Subtitle[] : undefined,
+    watched: typeof raw.watched === 'number' ? raw.watched : (watching?.status === 1 ? 1 : 0),
+    watching
+  }
+}
+
+function normalizeSeasonEntry(raw: Record<string, unknown>): Season {
+  const episodes = Array.isArray(raw.episodes)
+    ? (raw.episodes as Record<string, unknown>[]).map(normalizeEpisodeEntry)
+    : []
+  return {
+    number: Number(raw.number) || 0,
+    title: (raw.title as string) || undefined,
+    episodes,
+    watching: normalizeWatchingProgress(raw)
+  }
+}
+
 export interface Video {
   id?: number | string
   number: number
@@ -998,8 +1064,12 @@ export async function getItem(id: number): Promise<ItemDetails> {
       actors,
       countries: parseCountries(item.countries),
       genres: parseGenres(item.genres),
-      videos: item.videos,
-      seasons: item.seasons,
+      videos: Array.isArray(item.videos)
+        ? (item.videos as Record<string, unknown>[]).map(normalizeVideoEntry)
+        : item.videos,
+      seasons: Array.isArray(item.seasons)
+        ? (item.seasons as Record<string, unknown>[]).map(normalizeSeasonEntry)
+        : item.seasons,
       duration: item.duration,
       trailer: item.trailer
     }
@@ -1022,7 +1092,7 @@ function patchCachedPlaybackProgress(params: MarkTimeParams): void {
   const item = getCached<ItemDetails>(cacheKey)
   if (!item) return
 
-  const progress: WatchingProgress = { time: params.time }
+  const progress: WatchingProgress = { time: params.time, status: 0 }
   let updated: ItemDetails = item
 
   if (params.season !== undefined && item.seasons) {
@@ -1040,12 +1110,16 @@ function patchCachedPlaybackProgress(params: MarkTimeParams): void {
           })
     }
   } else if (item.videos?.length) {
+    const matchIndex = params.video !== undefined
+      ? item.videos.findIndex(video => video.number === params.video)
+      : 0
+    const targetIndex = matchIndex >= 0 ? matchIndex : 0
     updated = {
       ...item,
       videos: item.videos.map((video, index) => (
-        params.video !== undefined
-          ? (video.number === params.video ? { ...video, watching: { ...video.watching, ...progress } } : video)
-          : (index === 0 ? { ...video, watching: { ...video.watching, ...progress } } : video)
+        index === targetIndex
+          ? { ...video, watching: { ...video.watching, ...progress } }
+          : video
       ))
     }
   }
@@ -1068,7 +1142,10 @@ export async function markTime(params: MarkTimeParams): Promise<void> {
 
   // Keep the detail card warm for Back while updating its resume position.
   patchCachedPlaybackProgress(params)
-  await authFetch(`${BASE_URL}/v1/watching/marktime?${searchParams}`)
+  const response = await authFetch(`${BASE_URL}/v1/watching/marktime?${searchParams}`)
+  if (!response.ok) {
+    throw new ApiError('Failed to mark playback time', response.status)
+  }
 }
 
 export async function getWatchingProgress(
@@ -1086,23 +1163,33 @@ export async function getWatchingProgress(
 
   const data = await response.json()
   const item = data?.item ?? data
-  if (!item) return null
+  if (!item || typeof item !== 'object') return null
+  const record = item as Record<string, unknown>
 
-  if (item.watching && typeof item.watching === 'object') {
-    return {
-      status: item.watching.status as number | undefined,
-      time: item.watching.time as number | undefined
+  if (season !== undefined && Array.isArray(record.seasons)) {
+    const seasons = record.seasons as Record<string, unknown>[]
+    const matchedSeason = seasons.find(s => Number(s.number) === season) || seasons[0]
+    if (matchedSeason && Array.isArray(matchedSeason.episodes)) {
+      const episodes = matchedSeason.episodes as Record<string, unknown>[]
+      const matchedEpisode = video !== undefined
+        ? episodes.find(e => Number(e.number) === video)
+        : episodes[0]
+      const fromEpisode = normalizeWatchingProgress(matchedEpisode)
+      if (fromEpisode) return fromEpisode
     }
   }
 
-  if (typeof item.time === 'number') {
-    return {
-      status: typeof item.status === 'number' ? item.status : undefined,
-      time: item.time
-    }
+  if (Array.isArray(record.videos)) {
+    const videos = record.videos as Record<string, unknown>[]
+    const matchedVideo = video !== undefined
+      ? videos.find(v => Number(v.number) === video)
+      : videos[0]
+    const fromVideo = normalizeWatchingProgress(matchedVideo || videos[0])
+    if (fromVideo) return fromVideo
   }
 
-  return null
+  const topLevel = normalizeWatchingProgress(record)
+  return topLevel || null
 }
 
 export interface ToggleWatchedParams {
