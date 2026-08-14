@@ -120,7 +120,12 @@ export function SearchScreen({
     () => sortMovieItems(results, sortMode),
     [results, sortMode]
   )
-  const { itemsPerRow: resultsPerRow, cardWidth } = useGridLayout('.search-results-grid', 240, [displayedResults.length])
+  const { itemsPerRow: resultsPerRow, cardWidth } = useGridLayout(
+    '.search-results-grid',
+    240,
+    [displayedResults.length, loading, hasSearched],
+    resultsContainerRef
+  )
 
   const setResultsSort = useCallback((mode: MovieSortMode) => {
     setSortMode(prev => (prev === mode ? 'default' : mode))
@@ -520,7 +525,7 @@ export function SearchScreen({
         {!loading && displayedResults.length > 0 && (
           <div
             class="search-results-grid"
-            style={cardWidth ? { '--card-width': `${cardWidth}px` } as Record<string, string> : undefined}
+            style={{ '--card-width': `${cardWidth > 0 ? cardWidth : 240}px` } as Record<string, string>}
           >
             {displayedResults.map((item, index) => (
               <div key={item.id} data-result-index={index}>
