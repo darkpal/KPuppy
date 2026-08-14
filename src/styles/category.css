@@ -28,8 +28,11 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 24px;
   margin-bottom: 16px;
+}
+
+.category-chrome-bar > * + * {
+  margin-left: 24px;
 }
 
 .category-chrome-bar .category-title {
@@ -188,8 +191,16 @@
 .category-filters {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
   margin-bottom: 24px;
+}
+
+.category-filters > * {
+  margin-right: 12px;
+  margin-bottom: 12px;
+}
+
+.category-filters > *:last-child {
+  margin-right: 0;
 }
 
 .category-filter {

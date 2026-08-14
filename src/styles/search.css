@@ -12,8 +12,12 @@
   display: flex;
   align-items: center;
   margin-bottom: 24px;
-  gap: 24px;
   flex-shrink: 0;
+}
+
+/* Chrome 53 / webOS: flex `gap` is ignored — use margins. */
+.search-header > * + * {
+  margin-left: 24px;
 }
 
 .search-sort {
@@ -24,6 +28,15 @@
 
 .search-sort .collections-sort-label {
   margin-right: 14px;
+}
+
+.search-sort .collections-hint {
+  margin-right: 14px;
+  margin-bottom: 0;
+}
+
+.search-sort .collections-hint:last-child {
+  margin-right: 0;
 }
 
 .search-icon {
@@ -85,13 +98,16 @@
   display: flex;
   align-items: center;
   margin-left: 0;
-  gap: 20px;
   flex-shrink: 0;
 }
 
 .search-filter {
   position: relative;
   margin-left: 0;
+}
+
+.search-filter + .search-filter {
+  margin-left: 20px;
 }
 
 .search-filter-button {
