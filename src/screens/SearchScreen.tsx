@@ -5,7 +5,20 @@ import { MovieCard } from '../components/MovieCard'
 import { useKeyboardNavigation, useScrollToFocused, useGridLayout, createGridNavigationHandlers } from '../hooks'
 import { LoadingState } from '../components/LoadingSpinner'
 import { useI18n } from '../i18n'
+import { MovieSortMode, sortMovieItems } from '../utils/sortMovies'
 import '../styles/search.css'
+import '../styles/collections.css'
+
+/** LG Magic Remote: yellow=3, blue=4 dots (same language as collections/player). */
+function RemoteKeyDots({ count }: { count: 3 | 4 }) {
+  return (
+    <span class={`collections-hint-key-dots dots-${count}`} aria-hidden="true">
+      {Array.from({ length: count }, (_, i) => (
+        <span key={i} class="collections-hint-key-dot" />
+      ))}
+    </span>
+  )
+}
 
 export type SearchField = 'title' | 'director' | 'actor' | undefined
 
@@ -83,6 +96,7 @@ export function SearchScreen({
   const [query, setQuery] = useState(resolved.query)
   const [searchField, setSearchField] = useState<SearchField>(resolved.field)
   const [results, setResults] = useState<MovieItem[]>([])
+  const [sortMode, setSortMode] = useState<MovieSortMode>('default')
   const [loading, setLoading] = useState(false)
   const [focusArea, setFocusArea] = useState<FocusArea>(resolved.query.trim().length >= 2 ? 'results' : 'query')
   const [resultIndex, setResultIndex] = useState(initialFocusIndex)
@@ -102,7 +116,16 @@ export function SearchScreen({
   const [filterDropdownOpen, setFilterDropdownOpen] = useState(false)
   const [filterDropdownIndex, setFilterDropdownIndex] = useState(0)
   const [activeFilter, setActiveFilter] = useState<FilterTarget>('type')
-  const { itemsPerRow: resultsPerRow, cardWidth } = useGridLayout('.search-results-grid', 240, [results.length])
+  const displayedResults = useMemo(
+    () => sortMovieItems(results, sortMode),
+    [results, sortMode]
+  )
+  const { itemsPerRow: resultsPerRow, cardWidth } = useGridLayout('.search-results-grid', 240, [displayedResults.length])
+
+  const setResultsSort = useCallback((mode: MovieSortMode) => {
+    setSortMode(prev => (prev === mode ? 'default' : mode))
+    setResultIndex(0)
+  }, [])
 
   useEffect(() => {
     onStateChangeRef.current?.({
@@ -215,6 +238,14 @@ export function SearchScreen({
 
   const currentDropdownOptions = activeFilter === 'type' ? typeOptions : SEARCH_FIELDS
 
+  const sortColorHandlers = useMemo(() => {
+    if (displayedResults.length === 0) return {}
+    return {
+      onYellow: () => setResultsSort('year'),
+      onBlue: () => setResultsSort('rating')
+    }
+  }, [displayedResults.length, setResultsSort])
+
   const handlers = useMemo(() => {
     const inFilterBar = focusArea === 'filter' || focusArea === 'field'
 
@@ -260,7 +291,8 @@ export function SearchScreen({
         onEnter: () => {
           setFilterDropdownIndex(0)
           setFilterDropdownOpen(true)
-        }
+        },
+        ...sortColorHandlers
       }
     }
 
@@ -288,20 +320,21 @@ export function SearchScreen({
           setActiveFilter('type')
         },
         onDown: () => {
-          if (results.length > 0) {
+          if (displayedResults.length > 0) {
             leaveQueryForNavigation('results')
             setResultIndex(0)
           }
         },
         onEnter: () => {
           queryInputRef.current?.focus()
-        }
+        },
+        ...sortColorHandlers
       }
     }
 
     return {
       ...createGridNavigationHandlers({
-        itemCount: results.length,
+        itemCount: displayedResults.length,
         itemsPerRow: resultsPerRow,
         focusedIndex: resultIndex,
         setFocusedIndex: (index) => {
@@ -309,7 +342,7 @@ export function SearchScreen({
           setResultIndex(index)
         },
         onSelect: (index) => {
-          const item = results[index]
+          const item = displayedResults[index]
           if (item) {
             onSelectItem(item.id, item)
           }
@@ -317,9 +350,10 @@ export function SearchScreen({
         onLeftEdge: onNavigateToMenu,
         onTopEdge: () => setFocusArea('query')
       }),
-      onBack: exitDirectlyOnBack ? onBack : () => setFocusArea('query')
+      onBack: exitDirectlyOnBack ? onBack : () => setFocusArea('query'),
+      ...sortColorHandlers
     }
-  }, [focusArea, results, resultIndex, resultsPerRow, onBack, onSelectItem, onNavigateToMenu, filterDropdownOpen, filterDropdownIndex, currentDropdownOptions.length, activeFilter, typeOptions, isQueryInputFocused, exitDirectlyOnBack, leaveQueryForNavigation])
+  }, [focusArea, displayedResults, resultIndex, resultsPerRow, onBack, onSelectItem, onNavigateToMenu, filterDropdownOpen, filterDropdownIndex, currentDropdownOptions.length, activeFilter, typeOptions, isQueryInputFocused, exitDirectlyOnBack, leaveQueryForNavigation, sortColorHandlers])
 
   useKeyboardNavigation(handlers, isActive)
 
@@ -327,7 +361,7 @@ export function SearchScreen({
     containerRef: resultsContainerRef,
     focusedIndex: focusArea === 'results' ? resultIndex : null,
     itemSelector: '[data-result-index]',
-    itemCount: results.length,
+    itemCount: displayedResults.length,
     enabled: scrollWithFocus
   })
 
@@ -451,6 +485,27 @@ export function SearchScreen({
         </div>
       </div>
 
+      {!loading && displayedResults.length > 0 && (
+        <div class="collections-toolbar search-sort-toolbar">
+          <button
+            type="button"
+            class={`collections-hint collections-hint-page ${sortMode === 'year' ? 'selected' : ''}`}
+            onClick={() => setResultsSort('year')}
+          >
+            <RemoteKeyDots count={3} />
+            <span class="collections-hint-label">{t.sortYear}</span>
+          </button>
+          <button
+            type="button"
+            class={`collections-hint collections-hint-top ${sortMode === 'rating' ? 'selected' : ''}`}
+            onClick={() => setResultsSort('rating')}
+          >
+            <RemoteKeyDots count={4} />
+            <span class="collections-hint-label">{t.sortRating}</span>
+          </button>
+        </div>
+      )}
+
       <div class="search-results" ref={resultsContainerRef}>
         {loading && (
           <LoadingState />
@@ -462,12 +517,12 @@ export function SearchScreen({
           </div>
         )}
 
-        {!loading && results.length > 0 && (
+        {!loading && displayedResults.length > 0 && (
           <div
             class="search-results-grid"
             style={cardWidth ? { '--card-width': `${cardWidth}px` } as Record<string, string> : undefined}
           >
-            {results.map((item, index) => (
+            {displayedResults.map((item, index) => (
               <div key={item.id} data-result-index={index}>
                 <MovieCard
                   movie={item}

@@ -5,6 +5,7 @@ import { GridScreen } from '../components/GridScreen'
 import { useKeyboardNavigation, useGridLayout, createGridNavigationHandlers, useScrollToFocused } from '../hooks'
 import { LoadingState } from '../components/LoadingSpinner'
 import { useI18n } from '../i18n'
+import { MovieSortMode, sortMovieItems } from '../utils/sortMovies'
 import '../styles/category.css'
 import '../styles/collections.css'
 
@@ -53,6 +54,7 @@ export function CollectionsScreen({ onSelectItem, onNavigateToMenu, isActive }: 
   const [hasMore, setHasMore] = useState(true)
   const [viewMode, setViewMode] = useState<ViewMode>('collections')
   const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null)
+  const [itemSortMode, setItemSortMode] = useState<MovieSortMode>('default')
   const [focusedIndex, setFocusedIndex] = useState(0)
   const [savedCollectionIndex, setSavedCollectionIndex] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -153,16 +155,22 @@ export function CollectionsScreen({ onSelectItem, onNavigateToMenu, isActive }: 
   }, [])
 
   const loadCollectionItems = useCallback(async (collection: Collection, collectionIndex: number) => {
-    setLoading(true)
+    // Flip to items view immediately so large collections show a spinner instead of a dead list.
     setSavedCollectionIndex(collectionIndex)
+    setSelectedCollection(collection)
+    setItems([])
+    setItemSortMode('default')
+    setViewMode('items')
+    setFocusedIndex(0)
+    setLoading(true)
     try {
       const data = await getCollectionItems(collection.id)
       setItems(data)
-      setSelectedCollection(collection)
-      setViewMode('items')
-      setFocusedIndex(0)
     } catch (err) {
       if (import.meta.env.DEV) console.error('Failed to load collection items:', err)
+      setViewMode('collections')
+      setSelectedCollection(null)
+      setFocusedIndex(collectionIndex)
     } finally {
       setLoading(false)
     }
@@ -172,8 +180,19 @@ export function CollectionsScreen({ onSelectItem, onNavigateToMenu, isActive }: 
     setViewMode('collections')
     setSelectedCollection(null)
     setItems([])
+    setItemSortMode('default')
     setFocusedIndex(savedCollectionIndex)
   }, [savedCollectionIndex])
+
+  const displayedItems = useMemo(
+    () => sortMovieItems(items, itemSortMode),
+    [items, itemSortMode]
+  )
+
+  const setItemsSort = useCallback((mode: MovieSortMode) => {
+    setItemSortMode(prev => (prev === mode ? 'default' : mode))
+    setFocusedIndex(0)
+  }, [])
 
   const jumpByPage = useCallback(() => {
     const delta = getPageJumpSize()
@@ -251,20 +270,22 @@ export function CollectionsScreen({ onSelectItem, onNavigateToMenu, isActive }: 
 
   const itemsHandlers = useMemo(() => ({
     ...createGridNavigationHandlers({
-      itemCount: items.length,
+      itemCount: displayedItems.length,
       itemsPerRow,
       focusedIndex,
       setFocusedIndex,
       onSelect: (index) => {
-        const item = items[index]
+        const item = displayedItems[index]
         if (item) {
           onSelectItem(item.id, item)
         }
       },
       onLeftEdge: onNavigateToMenu
     }),
-    onBack: goBackToCollections
-  }), [items, focusedIndex, onNavigateToMenu, onSelectItem, itemsPerRow, goBackToCollections])
+    onBack: goBackToCollections,
+    onYellow: () => setItemsSort('year'),
+    onBlue: () => setItemsSort('rating')
+  }), [displayedItems, focusedIndex, onNavigateToMenu, onSelectItem, itemsPerRow, goBackToCollections, setItemsSort])
 
   useKeyboardNavigation(
     viewMode === 'collections' ? collectionsHandlers : itemsHandlers,
@@ -299,21 +320,42 @@ export function CollectionsScreen({ onSelectItem, onNavigateToMenu, isActive }: 
     )
   }
 
-  if (loading && viewMode === 'items') {
-    return (
-      <div class="category-screen">
-        <h1 class="category-title">{selectedCollection?.title || t.menuCollections}</h1>
-        <LoadingState />
+  if (viewMode === 'items' && selectedCollection) {
+    if (loading) {
+      return (
+        <div class="category-screen">
+          <h1 class="category-title">{selectedCollection.title}</h1>
+          <LoadingState />
+        </div>
+      )
+    }
+
+    const itemsSortHeader = (
+      <div class="collections-toolbar">
+        <button
+          type="button"
+          class={`collections-hint collections-hint-page ${itemSortMode === 'year' ? 'selected' : ''}`}
+          onClick={() => setItemsSort('year')}
+        >
+          <RemoteKeyDots count={3} />
+          <span class="collections-hint-label">{t.sortYear}</span>
+        </button>
+        <button
+          type="button"
+          class={`collections-hint collections-hint-top ${itemSortMode === 'rating' ? 'selected' : ''}`}
+          onClick={() => setItemsSort('rating')}
+        >
+          <RemoteKeyDots count={4} />
+          <span class="collections-hint-label">{t.sortRating}</span>
+        </button>
       </div>
     )
-  }
 
-  if (viewMode === 'items' && selectedCollection) {
     return (
       <GridScreen
         title={selectedCollection.title}
         loading={false}
-        items={items}
+        items={displayedItems}
         focusedIndex={focusedIndex}
         itemsPerRow={itemsPerRow}
         renderItem={renderItem}
@@ -321,6 +363,7 @@ export function CollectionsScreen({ onSelectItem, onNavigateToMenu, isActive }: 
         emptyMessage={t.errorNoItems}
         containerRef={containerRef}
         cardWidth={cardWidth}
+        header={itemsSortHeader}
       />
     )
   }

@@ -13,6 +13,11 @@
   margin-bottom: 30px;
 }
 
+.search-sort-toolbar {
+  margin: -10px 0 16px;
+  padding-bottom: 10px;
+}
+
 .search-icon {
   width: 36px;
   height: 36px;

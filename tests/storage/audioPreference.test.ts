@@ -20,6 +20,23 @@ describe('audio preference', () => {
     })).toBe('Оригинал (ENG)')
   })
 
+  it('appends codec to audio labels when present', () => {
+    expect(getAudioTrackName({
+      lang: 'rus',
+      codec: 'ac3',
+      type: { title: 'Дубляж' },
+      author: null
+    })).toBe('Дубляж (RUS) AC3')
+  })
+
+  it('matches legacy prefs saved without codec in the label', () => {
+    const audios = [
+      { id: 1, lang: 'eng', codec: 'aac', type: { title: 'Original' }, author: null },
+      { id: 7, lang: 'rus', codec: 'ac3', type: { title: 'Дубляж' }, author: { title: 'LostFilm' } }
+    ]
+    expect(findAudioIndex(audios, { id: 999, name: 'Дубляж, LostFilm (RUS)' })).toBe(1)
+  })
+
   it('saves and restores audio preference by item id', () => {
     saveAudioPreference(42, {
       id: 7,

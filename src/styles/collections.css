@@ -77,6 +77,10 @@
   background: rgba(26, 127, 212, 0.95);
 }
 
+.collections-hint.selected {
+  box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.92);
+}
+
 .collections-hint-key-dots {
   display: inline-flex;
   align-items: center;

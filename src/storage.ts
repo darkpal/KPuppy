@@ -167,25 +167,45 @@ export interface SavedAudioPreference {
   name: string
 }
 
-/** Display / preference label: «Многоголосый, Jask (RUS)». */
+/** Normalize codec for labels: ac3 → AC3 (matches Kinopub web). */
+export function formatAudioCodec(codec?: string | null): string {
+  const value = (codec || '').trim()
+  if (!value) return ''
+  return value.toUpperCase()
+}
+
+/** Display / preference label: «Дубляж (RUS) AC3». */
 export function getAudioTrackName(audio: {
   lang?: string
+  codec?: string | null
   type?: { title?: string } | null
   author?: { title?: string } | null
 }): string {
   const typeTitle = (audio.type?.title || '').trim()
   const authorTitle = (audio.author?.title || '').trim()
   const lang = (audio.lang || '').toUpperCase()
+  const codec = formatAudioCodec(audio.codec)
+  let base = ''
   if (typeTitle && authorTitle) {
-    return `${typeTitle}, ${authorTitle}${lang ? ` (${lang})` : ''}`
+    base = `${typeTitle}, ${authorTitle}${lang ? ` (${lang})` : ''}`
+  } else if (typeTitle) {
+    base = `${typeTitle}${lang ? ` (${lang})` : ''}`
+  } else if (authorTitle) {
+    base = `${authorTitle}${lang ? ` (${lang})` : ''}`
+  } else {
+    base = lang
   }
-  if (typeTitle) {
-    return `${typeTitle}${lang ? ` (${lang})` : ''}`
-  }
-  if (authorTitle) {
-    return `${authorTitle}${lang ? ` (${lang})` : ''}`
-  }
-  return lang
+  if (codec && base) return `${base} ${codec}`
+  return base || codec
+}
+
+/** Preference match without codec (legacy labels / cross-episode). */
+export function getAudioTrackBaseName(audio: {
+  lang?: string
+  type?: { title?: string } | null
+  author?: { title?: string } | null
+}): string {
+  return getAudioTrackName({ ...audio, codec: null })
 }
 
 export function getSavedAudioPreference(itemId: number): SavedAudioPreference | null {
@@ -203,6 +223,7 @@ export function getSavedAudioPreference(itemId: number): SavedAudioPreference | 
 export function saveAudioPreference(itemId: number, audio: {
   id: number
   lang?: string
+  codec?: string | null
   type?: { title?: string } | null
   author?: { title?: string } | null
 }): void {
@@ -214,12 +235,15 @@ export function saveAudioPreference(itemId: number, audio: {
 }
 
 export function findAudioIndex(
-  audios: Array<{ id: number; lang?: string; type?: { title?: string } | null; author?: { title?: string } | null }>,
+  audios: Array<{ id: number; lang?: string; codec?: string | null; type?: { title?: string } | null; author?: { title?: string } | null }>,
   saved: SavedAudioPreference | null
 ): number {
   if (!saved || audios.length === 0) return 0
   const byId = audios.findIndex(a => a.id === saved.id)
   if (byId >= 0) return byId
   const byName = audios.findIndex(a => getAudioTrackName(a) === saved.name)
-  return byName >= 0 ? byName : 0
+  if (byName >= 0) return byName
+  // Prefs saved before codec was appended to the label
+  const byBase = audios.findIndex(a => getAudioTrackBaseName(a) === saved.name)
+  return byBase >= 0 ? byBase : 0
 }
