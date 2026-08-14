@@ -6,9 +6,51 @@
   overflow-x: hidden;
   scrollbar-width: none;
   -ms-overflow-style: none;
+  box-sizing: border-box;
 }
 
 .category-screen::-webkit-scrollbar {
+  display: none;
+}
+
+/* Pin title/header; only the grid scrolls (avoids chrome disappearing on scroll-up). */
+.category-screen--chrome {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.category-chrome {
+  flex-shrink: 0;
+}
+
+.category-chrome-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 16px;
+}
+
+.category-chrome-bar .category-title {
+  margin-bottom: 0;
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.category-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.category-scroll::-webkit-scrollbar {
   display: none;
 }
 

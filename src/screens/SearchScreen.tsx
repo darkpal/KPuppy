@@ -483,28 +483,28 @@ export function SearchScreen({
             )}
           </div>
         </div>
+        {!loading && displayedResults.length > 0 && (
+          <div class="collections-toolbar collections-toolbar--inline search-sort">
+            <span class="collections-sort-label">{t.sort}</span>
+            <button
+              type="button"
+              class={`collections-hint collections-hint-page ${sortMode === 'year' ? 'selected' : ''}`}
+              onClick={() => setResultsSort('year')}
+            >
+              <RemoteKeyDots count={3} />
+              <span class="collections-hint-label">{t.sortYear}</span>
+            </button>
+            <button
+              type="button"
+              class={`collections-hint collections-hint-top ${sortMode === 'rating' ? 'selected' : ''}`}
+              onClick={() => setResultsSort('rating')}
+            >
+              <RemoteKeyDots count={4} />
+              <span class="collections-hint-label">{t.sortRating}</span>
+            </button>
+          </div>
+        )}
       </div>
-
-      {!loading && displayedResults.length > 0 && (
-        <div class="collections-toolbar search-sort-toolbar">
-          <button
-            type="button"
-            class={`collections-hint collections-hint-page ${sortMode === 'year' ? 'selected' : ''}`}
-            onClick={() => setResultsSort('year')}
-          >
-            <RemoteKeyDots count={3} />
-            <span class="collections-hint-label">{t.sortYear}</span>
-          </button>
-          <button
-            type="button"
-            class={`collections-hint collections-hint-top ${sortMode === 'rating' ? 'selected' : ''}`}
-            onClick={() => setResultsSort('rating')}
-          >
-            <RemoteKeyDots count={4} />
-            <span class="collections-hint-label">{t.sortRating}</span>
-          </button>
-        </div>
-      )}
 
       <div class="search-results" ref={resultsContainerRef}>
         {loading && (

@@ -330,8 +330,9 @@ export function CollectionsScreen({ onSelectItem, onNavigateToMenu, isActive }: 
       )
     }
 
-    const itemsSortHeader = (
-      <div class="collections-toolbar">
+    const itemsSortTrailing = (
+      <div class="collections-toolbar collections-toolbar--inline">
+        <span class="collections-sort-label">{t.sort}</span>
         <button
           type="button"
           class={`collections-hint collections-hint-page ${itemSortMode === 'year' ? 'selected' : ''}`}
@@ -363,7 +364,7 @@ export function CollectionsScreen({ onSelectItem, onNavigateToMenu, isActive }: 
         emptyMessage={t.errorNoItems}
         containerRef={containerRef}
         cardWidth={cardWidth}
-        header={itemsSortHeader}
+        trailing={itemsSortTrailing}
       />
     )
   }

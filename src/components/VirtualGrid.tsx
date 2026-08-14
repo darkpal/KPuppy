@@ -12,7 +12,7 @@ interface VirtualGridProps<T> {
   containerClass?: string
   emptyMessage?: string
   cardWidth?: number
-  /** Scrollable parent; falls back to closest .category-screen */
+  /** Scrollable parent; falls back to .category-scroll or .category-screen */
   scrollContainerRef?: RefObject<HTMLElement>
   /** When false, skip auto-scroll (pointer hover must not edge-cascade). */
   scrollToFocused?: boolean
@@ -77,6 +77,7 @@ export function VirtualGrid<T>({
     if (!root || items.length === 0) return
 
     const container = (scrollContainerRef?.current
+      || root.closest('.category-scroll')
       || root.closest('.category-screen')) as HTMLElement | null
     if (!container) return
 

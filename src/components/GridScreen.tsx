@@ -12,7 +12,10 @@ interface GridScreenProps<T> {
   getItemKey: (item: T, index: number) => string | number
   emptyMessage?: string
   containerRef?: Ref<HTMLDivElement>
+  /** Below the title row (filters, etc.). Stays pinned above the scroll area. */
   header?: ComponentChildren
+  /** Right side of the title row (sort actions, etc.). */
+  trailing?: ComponentChildren
   footer?: ComponentChildren
   cardWidth?: number
   scrollToFocused?: boolean
@@ -29,6 +32,7 @@ export function GridScreen<T>({
   emptyMessage,
   containerRef,
   header,
+  trailing,
   footer,
   cardWidth,
   scrollToFocused = true
@@ -43,21 +47,28 @@ export function GridScreen<T>({
   }
 
   return (
-    <div class="category-screen" ref={containerRef}>
-      <h1 class="category-title">{title}</h1>
-      {header}
-      <VirtualGrid
-        items={items}
-        focusedIndex={focusedIndex}
-        itemsPerRow={itemsPerRow}
-        renderItem={renderItem}
-        getItemKey={getItemKey}
-        emptyMessage={emptyMessage}
-        cardWidth={cardWidth}
-        scrollContainerRef={containerRef as RefObject<HTMLElement> | undefined}
-        scrollToFocused={scrollToFocused}
-      />
-      {footer}
+    <div class="category-screen category-screen--chrome">
+      <div class="category-chrome">
+        <div class="category-chrome-bar">
+          <h1 class="category-title">{title}</h1>
+          {trailing}
+        </div>
+        {header}
+      </div>
+      <div class="category-scroll" ref={containerRef}>
+        <VirtualGrid
+          items={items}
+          focusedIndex={focusedIndex}
+          itemsPerRow={itemsPerRow}
+          renderItem={renderItem}
+          getItemKey={getItemKey}
+          emptyMessage={emptyMessage}
+          cardWidth={cardWidth}
+          scrollContainerRef={containerRef as RefObject<HTMLElement> | undefined}
+          scrollToFocused={scrollToFocused}
+        />
+        {footer}
+      </div>
     </div>
   )
 }

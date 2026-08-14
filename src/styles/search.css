@@ -11,11 +11,12 @@
   display: flex;
   align-items: center;
   margin-bottom: 30px;
+  gap: 16px;
 }
 
-.search-sort-toolbar {
-  margin: -10px 0 16px;
-  padding-bottom: 10px;
+.search-sort {
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
 .search-icon {
