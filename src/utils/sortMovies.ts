@@ -2,10 +2,10 @@ import { MovieItem } from '../api/kinopub'
 
 export type MovieSortMode = 'default' | 'rating' | 'year'
 
-/** Best available rating for sorting (KP → IMDb → % → internal). */
+/** Rating for sorting: IMDb first, then KP / % / internal. */
 export function movieSortRating(item: MovieItem): number {
-  if (item.kinopoiskRating > 0) return item.kinopoiskRating
   if (item.imdbRating > 0) return item.imdbRating
+  if (item.kinopoiskRating > 0) return item.kinopoiskRating
   if (item.ratingPercentage > 0) return item.ratingPercentage / 10
   return item.rating || 0
 }

@@ -19,8 +19,8 @@ function item(partial: Partial<MovieItem> & Pick<MovieItem, 'id' | 'title' | 'ye
 
 describe('sortMovieItems', () => {
   const items = [
-    item({ id: 1, title: 'A', year: 2010, kinopoiskRating: 7 }),
-    item({ id: 2, title: 'B', year: 2020, kinopoiskRating: 5 }),
+    item({ id: 1, title: 'A', year: 2010, kinopoiskRating: 9, imdbRating: 7 }),
+    item({ id: 2, title: 'B', year: 2020, kinopoiskRating: 5, imdbRating: 5 }),
     item({ id: 3, title: 'C', year: 2015, imdbRating: 8.5 })
   ]
 
@@ -28,7 +28,7 @@ describe('sortMovieItems', () => {
     expect(sortMovieItems(items, 'default').map(i => i.id)).toEqual([1, 2, 3])
   })
 
-  it('sorts by rating descending', () => {
+  it('sorts by IMDb rating descending (not Kinopoisk)', () => {
     expect(sortMovieItems(items, 'rating').map(i => i.id)).toEqual([3, 1, 2])
   })
 
