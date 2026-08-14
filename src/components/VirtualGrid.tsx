@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'preact/hooks'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks'
 import { ComponentChildren, RefObject } from 'preact'
 
 interface VirtualGridProps<T> {
@@ -18,11 +18,21 @@ interface VirtualGridProps<T> {
   scrollToFocused?: boolean
 }
 
+function resolveScrollContainer(
+  root: HTMLElement | null,
+  scrollContainerRef?: RefObject<HTMLElement>
+): HTMLElement | null {
+  if (!root) return null
+  return (scrollContainerRef?.current
+    || root.closest('.category-scroll')
+    || root.closest('.category-screen')) as HTMLElement | null
+}
+
 export function VirtualGrid<T>({
   items,
   focusedIndex,
   itemsPerRow,
-  itemHeight = 360,
+  itemHeight = 420,
   renderBuffer = 48,
   renderItem,
   getItemKey,
@@ -35,21 +45,64 @@ export function VirtualGrid<T>({
   const [measuredRowHeight, setMeasuredRowHeight] = useState(0)
   const rowHeight = measuredRowHeight || itemHeight
   const rootRef = useRef<HTMLDivElement>(null)
+  const [scrollMetrics, setScrollMetrics] = useState({ top: 0, height: 800 })
 
   // Stale row height after side-menu expand makes totalHeight too small → sections overlap.
   useEffect(() => {
     setMeasuredRowHeight(0)
   }, [itemsPerRow, cardWidth])
 
+  // Virtualize from scroll position so wheel/pointer scroll works on large lists.
+  useEffect(() => {
+    const root = rootRef.current
+    const container = resolveScrollContainer(root, scrollContainerRef)
+    if (!container) return
+
+    let frame = 0
+    const sync = () => {
+      frame = 0
+      setScrollMetrics(prev => {
+        const top = container.scrollTop
+        const height = container.clientHeight || 800
+        if (prev.top === top && prev.height === height) return prev
+        return { top, height }
+      })
+    }
+
+    const onScroll = () => {
+      if (frame) return
+      frame = window.requestAnimationFrame(sync)
+    }
+
+    sync()
+    container.addEventListener('scroll', onScroll)
+    window.addEventListener('resize', onScroll)
+    window.addEventListener('kpuppy-content-resize', onScroll)
+    return () => {
+      if (frame) window.cancelAnimationFrame(frame)
+      container.removeEventListener('scroll', onScroll)
+      window.removeEventListener('resize', onScroll)
+      window.removeEventListener('kpuppy-content-resize', onScroll)
+    }
+  }, [scrollContainerRef, items.length, itemsPerRow, cardWidth])
+
   const getVisibleRange = useCallback(() => {
-    const focusedRow = Math.floor(focusedIndex / itemsPerRow)
     const bufferRows = Math.ceil(renderBuffer / itemsPerRow)
-    const startRow = Math.max(0, focusedRow - bufferRows)
-    const endRow = focusedRow + bufferRows + 1
+    const totalRows = Math.max(1, Math.ceil(items.length / itemsPerRow))
+    let startRow = Math.max(0, Math.floor(scrollMetrics.top / rowHeight) - bufferRows)
+    let endRow = Math.min(
+      totalRows,
+      Math.ceil((scrollMetrics.top + scrollMetrics.height) / rowHeight) + bufferRows
+    )
+    // Keep the focused cell mounted for D-pad / scroll-into-view, without
+    // expanding to the entire list when focus is far from the viewport.
+    const focusedRow = Math.floor(Math.max(0, Math.min(focusedIndex, Math.max(0, items.length - 1))) / itemsPerRow)
+    if (focusedRow < startRow) startRow = Math.max(0, focusedRow - bufferRows)
+    if (focusedRow >= endRow) endRow = Math.min(totalRows, focusedRow + bufferRows + 1)
     const startIndex = startRow * itemsPerRow
     const endIndex = Math.min(items.length, endRow * itemsPerRow)
     return { startIndex, endIndex, startRow }
-  }, [focusedIndex, itemsPerRow, items.length, renderBuffer])
+  }, [focusedIndex, itemsPerRow, items.length, renderBuffer, rowHeight, scrollMetrics.height, scrollMetrics.top])
 
   useEffect(() => {
     const root = rootRef.current
@@ -69,16 +122,28 @@ export function VirtualGrid<T>({
         setMeasuredRowHeight(measured)
       }
     }
-  }, [focusedIndex, itemsPerRow, rowHeight, items.length, cardWidth])
+  }, [focusedIndex, itemsPerRow, rowHeight, items.length, cardWidth, scrollMetrics.top])
+
+  // Keep the same row under the viewport when measured height replaces the estimate.
+  const appliedHeightRef = useRef(itemHeight)
+  useLayoutEffect(() => {
+    const next = measuredRowHeight || itemHeight
+    const prev = appliedHeightRef.current
+    if (prev > 0 && Math.abs(next - prev) > 1) {
+      const container = resolveScrollContainer(rootRef.current, scrollContainerRef)
+      if (container) {
+        container.scrollTop = container.scrollTop * (next / prev)
+      }
+    }
+    appliedHeightRef.current = next
+  }, [measuredRowHeight, itemHeight, scrollContainerRef])
 
   useEffect(() => {
     if (!scrollToFocused) return
     const root = rootRef.current
     if (!root || items.length === 0) return
 
-    const container = (scrollContainerRef?.current
-      || root.closest('.category-scroll')
-      || root.closest('.category-screen')) as HTMLElement | null
+    const container = resolveScrollContainer(root, scrollContainerRef)
     if (!container) return
 
     const focusedCell = root.querySelector(`[data-category-index="${focusedIndex}"]`) as HTMLElement

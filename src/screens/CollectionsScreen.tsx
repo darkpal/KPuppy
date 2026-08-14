@@ -56,6 +56,7 @@ export function CollectionsScreen({ onSelectItem, onNavigateToMenu, isActive }: 
   const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null)
   const [itemSortMode, setItemSortMode] = useState<MovieSortMode>('default')
   const [focusedIndex, setFocusedIndex] = useState(0)
+  const [scrollWithFocus, setScrollWithFocus] = useState(true)
   const [savedCollectionIndex, setSavedCollectionIndex] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
   const collectionsRef = useRef(collections)
@@ -273,7 +274,10 @@ export function CollectionsScreen({ onSelectItem, onNavigateToMenu, isActive }: 
       itemCount: displayedItems.length,
       itemsPerRow,
       focusedIndex,
-      setFocusedIndex,
+      setFocusedIndex: (index) => {
+        setScrollWithFocus(true)
+        setFocusedIndex(index)
+      },
       onSelect: (index) => {
         const item = displayedItems[index]
         if (item) {
@@ -306,7 +310,10 @@ export function CollectionsScreen({ onSelectItem, onNavigateToMenu, isActive }: 
     <MovieCard
       movie={item}
       focused={focused}
-      onHover={() => setFocusedIndex(index)}
+      onHover={() => {
+        setScrollWithFocus(false)
+        setFocusedIndex(index)
+      }}
       onSelect={() => onSelectItem(item.id, item)}
     />
   ), [onSelectItem])
@@ -365,6 +372,7 @@ export function CollectionsScreen({ onSelectItem, onNavigateToMenu, isActive }: 
         containerRef={containerRef}
         cardWidth={cardWidth}
         trailing={itemsSortTrailing}
+        scrollToFocused={scrollWithFocus}
       />
     )
   }

@@ -216,12 +216,12 @@
 }
 
 .category-filter.focused {
-  border-color: #91e5ad;
-  background: rgba(99, 200, 132, 0.2);
+  border-color: #e50914;
+  background: rgba(229, 9, 20, 0.18);
 }
 
 .category-filter.focused .category-filter-label {
-  color: #c9f3d7;
+  color: #ffb3b8;
 }
 
 .category-filter-value {
@@ -251,14 +251,14 @@
 }
 
 .category-filter-option.focused {
-  background: #63c884;
-  color: #07120b;
+  background: #e50914;
+  color: #ffffff;
 }
 
 .category-filter-option:hover {
-  background: rgba(99, 200, 132, 0.16);
+  background: rgba(229, 9, 20, 0.16);
 }
 
 .category-filter-option.focused:hover {
-  background: #63c884;
+  background: #e50914;
 }
