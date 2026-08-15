@@ -5,7 +5,7 @@ for humans and multiple coding agents: read it before profiling or changing a
 performance-sensitive path, and update it when a finding is confirmed, fixed,
 rejected, or superseded.
 
-Last updated: **2026-08-09**, release **v0.0.93**.
+Last updated: **2026-08-15**, release **v0.1.5**.
 
 ## 1. Product and platform constraints
 
@@ -61,7 +61,7 @@ material performance change or dependency upgrade.
 | Continue Watching initial network fan-out | 2 list requests | movies + serials |
 | Continue Watching metadata concurrency | maximum 3 | worker pool in `enrichMovieItemsMeta` |
 | Player time UI updates | maximum 1 per displayed second | integer-second guard |
-| Playback progress submission | approximately every 10 seconds | existing player callback |
+| Playback progress submission | wall-clock 10s while playing, plus pause/exit/hide; localStorage snapshot | existing player callback + interval; power-off keeps last local time |
 | API cache default TTL | 5 minutes | `src/api/cache.ts` |
 
 The full repository ESLint baseline at v0.0.91 contains five pre-existing

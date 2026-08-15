@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
+import { getLocalPlaybackProgress } from '../../src/storage'
 import {
   requestDeviceCode,
   pollForToken,
@@ -970,6 +971,30 @@ describe('kinopub API', () => {
       mockFetch.mockResolvedValueOnce({ ok: false, status: 500, json: async () => ({}) })
 
       await expect(markTime({ id: 123, time: 300, video: 1 })).rejects.toThrow(ApiError)
+    })
+
+    it('writes a local snapshot for resume after a power-off', async () => {
+      mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({}) })
+
+      await markTime({ id: 55, time: 640, video: 1 })
+
+      expect(getLocalPlaybackProgress(55, 1)).toBe(640)
+    })
+
+    it('sends overlapping marktime calls in order', async () => {
+      mockFetch
+        .mockResolvedValueOnce({ ok: true, json: async () => ({}) })
+        .mockResolvedValueOnce({ ok: true, json: async () => ({}) })
+
+      await Promise.all([
+        markTime({ id: 9, time: 100, video: 1 }),
+        markTime({ id: 9, time: 400, video: 1 })
+      ])
+
+      expect(mockFetch).toHaveBeenCalledTimes(2)
+      const firstTime = new URL(String(mockFetch.mock.calls[0][0])).searchParams.get('time')
+      const secondTime = new URL(String(mockFetch.mock.calls[1][0])).searchParams.get('time')
+      expect([firstTime, secondTime]).toEqual(['100', '400'])
     })
   })
 

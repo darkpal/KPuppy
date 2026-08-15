@@ -60,6 +60,8 @@ function RemoteKeyDots({ count }: { count: 1 | 2 | 3 | 4 }) {
   )
 }
 
+export const PROGRESS_SAVE_INTERVAL_MS = 10000
+
 function playVideo(video: HTMLVideoElement | null | undefined): void {
   if (!video) return
   video.play().catch(err => {
@@ -265,6 +267,31 @@ export function PlayerScreen({
       onTimeUpdate?.(value)
     }
   }, [onTimeUpdate])
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      const video = videoRef.current
+      if (!video || video.paused || video.ended) return
+      const value = video.currentTime
+      if (!Number.isFinite(value) || value <= 0) return
+      if (Math.abs(value - lastTimeRef.current) < 1) return
+      lastTimeRef.current = value
+      onTimeUpdate?.(value)
+    }, PROGRESS_SAVE_INTERVAL_MS)
+    return () => window.clearInterval(id)
+  }, [onTimeUpdate])
+
+  useEffect(() => {
+    const flushIfHidden = () => {
+      if (document.visibilityState === 'hidden') flushTime()
+    }
+    document.addEventListener('visibilitychange', flushIfHidden)
+    window.addEventListener('pagehide', flushIfHidden)
+    return () => {
+      document.removeEventListener('visibilitychange', flushIfHidden)
+      window.removeEventListener('pagehide', flushIfHidden)
+    }
+  }, [flushTime])
 
   const reloadStream = useCallback((nextSrc: string, resumeAt: number, wasPaused: boolean) => {
     const video = videoRef.current

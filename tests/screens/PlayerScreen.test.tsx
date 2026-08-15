@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, cleanup, fireEvent } from '@testing-library/preact'
 import { h } from 'preact'
-import { PlayerScreen } from '../../src/screens/PlayerScreen'
+import { PlayerScreen, PROGRESS_SAVE_INTERVAL_MS } from '../../src/screens/PlayerScreen'
 import { I18nProvider } from '../../src/i18n/context'
 
 function renderWithI18n(component: preact.ComponentChild) {
@@ -383,12 +383,31 @@ describe('PlayerScreen', () => {
   })
 
   describe('time update callback', () => {
-    it('accepts onTimeUpdate callback', () => {
-      const mockTimeUpdate = vi.fn()
+    it('reports progress on a wall-clock interval while playing', () => {
+      const onTimeUpdate = vi.fn()
+      renderWithI18n(<PlayerScreen {...mockProps} onTimeUpdate={onTimeUpdate} />)
 
-      renderWithI18n(<PlayerScreen {...mockProps} onTimeUpdate={mockTimeUpdate} />)
+      const video = document.querySelector('.player-video') as HTMLVideoElement
+      Object.defineProperty(video, 'paused', { configurable: true, get: () => false })
+      Object.defineProperty(video, 'ended', { configurable: true, get: () => false })
+      Object.defineProperty(video, 'currentTime', { configurable: true, value: 42 })
 
-      expect(document.querySelector('.player-screen')).toBeDefined()
+      vi.advanceTimersByTime(PROGRESS_SAVE_INTERVAL_MS)
+
+      expect(onTimeUpdate).toHaveBeenCalled()
+    })
+
+    it('flushes progress when the document is hidden', () => {
+      const onTimeUpdate = vi.fn()
+      renderWithI18n(<PlayerScreen {...mockProps} onTimeUpdate={onTimeUpdate} />)
+
+      const video = document.querySelector('.player-video') as HTMLVideoElement
+      Object.defineProperty(video, 'currentTime', { configurable: true, value: 77 })
+      Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' })
+      document.dispatchEvent(new Event('visibilitychange'))
+
+      expect(onTimeUpdate).toHaveBeenCalledWith(77)
+      Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' })
     })
 
     it('accepts startTime prop', () => {

@@ -1,10 +1,11 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { saveTokens, getTokens, clearTokens, isAuthenticated, Tokens } from '../src/storage'
+import { saveTokens, getTokens, clearTokens, isAuthenticated, Tokens, saveLocalPlaybackProgress, getLocalPlaybackProgress } from '../src/storage'
 
 describe('storage', () => {
   beforeEach(() => {
     localStorage.removeItem('kpuppy_tokens')
     localStorage.removeItem('kpuppy_settings')
+    localStorage.removeItem('kpuppy_playback_progress')
   })
 
   describe('getLocalSettings defaults', () => {
@@ -131,6 +132,20 @@ describe('storage', () => {
         configurable: true,
         value: original
       })
+    })
+  })
+
+  describe('local playback progress', () => {
+    it('stores and reads the last position', () => {
+      saveLocalPlaybackProgress(10, 321, 1)
+      expect(getLocalPlaybackProgress(10, 1)).toBe(321)
+    })
+
+    it('keeps movie and episode positions separate', () => {
+      saveLocalPlaybackProgress(10, 100, 1)
+      saveLocalPlaybackProgress(10, 200, 2, 1)
+      expect(getLocalPlaybackProgress(10, 1)).toBe(100)
+      expect(getLocalPlaybackProgress(10, 2, 1)).toBe(200)
     })
   })
 })

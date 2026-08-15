@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getResumeTime, WatchingStatus } from '../../src/utils/watching'
+import { getResumeTime, mergeResumeTime, WatchingStatus } from '../../src/utils/watching'
 
 describe('getResumeTime', () => {
   it('returns 0 when no watching info', () => {
@@ -22,5 +22,19 @@ describe('getResumeTime', () => {
 
   it('keeps time when far from the end', () => {
     expect(getResumeTime({ status: WatchingStatus.Watching, time: 100 }, 3600)).toBe(100)
+  })
+})
+
+describe('mergeResumeTime', () => {
+  it('prefers a later local snapshot over stale server time', () => {
+    expect(mergeResumeTime({ status: WatchingStatus.Watching, time: 120 }, 480, 3600)).toBe(480)
+  })
+
+  it('keeps server time when it is ahead of local', () => {
+    expect(mergeResumeTime({ status: WatchingStatus.Watching, time: 500 }, 120, 3600)).toBe(500)
+  })
+
+  it('ignores local progress when Kinopub marked the item watched', () => {
+    expect(mergeResumeTime({ status: WatchingStatus.Watched, time: 3500 }, 3480, 3600)).toBe(0)
   })
 })

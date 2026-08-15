@@ -27,3 +27,16 @@ export function getResumeTime(
 
   return time
 }
+
+/** Prefer the later of Kinopub progress and a local snapshot (power-off safe). */
+export function mergeResumeTime(
+  server?: WatchingInfo | null,
+  localTime?: number,
+  durationSeconds?: number
+): number {
+  if (server?.status === WatchingStatus.Watched) return 0
+  const serverTime = getResumeTime(server, durationSeconds)
+  const local = Math.floor(localTime ?? 0)
+  if (local <= serverTime) return serverTime
+  return getResumeTime({ time: local, status: WatchingStatus.Watching }, durationSeconds)
+}

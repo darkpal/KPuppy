@@ -238,6 +238,63 @@ export function saveAudioPreference(itemId: number, audio: {
   writeStorage(`${AUDIO_PREF_PREFIX}${itemId}`, JSON.stringify(pref))
 }
 
+const PLAYBACK_PROGRESS_KEY = 'kpuppy_playback_progress'
+const PLAYBACK_PROGRESS_LIMIT = 40
+
+type LocalPlaybackMap = Record<string, { time: number; updatedAt: number }>
+
+export function playbackProgressKey(itemId: number, video?: number, season?: number): string {
+  return `${itemId}:${season ?? ''}:${video ?? 1}`
+}
+
+function readPlaybackProgressMap(): LocalPlaybackMap {
+  const data = readStorage(PLAYBACK_PROGRESS_KEY)
+  if (!data) return {}
+  try {
+    const parsed = JSON.parse(data) as LocalPlaybackMap
+    return parsed && typeof parsed === 'object' ? parsed : {}
+  } catch {
+    return {}
+  }
+}
+
+function writePlaybackProgressMap(map: LocalPlaybackMap): void {
+  const entries = Object.entries(map)
+  if (entries.length <= PLAYBACK_PROGRESS_LIMIT) {
+    writeStorage(PLAYBACK_PROGRESS_KEY, JSON.stringify(map))
+    return
+  }
+  entries.sort((a, b) => b[1].updatedAt - a[1].updatedAt)
+  const trimmed: LocalPlaybackMap = {}
+  for (const [key, value] of entries.slice(0, PLAYBACK_PROGRESS_LIMIT)) {
+    trimmed[key] = value
+  }
+  writeStorage(PLAYBACK_PROGRESS_KEY, JSON.stringify(trimmed))
+}
+
+/** Sync snapshot so a power-off still has the last known position. */
+export function saveLocalPlaybackProgress(
+  itemId: number,
+  time: number,
+  video?: number,
+  season?: number
+): void {
+  const seconds = Math.floor(time)
+  if (itemId <= 0 || seconds <= 0) return
+  const map = readPlaybackProgressMap()
+  map[playbackProgressKey(itemId, video, season)] = { time: seconds, updatedAt: Date.now() }
+  writePlaybackProgressMap(map)
+}
+
+export function getLocalPlaybackProgress(
+  itemId: number,
+  video?: number,
+  season?: number
+): number {
+  const entry = readPlaybackProgressMap()[playbackProgressKey(itemId, video, season)]
+  return entry?.time ?? 0
+}
+
 export function findAudioIndex(
   audios: Array<{ id: number; lang?: string; codec?: string | null; type?: { title?: string } | null; author?: { title?: string } | null }>,
   saved: SavedAudioPreference | null

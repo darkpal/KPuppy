@@ -18,13 +18,13 @@ import { LoadingState } from './components/LoadingSpinner'
 import { ALL_MENU_ITEMS_COUNT, getMenuIdByIndex, getMenuIndexById } from './components/SideMenu'
 import { KEY_CODES } from './hooks'
 import { ScreenManager } from './components/ScreenManager'
-import { isAuthenticated, clearTokens, getTokens, getLocalSettings, saveReturnTo, getReturnTo, clearReturnTo, getContentTypesCache, saveContentTypesCache, getSavedAudioPreference, findAudioIndex, ReturnToState } from './storage'
+import { isAuthenticated, clearTokens, getTokens, getLocalSettings, saveReturnTo, getReturnTo, clearReturnTo, getContentTypesCache, saveContentTypesCache, getSavedAudioPreference, findAudioIndex, getLocalPlaybackProgress, ReturnToState } from './storage'
 import { refreshAccessToken, getItem, getMediaLinks, setOnAuthError, getDeviceInfo, markTime, invalidatePlaybackLists, getWatchingProgress, getContentTypes, registerDevice, VideoFile, Audio, Subtitle, MovieItem } from './api/kinopub'
 import { applyPreferredDeviceDefaultsOnce } from './preferredDefaults'
 import { saveTokens } from './storage'
 import { launchNativePlayer, getStreamUrl, withHlsAudioIndex, getAvailableQualities } from './webos/player'
 import { platformBack } from './webos/service'
-import { getResumeTime } from './utils/watching'
+import { mergeResumeTime } from './utils/watching'
 import { buildSeasonsSummary, getEpisodeNeighbors, type EpisodeNavigationTarget, type SeasonSummary } from './utils/episodes'
 import { useI18n } from './i18n'
 import { Translations } from './i18n/translations'
@@ -477,7 +477,8 @@ export function App() {
       let title = item.title
       let videoNumber = item.videos?.[0]?.number || 1
       let mediaId = item.videos?.[0]?.id
-      let startTime = getResumeTime(item.videos?.[0]?.watching, item.videos?.[0]?.duration)
+      let serverWatching = item.videos?.[0]?.watching
+      let durationForResume = item.videos?.[0]?.duration
 
       if (season !== undefined && episode !== undefined && item.seasons) {
         const seasonData = item.seasons.find(s => s.number === season)
@@ -490,7 +491,8 @@ export function App() {
           mediaId = episodeData.id
           title = `${item.title} - S${season}E${episode}`
           if (episodeData.title) title += ` - ${episodeData.title}`
-          startTime = getResumeTime(episodeData.watching, episodeData.duration)
+          serverWatching = episodeData.watching
+          durationForResume = episodeData.duration
         }
       }
 
@@ -509,11 +511,11 @@ export function App() {
         if (linksResult.files.length > 0) files = linksResult.files
         if (linksResult.subtitles.length > 0) subtitles = linksResult.subtitles
       }
-      if (progressResult) {
-        startTime = getResumeTime(progressResult, season !== undefined
-          ? item.seasons?.find(s => s.number === season)?.episodes.find(e => e.number === episode)?.duration
-          : item.videos?.[0]?.duration)
-      }
+      const startTime = mergeResumeTime(
+        progressResult || serverWatching,
+        getLocalPlaybackProgress(itemId, videoNumber, season),
+        durationForResume
+      )
 
       const preferredQuality = options?.quality || (localSettings.defaultQuality === 'auto' ? undefined : localSettings.defaultQuality)
 

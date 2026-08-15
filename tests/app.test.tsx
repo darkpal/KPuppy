@@ -25,6 +25,9 @@ vi.mock('../src/storage', () => ({
   clearReturnTo: vi.fn(),
   getContentTypesCache: vi.fn(() => null),
   saveContentTypesCache: vi.fn(),
+  getLocalPlaybackProgress: vi.fn(() => 0),
+  getSavedAudioPreference: vi.fn(() => null),
+  findAudioIndex: vi.fn(() => 0),
 }))
 
 vi.mock('../src/api/kinopub', () => ({

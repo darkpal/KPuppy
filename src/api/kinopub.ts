@@ -1,4 +1,4 @@
-import { getTokens, saveTokens, Tokens } from '../storage'
+import { getTokens, saveTokens, saveLocalPlaybackProgress, Tokens } from '../storage'
 import { getCached, setCache, createCacheKey, invalidateCache, cachedFetch, withInflight } from './cache'
 
 const BASE_URL = 'https://api.service-kp.com'
@@ -1133,19 +1133,31 @@ export function invalidatePlaybackLists(): void {
   invalidateCache('history')
 }
 
-export async function markTime(params: MarkTimeParams): Promise<void> {
+let markTimeQueue: Promise<void> = Promise.resolve()
+
+async function sendMarkTime(params: MarkTimeParams): Promise<void> {
   const searchParams = new URLSearchParams()
   searchParams.set('id', params.id.toString())
   searchParams.set('time', params.time.toString())
   if (params.video !== undefined) searchParams.set('video', params.video.toString())
   if (params.season !== undefined) searchParams.set('season', params.season.toString())
 
-  // Keep the detail card warm for Back while updating its resume position.
-  patchCachedPlaybackProgress(params)
   const response = await authFetch(`${BASE_URL}/v1/watching/marktime?${searchParams}`)
   if (!response.ok) {
     throw new ApiError('Failed to mark playback time', response.status)
   }
+}
+
+export async function markTime(params: MarkTimeParams): Promise<void> {
+  // Keep the detail card warm for Back while updating its resume position.
+  patchCachedPlaybackProgress(params)
+  // Survive a TV power-off: localStorage is sync, the API call may never finish.
+  saveLocalPlaybackProgress(params.id, params.time, params.video, params.season)
+
+  // Serialize so a slow older ping cannot overwrite a newer position on the server.
+  const run = markTimeQueue.then(() => sendMarkTime(params), () => sendMarkTime(params))
+  markTimeQueue = run.then(() => undefined, () => undefined)
+  return run
 }
 
 export async function getWatchingProgress(
