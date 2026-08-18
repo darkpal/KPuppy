@@ -847,15 +847,25 @@ export function PlayerScreen({
     episode
   ])
 
+  const playEpisode = useCallback((seasonNumber: number, episodeNumber: number) => {
+    if (!onPlayEpisode) return
+    const alreadyPlaying = episodeNumber === episode && (season == null || seasonNumber === season)
+    if (alreadyPlaying) {
+      setControls(prev => ({ ...prev, activePanel: 'none' }))
+      return
+    }
+    videoRef.current?.pause()
+    flushTime()
+    onPlayEpisode(seasonNumber, episodeNumber)
+  }, [onPlayEpisode, season, episode, flushTime])
+
   const playSelectedEpisode = useCallback(() => {
-    if (!seasonsSummary || !onPlayEpisode) return
+    if (!seasonsSummary) return
     const seasonSummary = seasonsSummary[episodesFocus.seasonIndex]
     const episodeSummary = seasonSummary?.episodes[episodesFocus.episodeIndex]
     if (!seasonSummary || !episodeSummary) return
-    videoRef.current?.pause()
-    flushTime()
-    onPlayEpisode(seasonSummary.number, episodeSummary.number)
-  }, [seasonsSummary, onPlayEpisode, episodesFocus, flushTime])
+    playEpisode(seasonSummary.number, episodeSummary.number)
+  }, [seasonsSummary, episodesFocus, playEpisode])
 
   const selectEpisodesSeason = useCallback((seasonIndex: number) => {
     if (!seasonsSummary) return
@@ -1612,9 +1622,7 @@ export function PlayerScreen({
                       onClick={(event) => {
                         event.stopPropagation()
                         setEpisodesFocus(prev => ({ ...prev, episodeIndex: idx }))
-                        videoRef.current?.pause()
-                        flushTime()
-                        onPlayEpisode?.(
+                        playEpisode(
                           seasonsSummary[episodesFocus.seasonIndex].number,
                           episodeSummary.number
                         )

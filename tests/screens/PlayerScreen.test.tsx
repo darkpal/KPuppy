@@ -246,6 +246,32 @@ describe('PlayerScreen', () => {
       expect(screen.getByText('Theatrical')).toBeDefined()
     })
 
+    it('does not reload when the current version is selected again', () => {
+      const onPlayEpisode = vi.fn()
+      renderWithI18n(
+        <PlayerScreen
+          {...mockProps}
+          episode={1}
+          seasonsSummary={[{
+            number: 0,
+            episodes: [
+              { number: 1, title: "Director's Cut", duration: 11763 },
+              { number: 2, title: 'Theatrical', duration: 9768 }
+            ]
+          }]}
+          onPlayEpisode={onPlayEpisode}
+        />
+      )
+
+      fireEvent.keyDown(document, { keyCode: 406 })
+      expect(document.querySelector('.player-panel-episodes')).not.toBeNull()
+
+      fireEvent.keyDown(document, { keyCode: 13 })
+
+      expect(onPlayEpisode).not.toHaveBeenCalled()
+      expect(document.querySelector('.player-panel-episodes')).toBeNull()
+    })
+
     it('opens episodes panel on Blue and plays selected episode on Enter', () => {
       const onPlayEpisode = vi.fn()
       const onPlayNextEpisode = vi.fn()
