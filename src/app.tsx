@@ -26,6 +26,7 @@ import { launchNativePlayer, getStreamUrl, withHlsAudioIndex, getAvailableQualit
 import { platformBack } from './webos/service'
 import { mergeResumeTime } from './utils/watching'
 import { buildSeasonsSummary, getEpisodeNeighbors, type EpisodeNavigationTarget, type SeasonSummary } from './utils/episodes'
+import { buildVideosSummary, findVideoByNumber } from './utils/videoVersions'
 import { useI18n } from './i18n'
 import { Translations } from './i18n/translations'
 import './styles/global.css'
@@ -450,7 +451,7 @@ export function App() {
     }, 80)
   }, [])
 
-  const handlePlay = useCallback(async (itemId: number, season?: number, episode?: number, options?: { quality?: string }) => {
+  const handlePlay = useCallback(async (itemId: number, season?: number, episode?: number, options?: { quality?: string; video?: number }) => {
     if (playInFlightRef.current) return
     playInFlightRef.current = true
 
@@ -469,7 +470,10 @@ export function App() {
 
     try {
       const item = await getItem(itemId)
-      const episodeNeighbors = getEpisodeNeighbors(item.seasons, season, episode)
+      const isSeries = Boolean(item.seasons && item.seasons.length > 0)
+      const episodeNeighbors = isSeries
+        ? getEpisodeNeighbors(item.seasons, season, episode)
+        : { previousEpisode: undefined, nextEpisode: undefined }
 
       let files = item.videos?.[0]?.files
       let audios = item.videos?.[0]?.audios || []
@@ -480,8 +484,8 @@ export function App() {
       let serverWatching = item.videos?.[0]?.watching
       let durationForResume = item.videos?.[0]?.duration
 
-      if (season !== undefined && episode !== undefined && item.seasons) {
-        const seasonData = item.seasons.find(s => s.number === season)
+      if (isSeries && season !== undefined && episode !== undefined) {
+        const seasonData = item.seasons?.find(s => s.number === season)
         const episodeData = seasonData?.episodes.find(e => e.number === episode)
         if (episodeData) {
           files = episodeData.files
@@ -494,6 +498,20 @@ export function App() {
           serverWatching = episodeData.watching
           durationForResume = episodeData.duration
         }
+      } else {
+        const requestedVideo = options?.video ?? (!isSeries && episode !== undefined ? episode : undefined)
+        const video = findVideoByNumber(item.videos, requestedVideo)
+        if (video) {
+          files = video.files
+          audios = video.audios || []
+          subtitles = video.subtitles || []
+          videoNumber = video.number || 1
+          mediaId = video.id
+          serverWatching = video.watching
+          durationForResume = video.duration
+          const versionName = (video.title || '').trim()
+          if (versionName) title = `${item.title} — ${versionName}`
+        }
       }
 
       const [linksResult, progressResult, deviceResult] = await Promise.all([
@@ -503,7 +521,7 @@ export function App() {
               return null
             })
           : Promise.resolve(null),
-        getWatchingProgress(itemId, videoNumber, season).catch(() => null),
+        getWatchingProgress(itemId, videoNumber, isSeries ? season : undefined).catch(() => null),
         getDeviceInfo().catch(() => null)
       ])
 
@@ -513,7 +531,7 @@ export function App() {
       }
       const startTime = mergeResumeTime(
         progressResult || serverWatching,
-        getLocalPlaybackProgress(itemId, videoNumber, season),
+        getLocalPlaybackProgress(itemId, videoNumber, isSeries ? season : undefined),
         durationForResume
       )
 
@@ -558,11 +576,11 @@ export function App() {
             initialQuality,
             itemId,
             video: videoNumber,
-            season,
-            episode,
+            season: isSeries ? season : undefined,
+            episode: isSeries ? episode : videoNumber,
             previousEpisode: episodeNeighbors.previousEpisode,
             nextEpisode: episodeNeighbors.nextEpisode,
-            seasonsSummary: buildSeasonsSummary(item.seasons),
+            seasonsSummary: isSeries ? buildSeasonsSummary(item.seasons) : buildVideosSummary(item.videos),
             startTime,
             initialAudioIndex
           }

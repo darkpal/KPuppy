@@ -8,12 +8,14 @@ import { ItemDetails } from '../components/ItemDetails'
 import { SimilarItems } from '../components/SimilarItems'
 import { FolderDialog } from '../components/FolderDialog'
 import { getContinueAction } from '../utils/episodes'
+import { findVideoByNumber, hasVideoVersions, pickDefaultVideo, videoVersionLabel } from '../utils/videoVersions'
 import { getAvailableQualities } from '../webos/player'
 import thumbUpIcon from '../assets/thumb-up.svg'
 import '../styles/item.css'
 
 interface PlayOptions {
   quality?: string
+  video?: number
 }
 
 interface ItemScreenProps {
@@ -31,7 +33,7 @@ interface ItemScreenProps {
   isActive: boolean
 }
 
-type FocusArea = 'play' | 'watching' | 'watchlist' | 'trailer' | 'seasons' | 'qualitySelect' | 'genres' | 'details' | 'cast' | 'similar'
+type FocusArea = 'play' | 'version' | 'versionSelect' | 'watching' | 'watchlist' | 'trailer' | 'seasons' | 'qualitySelect' | 'genres' | 'details' | 'cast' | 'similar'
 
 /** Draw the poster cover-cropped onto a screen-sized canvas (replaces
  * `object-fit: cover; object-position: center 18%` on the old <img>). */
@@ -63,6 +65,7 @@ interface ItemScreenState {
   error: string | null
   focusArea: FocusArea
   selectedQuality: string | null
+  selectedVideoNumber: number
   dropdownFocusIndex: number
   similarItems: MovieItem[]
   similarFocusIndex: number
@@ -79,13 +82,14 @@ interface ItemScreenState {
 
 type ItemScreenAction =
   | { type: 'LOAD_START' }
-  | { type: 'LOAD_SUCCESS'; item: ItemDetailsType; focusArea: FocusArea; selectedQuality: string | null }
+  | { type: 'LOAD_SUCCESS'; item: ItemDetailsType; focusArea: FocusArea; selectedQuality: string | null; selectedVideoNumber: number }
   | { type: 'UPDATE_MEDIA'; item: ItemDetailsType; selectedQuality: string | null }
   | { type: 'LOAD_ERROR'; error: string }
   | { type: 'SET_SIMILAR_ITEMS'; items: MovieItem[] }
   | { type: 'SET_IS_WATCHING'; value: boolean }
   | { type: 'SET_FOCUS_AREA'; area: FocusArea }
   | { type: 'SET_SELECTED_QUALITY'; quality: string }
+  | { type: 'SET_SELECTED_VIDEO'; videoNumber: number; quality: string | null }
   | { type: 'SET_DROPDOWN_FOCUS_INDEX'; index: number }
   | { type: 'SET_SIMILAR_FOCUS_INDEX'; index: number }
   | { type: 'SET_META_FOCUS_INDEX'; index: number }
@@ -105,6 +109,7 @@ const initialState: ItemScreenState = {
   error: null,
   focusArea: 'play',
   selectedQuality: null,
+  selectedVideoNumber: 1,
   dropdownFocusIndex: 0,
   similarItems: [],
   similarFocusIndex: 0,
@@ -124,7 +129,14 @@ function itemScreenReducer(state: ItemScreenState, action: ItemScreenAction): It
     case 'LOAD_START':
       return { ...initialState, loading: true }
     case 'LOAD_SUCCESS':
-      return { ...state, loading: false, item: action.item, focusArea: action.focusArea, selectedQuality: action.selectedQuality }
+      return {
+        ...state,
+        loading: false,
+        item: action.item,
+        focusArea: action.focusArea,
+        selectedQuality: action.selectedQuality,
+        selectedVideoNumber: action.selectedVideoNumber
+      }
     case 'UPDATE_MEDIA':
       if (state.item?.id !== action.item.id) return state
       return {
@@ -142,6 +154,8 @@ function itemScreenReducer(state: ItemScreenState, action: ItemScreenAction): It
       return { ...state, focusArea: action.area }
     case 'SET_SELECTED_QUALITY':
       return { ...state, selectedQuality: action.quality }
+    case 'SET_SELECTED_VIDEO':
+      return { ...state, selectedVideoNumber: action.videoNumber, selectedQuality: action.quality }
     case 'SET_DROPDOWN_FOCUS_INDEX':
       return { ...state, dropdownFocusIndex: action.index }
     case 'SET_SIMILAR_FOCUS_INDEX':
@@ -174,7 +188,7 @@ function itemScreenReducer(state: ItemScreenState, action: ItemScreenAction): It
 export function ItemScreen({ itemId, preview = null, onBack, onPlay, onPlayTrailer, onSelectSeries, onSelectItem, onSelectGenre, onSelectActor, onSelectDirector, onNavigateToMenu, isActive }: ItemScreenProps) {
   const { t } = useI18n()
   const [state, dispatch] = useReducer(itemScreenReducer, initialState)
-  const { item, loading, error, focusArea, selectedQuality, dropdownFocusIndex, similarItems, similarFocusIndex, metaFocusIndex, watchlistLoading, showFolderDialog, folders, itemFolderIds, folderFocusIndex, isWatching, watchingToggleLoading, detailsExpanded } = state
+  const { item, loading, error, focusArea, selectedQuality, selectedVideoNumber, dropdownFocusIndex, similarItems, similarFocusIndex, metaFocusIndex, watchlistLoading, showFolderDialog, folders, itemFolderIds, folderFocusIndex, isWatching, watchingToggleLoading, detailsExpanded } = state
   const detailsPageRef = useRef<HTMLElement>(null)
   const bannerCanvasRef = useRef<HTMLCanvasElement>(null)
   const similarFetchedForRef = useRef<number | null>(null)
@@ -216,8 +230,8 @@ export function ItemScreen({ itemId, preview = null, onBack, onPlay, onPlayTrail
 
         const hasSeries = Boolean(data.seasons && data.seasons.length > 0)
         const newFocusArea: FocusArea = 'play'
-
-        const files = data.videos?.[0]?.files || data.seasons?.[0]?.episodes?.[0]?.files
+        const defaultVideo = pickDefaultVideo(data.videos) || data.videos?.[0]
+        const files = defaultVideo?.files || data.seasons?.[0]?.episodes?.[0]?.files
         const available = getAvailableQualities(files)
         const { defaultQuality } = getLocalSettings()
 
@@ -230,25 +244,32 @@ export function ItemScreen({ itemId, preview = null, onBack, onPlay, onPlayTrail
 
         // The item payload is enough to render the card. Do not keep the whole
         // screen behind a spinner while the supplemental media request is slow.
-        dispatch({ type: 'LOAD_SUCCESS', item: data, focusArea: newFocusArea, selectedQuality: quality })
+        dispatch({
+          type: 'LOAD_SUCCESS',
+          item: data,
+          focusArea: newFocusArea,
+          selectedQuality: quality,
+          selectedVideoNumber: defaultVideo?.number || 1
+        })
 
         // media-links returns the full subtitle/file set (item payload can be incomplete)
-        const mediaId = data.videos?.[0]?.id || data.seasons?.[0]?.episodes?.[0]?.id
+        const mediaId = defaultVideo?.id || data.seasons?.[0]?.episodes?.[0]?.id
         if (mediaId) {
           getMediaLinks(mediaId).then(links => {
             if (cancelled) return
             let enrichedData = data
-            if (data.videos?.[0]) {
+            if (defaultVideo && data.videos?.length) {
               enrichedData = {
                 ...data,
-                videos: [
-                  {
-                    ...data.videos[0],
-                    files: links.files.length > 0 ? links.files : data.videos[0].files,
-                    subtitles: links.subtitles.length > 0 ? links.subtitles : data.videos[0].subtitles
-                  },
-                  ...data.videos.slice(1)
-                ]
+                videos: data.videos.map(video => (
+                  video.number === defaultVideo.number
+                    ? {
+                        ...video,
+                        files: links.files.length > 0 ? links.files : video.files,
+                        subtitles: links.subtitles.length > 0 ? links.subtitles : video.subtitles
+                      }
+                    : video
+                ))
               }
             } else if (data.seasons?.[0]?.episodes?.[0]) {
               const season0 = data.seasons[0]
@@ -272,7 +293,9 @@ export function ItemScreen({ itemId, preview = null, onBack, onPlay, onPlayTrail
               }
             }
 
-            const enrichedFiles = enrichedData.videos?.[0]?.files || enrichedData.seasons?.[0]?.episodes?.[0]?.files
+            const enrichedFiles = defaultVideo
+              ? enrichedData.videos?.find(video => video.number === defaultVideo.number)?.files
+              : enrichedData.videos?.[0]?.files || enrichedData.seasons?.[0]?.episodes?.[0]?.files
             const enrichedAvailable = getAvailableQualities(enrichedFiles)
             let enrichedQuality: string | null = null
             if (defaultQuality !== 'auto' && enrichedAvailable.includes(defaultQuality)) {
@@ -308,11 +331,13 @@ export function ItemScreen({ itemId, preview = null, onBack, onPlay, onPlayTrail
     }
   }, [itemId, t.errorLoading])
 
-  const videoData = item?.videos?.[0] || item?.seasons?.[0]?.episodes?.[0]
+  const selectedVideo = findVideoByNumber(item?.videos, selectedVideoNumber) || item?.videos?.[0]
+  const videoData = selectedVideo || item?.seasons?.[0]?.episodes?.[0]
   const files = videoData?.files
   const audios = videoData?.audios || []
   const subtitles = videoData?.subtitles || []
   const availableQualities = getAvailableQualities(files)
+  const movieVersions = hasVideoVersions(item?.videos) ? (item?.videos || []) : []
 
   const continueAction = useMemo(
     () => (item?.seasons?.length ? getContinueAction(item.seasons) : null),
@@ -332,22 +357,73 @@ export function ItemScreen({ itemId, preview = null, onBack, onPlay, onPlayTrail
       return
     }
     const options: PlayOptions = {
-      quality: selectedQuality || undefined
+      quality: selectedQuality || undefined,
+      video: movieVersions.length > 1 ? selectedVideoNumber : undefined
     }
     if (continueAction && (continueAction.kind === 'start' || continueAction.kind === 'continue')) {
       onPlay(itemId, continueAction.season, continueAction.episode, options)
     } else {
       onPlay(itemId, undefined, undefined, options)
     }
-  }, [item, preview, itemId, onPlay, onSelectSeries, selectedQuality, continueAction])
+  }, [item, preview, itemId, onPlay, onSelectSeries, selectedQuality, selectedVideoNumber, movieVersions, continueAction])
+
+  const selectMovieVersion = useCallback((videoNumber: number) => {
+    const video = findVideoByNumber(item?.videos, videoNumber)
+    if (!video) return
+    const versionFiles = video.files
+    const available = getAvailableQualities(versionFiles)
+    const { defaultQuality } = getLocalSettings()
+    let quality: string | null = selectedQuality
+    if (quality && !available.includes(quality)) quality = null
+    if (!quality) {
+      if (defaultQuality !== 'auto' && available.includes(defaultQuality)) quality = defaultQuality
+      else quality = available[0] || null
+    }
+    dispatch({ type: 'SET_SELECTED_VIDEO', videoNumber: video.number, quality })
+    dispatch({ type: 'SET_FOCUS_AREA', area: 'version' })
+    if (!video.id || versionFiles.length > 0) return
+    getMediaLinks(video.id).then(links => {
+      if (!item?.videos) return
+      const enriched = {
+        ...item,
+        videos: item.videos.map(entry => (
+          entry.number === video.number
+            ? {
+                ...entry,
+                files: links.files.length > 0 ? links.files : entry.files,
+                subtitles: links.subtitles.length > 0 ? links.subtitles : entry.subtitles
+              }
+            : entry
+        ))
+      }
+      const enrichedAvailable = getAvailableQualities(
+        enriched.videos.find(entry => entry.number === video.number)?.files
+      )
+      let enrichedQuality = quality
+      if (enrichedQuality && !enrichedAvailable.includes(enrichedQuality)) {
+        enrichedQuality = enrichedAvailable[0] || null
+      } else if (!enrichedQuality) {
+        enrichedQuality = enrichedAvailable[0] || null
+      }
+      dispatch({ type: 'UPDATE_MEDIA', item: enriched, selectedQuality: enrichedQuality })
+    }).catch(err => {
+      if (import.meta.env.DEV) console.error('getMediaLinks failed:', err)
+    })
+  }, [item, selectedQuality])
 
   const handlePlayOrSelect = useCallback(() => {
     if (focusArea === 'seasons') {
       onSelectSeries(itemId)
       return
     }
+    if (focusArea === 'version') {
+      const idx = Math.max(0, movieVersions.findIndex(video => video.number === selectedVideoNumber))
+      dispatch({ type: 'SET_DROPDOWN_FOCUS_INDEX', index: idx })
+      dispatch({ type: 'SET_FOCUS_AREA', area: 'versionSelect' })
+      return
+    }
     handleContinuePlay()
-  }, [focusArea, itemId, onSelectSeries, handleContinuePlay])
+  }, [focusArea, itemId, onSelectSeries, handleContinuePlay, movieVersions, selectedVideoNumber])
 
   const handleOpenFolderDialog = useCallback(async () => {
     if (watchlistLoading) return
@@ -495,10 +571,11 @@ export function ItemScreen({ itemId, preview = null, onBack, onPlay, onPlayTrail
       event.preventDefault()
       closeDetails()
     }
-  }, isActive && !!item && !showFolderDialog && focusArea !== 'qualitySelect')
+  }, isActive && !!item && !showFolderDialog && focusArea !== 'qualitySelect' && focusArea !== 'versionSelect')
 
   const handlers = useMemo(() => {
     const hasSeries = item?.seasons && item.seasons.length > 0
+    const hasVersions = movieVersions.length > 1
     const hasSimilar = similarItems.length > 0
     const hasTrailer = !!item?.trailer?.url
     const hasGenres = genres.length > 0
@@ -511,6 +588,20 @@ export function ItemScreen({ itemId, preview = null, onBack, onPlay, onPlayTrail
         onUp: () => dispatch({ type: 'SET_FOLDER_FOCUS_INDEX', index: Math.max(0, folderFocusIndex - 1) }),
         onDown: () => dispatch({ type: 'SET_FOLDER_FOCUS_INDEX', index: Math.min(folders.length - 1, folderFocusIndex + 1) }),
         onEnter: () => { void handleToggleFolder() }
+      }
+    }
+
+    if (focusArea === 'versionSelect') {
+      const maxIndex = movieVersions.length - 1
+      return {
+        onUp: () => dispatch({ type: 'SET_DROPDOWN_FOCUS_INDEX', index: Math.max(0, dropdownFocusIndex - 1) }),
+        onDown: () => dispatch({ type: 'SET_DROPDOWN_FOCUS_INDEX', index: Math.min(maxIndex, dropdownFocusIndex + 1) }),
+        onEnter: () => {
+          const video = movieVersions[dropdownFocusIndex]
+          if (video) selectMovieVersion(video.number)
+        },
+        onBack: () => dispatch({ type: 'SET_FOCUS_AREA', area: 'version' }),
+        onRed: () => dispatch({ type: 'SET_FOCUS_AREA', area: 'version' })
       }
     }
 
@@ -650,6 +741,10 @@ export function ItemScreen({ itemId, preview = null, onBack, onPlay, onPlayTrail
           const currentIdx = availableQualities.indexOf(selectedQuality || '')
           dispatch({ type: 'SET_DROPDOWN_FOCUS_INDEX', index: Math.max(0, currentIdx) })
           dispatch({ type: 'SET_FOCUS_AREA', area: 'qualitySelect' })
+        } else if (focusArea === 'version' && hasVersions) {
+          const idx = Math.max(0, movieVersions.findIndex(video => video.number === selectedVideoNumber))
+          dispatch({ type: 'SET_DROPDOWN_FOCUS_INDEX', index: idx })
+          dispatch({ type: 'SET_FOCUS_AREA', area: 'versionSelect' })
         } else if (hasGenres) {
           dispatch({ type: 'SET_FOCUS_AREA', area: 'genres' })
           dispatch({ type: 'SET_META_FOCUS_INDEX', index: 0 })
@@ -660,10 +755,12 @@ export function ItemScreen({ itemId, preview = null, onBack, onPlay, onPlayTrail
         if (focusArea === 'trailer') {
           dispatch({ type: 'SET_FOCUS_AREA', area: 'watchlist' })
         } else if (focusArea === 'watchlist') {
-          dispatch({ type: 'SET_FOCUS_AREA', area: hasSeries ? 'watching' : primaryButton })
+          dispatch({ type: 'SET_FOCUS_AREA', area: hasSeries ? 'watching' : hasVersions ? 'version' : primaryButton })
         } else if (focusArea === 'watching') {
           dispatch({ type: 'SET_FOCUS_AREA', area: 'seasons' })
         } else if (focusArea === 'seasons') {
+          dispatch({ type: 'SET_FOCUS_AREA', area: hasVersions ? 'version' : 'play' })
+        } else if (focusArea === 'version') {
           dispatch({ type: 'SET_FOCUS_AREA', area: 'play' })
         } else if (focusArea === 'play') {
           onNavigateToMenu()
@@ -671,6 +768,8 @@ export function ItemScreen({ itemId, preview = null, onBack, onPlay, onPlayTrail
       },
       onRight: () => {
         if (focusArea === 'play') {
+          dispatch({ type: 'SET_FOCUS_AREA', area: hasVersions ? 'version' : hasSeries ? 'seasons' : 'watchlist' })
+        } else if (focusArea === 'version') {
           dispatch({ type: 'SET_FOCUS_AREA', area: hasSeries ? 'seasons' : 'watchlist' })
         } else if (focusArea === 'seasons') {
           dispatch({ type: 'SET_FOCUS_AREA', area: 'watching' })
@@ -695,7 +794,7 @@ export function ItemScreen({ itemId, preview = null, onBack, onPlay, onPlayTrail
       },
       onYellow: handleOpenFolderDialog
     }
-  }, [item, preview, focusArea, availableQualities, dropdownFocusIndex, selectedQuality, onBack, onNavigateToMenu, handlePlayOrSelect, handleOpenFolderDialog, handleToggleFolder, handleToggleWatching, similarItems, similarFocusIndex, similarCount, similarPerRow, metaFocusIndex, genres, cast, activeCast, onSelectItem, onSelectGenre, onSelectActor, showFolderDialog, folders, folderFocusIndex, onPlayTrailer, t, itemId, detailsExpanded, openDetails, closeDetails, scrollDetailsBy, scrollDetailsToTop])
+  }, [item, preview, focusArea, availableQualities, dropdownFocusIndex, selectedQuality, selectedVideoNumber, movieVersions, selectMovieVersion, onBack, onNavigateToMenu, handlePlayOrSelect, handleOpenFolderDialog, handleToggleFolder, handleToggleWatching, similarItems, similarFocusIndex, similarCount, similarPerRow, metaFocusIndex, genres, cast, activeCast, onSelectItem, onSelectGenre, onSelectActor, showFolderDialog, folders, folderFocusIndex, onPlayTrailer, t, itemId, detailsExpanded, openDetails, closeDetails, scrollDetailsBy, scrollDetailsToTop])
 
   useKeyboardNavigation(handlers, isActive && !!(item || preview))
 
@@ -735,11 +834,14 @@ export function ItemScreen({ itemId, preview = null, onBack, onPlay, onPlayTrail
     : (loading || (!!preview && !item))
   const hasSeasons = Boolean(item?.seasons && item.seasons.length > 0) ||
     (!item && (preview?.type === 'serial' || preview?.type === 'docuserial' || preview?.type === 'tvshow'))
-  const durationMinutes = item?.duration?.average
-    ? item.duration.average > 300
-      ? Math.floor(item.duration.average / 60)
-      : item.duration.average
-    : null
+  const versionSeconds = selectedVideo?.duration
+  const durationMinutes = versionSeconds && versionSeconds > 0
+    ? Math.floor(versionSeconds / 60)
+    : item?.duration?.average
+      ? item.duration.average > 300
+        ? Math.floor(item.duration.average / 60)
+        : item.duration.average
+      : null
   const duration = durationMinutes
     ? durationMinutes >= 60
       ? `${Math.floor(durationMinutes / 60)} ${t.hourShort}${durationMinutes % 60 ? ` ${durationMinutes % 60} ${t.minuteShort}` : ''}`
@@ -901,6 +1003,52 @@ export function ItemScreen({ itemId, preview = null, onBack, onPlay, onPlayTrail
                     </>
                   )}
                 </div>
+                {movieVersions.length > 1 && selectedVideo && (
+                  <div class="item-play-container">
+                    <button
+                      type="button"
+                      class={`item-button item-button-secondary item-version-button ${focusArea === 'version' || focusArea === 'versionSelect' ? 'focused' : ''}`}
+                      onMouseEnter={() => dispatch({ type: 'SET_FOCUS_AREA', area: 'version' })}
+                      onClick={() => {
+                        const idx = Math.max(0, movieVersions.findIndex(video => video.number === selectedVideoNumber))
+                        dispatch({ type: 'SET_DROPDOWN_FOCUS_INDEX', index: idx })
+                        dispatch({ type: 'SET_FOCUS_AREA', area: 'versionSelect' })
+                      }}
+                    >
+                      <span class="item-version-label">
+                        {videoVersionLabel(selectedVideo, t.videoVersion)}
+                      </span>
+                      <span class="item-quality-hint">▲</span>
+                    </button>
+                    {focusArea === 'versionSelect' && (
+                      <>
+                        <div
+                          class="item-dropdown-backdrop"
+                          onClick={() => dispatch({ type: 'SET_FOCUS_AREA', area: 'version' })}
+                        />
+                        <div class="item-dropdown item-dropdown-version">
+                          {movieVersions.map((video, idx) => (
+                            <div
+                              key={video.number}
+                              class={`item-dropdown-option ${dropdownFocusIndex === idx ? 'focused' : ''} ${selectedVideoNumber === video.number ? 'selected' : ''}`}
+                              onMouseEnter={() => dispatch({ type: 'SET_DROPDOWN_FOCUS_INDEX', index: idx })}
+                              onClick={() => selectMovieVersion(video.number)}
+                            >
+                              <span>{videoVersionLabel(video, t.videoVersion)}</span>
+                              {video.duration != null && video.duration > 0 && (
+                                <span class="item-dropdown-option-meta">
+                                  {Math.floor(video.duration / 3600) > 0
+                                    ? `${Math.floor(video.duration / 3600)} ${t.hourShort} ${Math.floor((video.duration % 3600) / 60)} ${t.minuteShort}`
+                                    : `${Math.floor(video.duration / 60)} ${t.minuteShort}`}
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
                 {hasSeasons && (
                   <button
                     type="button"

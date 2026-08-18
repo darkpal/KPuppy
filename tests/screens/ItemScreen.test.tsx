@@ -378,6 +378,44 @@ describe('ItemScreen', () => {
       })
     })
 
+    it('lets the user pick a movie version and plays that video', async () => {
+      vi.mocked(kinopub.getItem).mockResolvedValue({
+        ...mockMovieDetails,
+        subtype: 'multi',
+        videos: [
+          {
+            id: 88,
+            number: 1,
+            title: 'Director\'s Cut',
+            duration: 11763,
+            files: [{ quality: '1080p', url: { hls: 'a.m3u8' } }],
+            audios: [],
+            watching: { time: 0, status: -1 }
+          },
+          {
+            id: 89,
+            number: 2,
+            title: 'Theatrical',
+            duration: 9768,
+            files: [{ quality: '1080p', url: { hls: 'b.m3u8' } }],
+            audios: [],
+            watching: { time: 0, status: -1 }
+          }
+        ]
+      })
+
+      renderWithI18n(<ItemScreen {...mockProps} />)
+
+      await waitFor(() => {
+        expect(screen.getByText("Director's Cut")).toBeDefined()
+      })
+      fireEvent.click(screen.getByText("Director's Cut"))
+      fireEvent.click(screen.getByText('Theatrical'))
+      fireEvent.click(screen.getByText('Play'))
+
+      expect(mockProps.onPlay).toHaveBeenCalledWith(1, undefined, undefined, expect.objectContaining({ video: 2 }))
+    })
+
     it('renders country, director, and cast in the main summary', async () => {
       renderWithI18n(<ItemScreen {...mockProps} />)
 

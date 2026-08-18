@@ -7,6 +7,7 @@ import { KEY_CODES } from '../hooks'
 import { useI18n } from '../i18n'
 import { convertSrtUrlToVtt, isSrtUrl, sortSubtitleTracks, subtitleLanguageLabel } from '../utils/subtitles'
 import type { EpisodeNavigationTarget, SeasonSummary } from '../utils/episodes'
+import { isVideosSummary } from '../utils/videoVersions'
 import {
   collectLiveHlsDiagnostics,
   createLiveHls,
@@ -203,6 +204,7 @@ export function PlayerScreen({
   ))
 
   const hasEpisodesPanel = Boolean(seasonsSummary && seasonsSummary.length > 0)
+  const versionsPanel = isVideosSummary(seasonsSummary)
   const selectableSubs = useMemo(
     () => sortSubtitleTracks(subtitles.filter(sub => Boolean(sub.url))),
     [subtitles]
@@ -1470,7 +1472,7 @@ export function PlayerScreen({
                   >
                     <RemoteKeyDots count={4} />
                     <IconEpisodes />
-                    <span class="player-hint-label">{t.episodes}</span>
+                    <span class="player-hint-label">{versionsPanel ? t.videoVersions : t.episodes}</span>
                   </button>
                 )}
               </div>
@@ -1557,7 +1559,7 @@ export function PlayerScreen({
 
           {controls.activePanel === 'episodes' && seasonsSummary && (
             <div class="player-panel player-panel-episodes" onClick={(event) => event.stopPropagation()}>
-              <h2 class="player-panel-title">{t.episodes}</h2>
+              <h2 class="player-panel-title">{versionsPanel ? t.videoVersions : t.episodes}</h2>
               {seasonsSummary.length > 1 && (
                 <div class="player-episodes-seasons">
                   {seasonsSummary.map((seasonSummary, idx) => (
@@ -1579,8 +1581,8 @@ export function PlayerScreen({
               <div class="player-panel-list" ref={panelListRef}>
                 {(seasonsSummary[episodesFocus.seasonIndex]?.episodes || []).map((episodeSummary, idx) => {
                   const isCurrent = (
-                    seasonsSummary[episodesFocus.seasonIndex]?.number === season
-                    && episodeSummary.number === episode
+                    episodeSummary.number === episode
+                    && (season == null || seasonsSummary[episodesFocus.seasonIndex]?.number === season)
                   )
                   const isSelected = idx === episodesFocus.episodeIndex
                   const watchedTime = episodeSummary.watching?.time
@@ -1621,7 +1623,9 @@ export function PlayerScreen({
                       <span class="player-episode-item-main">
                         <span class="player-episode-item-title">
                           {(episodeSummary.watched === 1 || episodeSummary.watching?.status === 1) ? '✓ ' : ''}
-                          {episodeSummary.number}. {episodeSummary.title || `${t.episode} ${episodeSummary.number}`}
+                          {versionsPanel
+                            ? (episodeSummary.title || `${t.videoVersion} ${episodeSummary.number}`)
+                            : `${episodeSummary.number}. ${episodeSummary.title || `${t.episode} ${episodeSummary.number}`}`}
                         </span>
                         {episodeSummary.duration != null && episodeSummary.duration > 0 && (
                           <span class="player-episode-item-duration">

@@ -70,6 +70,8 @@ export interface Translations {
   season: string
   episode: string
   episodes: string
+  videoVersion: string
+  videoVersions: string
   previousEpisode: string
   nextEpisode: string
   toggleWatchedHint: string
@@ -271,6 +273,8 @@ const en: Translations = {
   season: 'Season',
   episode: 'Episode',
   episodes: 'Episodes',
+  videoVersion: 'Version',
+  videoVersions: 'Versions',
   previousEpisode: 'Previous',
   nextEpisode: 'Next',
   toggleWatchedHint: 'Green — mark watched / unwatched',
@@ -457,6 +461,8 @@ const ru: Translations = {
   season: 'Сезон',
   episode: 'Серия',
   episodes: 'Серии',
+  videoVersion: 'Версия',
+  videoVersions: 'Версии',
   previousEpisode: 'Предыдущая',
   nextEpisode: 'Следующая',
   toggleWatchedHint: 'Зелёная — отметить просмотренным',
@@ -643,6 +649,8 @@ const de: Translations = {
   season: 'Staffel',
   episode: 'Folge',
   episodes: 'Folgen',
+  videoVersion: 'Fassung',
+  videoVersions: 'Fassungen',
   previousEpisode: 'Vorherige',
   nextEpisode: 'Nächste',
   toggleWatchedHint: 'Grün — gesehen / ungesehen',
@@ -829,6 +837,8 @@ const uk: Translations = {
   season: 'Сезон',
   episode: 'Серія',
   episodes: 'Серії',
+  videoVersion: 'Версія',
+  videoVersions: 'Версії',
   previousEpisode: 'Попередня',
   nextEpisode: 'Наступна',
   toggleWatchedHint: 'Зелена — позначити переглянутим',

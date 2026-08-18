@@ -224,6 +224,28 @@ describe('PlayerScreen', () => {
       expect(screen.getByText('Episodes')).toBeDefined()
     })
 
+    it('labels the panel as versions for movie cuts', () => {
+      renderWithI18n(
+        <PlayerScreen
+          {...mockProps}
+          episode={1}
+          seasonsSummary={[{
+            number: 0,
+            episodes: [
+              { number: 1, title: "Director's Cut", duration: 11763 },
+              { number: 2, title: 'Theatrical', duration: 9768 }
+            ]
+          }]}
+          onPlayEpisode={vi.fn()}
+        />
+      )
+
+      expect(screen.getByText('Versions')).toBeDefined()
+      fireEvent.keyDown(document, { keyCode: 406 })
+      expect(screen.getByText("Director's Cut")).toBeDefined()
+      expect(screen.getByText('Theatrical')).toBeDefined()
+    })
+
     it('opens episodes panel on Blue and plays selected episode on Enter', () => {
       const onPlayEpisode = vi.fn()
       const onPlayNextEpisode = vi.fn()
